@@ -1,0 +1,1 @@
+Initial the project with the framework you are gonna use and make a clear directories structure that you are gonna use
