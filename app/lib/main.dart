@@ -1,17 +1,16 @@
-import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/login_page.dart';
 import 'package:app/theme/flex_color_scheme.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    MaterialApp(
-      themeMode: ThemeMode.dark,
-      darkTheme: AppTheme.dark,
-      theme: AppTheme.light,
-      home: MyApp(),
-    ),
-  );
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runApp(DevicePreview(
+    enabled: true,
+    builder: (context) => const MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -19,45 +18,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Test",
-              style: TextStyle(
-                color: context.colors.primary,
-                fontSize: 40,
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {},
-                  child: Text("Press Me"),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text("Text Button"),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(
-                    Icons.shield_outlined,
-                    color: context.colors.primary,
-                  ),
-                ),
-              ],
-            ),
-            Checkbox(
-              value: true,
-              onChanged: (value) {},
-            ),
-          ],
-        ),
-      ),
+    return MaterialApp(
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
+      themeMode: ThemeMode.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      home: const LoginPage(),
     );
   }
 }
