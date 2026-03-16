@@ -1,0 +1,42 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-267173582815bba0a1a3e031f31fbf301a6cd131",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/Professor.sol": "project/contracts/Professor.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/Academy.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract AcademyRegistry{\n    address owner;\n\n    constructor() {\n        owner = msg.sender;\n    }\n    \n    modifier onlyOwner {\n        require(\n            msg.sender == owner, \n            \"Not authorized: Only owner can perform this operation.\"\n        );\n        _;\n    }\n}"
+      },
+      "project/contracts/Professor.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport \"./Academy.sol\";\n\ncontract ProfessorRegistry is AcademyRegistry{\n    enum Role {professor, admin}\n\n    struct Professor {\n        bytes32 IdHash;\n        address createdBy;\n        Role role;\n        bool isActive;\n    } \n\n    mapping ( address => Professor) public professors;\n\n    modifier onlyAdmin(address caller) {\n        require(\n            professors[caller].role == Role.admin,\n            \"Not authorized: Only admins can perform this action.\"\n        );\n        _;\n    }\n\n    function addProfessor\n    (\n        string memory _professorID,\n        address _professorWallet,\n        bool _professorStatus,\n        Role _professorRole,\n        address _adder\n    ) \n    private\n    {\n        bytes32 _professorIdHash = keccak256(abi.encodePacked(_professorID));\n\n        professors[_professorWallet] = Professor(\n            _professorIdHash, \n            _adder, \n            _professorRole, \n            _professorStatus\n        );\n    }\n\n    function addMainAdmin\n    (\n        string memory _professorID, \n        address _professorWallet,\n        bool _professorStatus\n    )\n    public onlyOwner\n    {\n        addProfessor(\n            _professorID, \n            _professorWallet, \n            _professorStatus, \n            Role.admin, \n            owner\n        );\n    }\n\n    function addNewProfessor\n    (\n        string memory _professorID, \n        address _professorWallet,\n        bool _professorStatus,\n        Role _professorRole,\n        address _adder\n    )\n    public onlyAdmin(_adder)\n    {\n        addProfessor(\n            _professorID, \n            _professorWallet, \n            _professorStatus, \n            _professorRole, \n            _adder\n        );\n    }\n}"
+      }
+    }
+  }
+}
