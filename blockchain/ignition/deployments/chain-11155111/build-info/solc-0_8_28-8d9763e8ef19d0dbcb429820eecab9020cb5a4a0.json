@@ -1,0 +1,45 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-8d9763e8ef19d0dbcb429820eecab9020cb5a4a0",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/ProfessorIdentity.sol": "project/contracts/ProfessorIdentity.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/AcademyIdentity.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport \"./S2dent.sol\";\n\ncontract AcademyIdentity is S2dent{\n    struct Academy {\n        bytes32 academyIdHash;\n        string name;\n        string code; // Short Name like my university => Fenerbahce University (FBU)\n        bool isActive;\n        uint256 issuedAt;\n        uint256 revokedAt;\n        address issuedBy;\n    }\n\n    mapping ( address => Academy ) public academies;\n\n    modifier onlyAcademy(address _caller){\n        require(\n            academies[_caller].isActive == true,\n            \"Not Authorized: Only active academies can perform this operation.\"\n        );\n        _;\n    }\n\n    function issueAcademyIdentity\n    (\n        address _walletAddress, \n        string memory _universityId, \n        string memory _name,\n        string memory _code\n\n    ) public onlyOwner {\n        bytes32 academyIdHash = keccak256(abi.encodePacked(_universityId));\n        uint256 issuedAt = block.timestamp;\n        uint256 revokedAt = 0;\n        bool isActive = true;\n        address issuedBy = msg.sender;\n        \n        academies[_walletAddress] = Academy(\n            academyIdHash,\n            _name,\n            _code,\n            isActive,\n            issuedAt,\n            revokedAt,\n            issuedBy\n        );\n    }\n}"
+      },
+      "project/contracts/ProfessorIdentity.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport \"./AcademyIdentity.sol\";\n\ncontract ProfessorIdentity is AcademyIdentity{\n    struct Professor {\n        bytes32 employeeIdHash;\n        string fullName;\n        string title;\n        string department;\n        string faculty;\n        bool isActive;\n        uint256 issuedAt;\n        uint256 revokedAt;\n        address issuedBy;\n    }\n\n    mapping ( address => Professor) public professors;\n\n    function issueProfessorIdentity\n    (\n        address _walletAddress,\n        string memory _employeeId,\n        string memory _fullName,\n        string memory _title,\n        string memory _department,\n        string memory _faculty,\n        address _academyAddress\n\n    ) public onlyAcademy(_academyAddress) {\n        bytes32 employeeIdHash = keccak256(abi.encodePacked(_employeeId));\n        bool isActive = true;\n        uint256 issuedAt = block.timestamp;\n        uint256 revokedAt = 0;\n        address academyAddress = _academyAddress;\n\n        professors[_walletAddress] = Professor(\n            employeeIdHash,\n            _fullName,\n            _title,\n            _department,\n            _faculty,\n            isActive,\n            issuedAt,\n            revokedAt,\n            academyAddress\n        );\n    }\n}"
+      },
+      "project/contracts/S2dent.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract S2dent {\n    address owner;\n\n    constructor() {\n        owner = msg.sender;\n    }\n\n    modifier onlyOwner {\n        require(\n            msg.sender == owner, \n            \"Not authorized: Only owner can perform this operation.\"\n        );\n        _;\n    }\n}"
+      }
+    }
+  }
+}
