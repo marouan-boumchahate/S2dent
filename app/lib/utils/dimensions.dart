@@ -11,7 +11,7 @@ double screenHeight(BuildContext context) {
 double widthConstraints(BuildContext context) {
   return isMobile(context)
       ? screenWidth(context) * 0.9
-      : screenWidth(context) * 0.6;
+      : screenWidth(context) * 0.5;
 }
 
 bool isMobile(BuildContext context) {
