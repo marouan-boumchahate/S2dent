@@ -3,6 +3,7 @@
 
 # Environment Variables
 .env
+.env.test
 
 # structure
 API-Structure.litcoffee
