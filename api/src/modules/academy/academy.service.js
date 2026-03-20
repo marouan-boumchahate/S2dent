@@ -59,8 +59,8 @@ const insertAcademyToDB = async (
 };
 
 
-const createAcademy = async ({
-  walletAddress,
+const createAcademyService = async ({
+  wallet_address,
   email, 
   name, 
   short_name, 
@@ -72,7 +72,7 @@ const createAcademy = async ({
 }) => {
   await ensureAcademyUnique(email, name);
   
-  const { rows: [user] } = await insertUserToDB(email, walletAddress.toLowerCase());
+  const { rows: [user] } = await insertUserToDB(email, wallet_address.toLowerCase());
 
   const { rows: [academy] } = await insertAcademyToDB(
     user.id, 
@@ -88,9 +88,9 @@ const createAcademy = async ({
   return {
     academy: {
       id: academy.id,
-      walletAddress: user.wallet_address,
+      wallet_address: user.wallet_address,
       name: academy.name,
-      shortName: academy.short_name,
+      short_name: academy.short_name,
       type: academy.type,
       email: user.email,
       country: academy.country,
@@ -101,4 +101,4 @@ const createAcademy = async ({
   };
 };
 
-export { createAcademy as createAcademyService};
+export { createAcademyService};

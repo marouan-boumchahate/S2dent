@@ -11,23 +11,23 @@ const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 
 const seedAcademyUser = async ({
     email = 'seed@fenerbahce.edu.tr',
-    walletAddress= WALLET_ADDRESS,
+    wallet_address= WALLET_ADDRESS,
     role = 'academy_admin',
-    isIdentityIssued = false,
-    academyName = 'Fenerbahce University',
-    shortName = 'FBU',
+    is_identity_issued = false,
+    academy_name = 'Fenerbahce University',
+    short_name = 'FBU',
 } = {}) => {
     const { rows: [user] } = await db.query(
         `INSERT INTO users (email, wallet_address, role, is_identity_issued)
             VALUES ($1, $2, $3, $4)
         RETURNING id`,
-        [email, walletAddress, role, isIdentityIssued],
+        [email, wallet_address, role, is_identity_issued],
     );
 
     await db.query(
         `INSERT INTO academies (user_id, name, short_name, type, country, city)
             VALUES ($1, $2, $3, 'university', 'Turkey', 'Istanbul')`,
-        [user.id, academyName, shortName],
+        [user.id, academy_name, short_name],
     );
 
     return user;
@@ -73,7 +73,7 @@ afterEach(async () => {
 
 // TESTS
 // ─────
-describe('POST /api/identity/academies', () => {
+describe('POST /api/identity/academies/issue', () => {
     it('returns 200 and the identity DTO on valid input', async () => {
         await seedAcademyUser();
 
@@ -82,7 +82,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 200);
@@ -90,15 +90,15 @@ describe('POST /api/identity/academies', () => {
         assert.equal(res.body.message, 'Academy identity issued successfully');
 
         const data = res.body.data;
-        assert.equal(data.walletAddress, WALLET_ADDRESS);
-        assert.equal(data.identityTxHash, FAKE_TX_HASH);
-        assert.equal(data.isIdentityIssued, true);
+        assert.equal(data.wallet_address, WALLET_ADDRESS);
+        assert.equal(data.identity_tx_hash, FAKE_TX_HASH);
+        assert.equal(data.is_identity_issued, true);
         assert.equal(data.role, 'academy_admin');
         assert.ok(data.email);
     });
 
     it('normalizes wallet_address to lowercase before querying', async () => {
-        await seedAcademyUser({ walletAddress: WALLET_ADDRESS });
+        await seedAcademyUser({ wallet_address: WALLET_ADDRESS });
 
         const calls = [];
         const app = await makeApp({
@@ -109,7 +109,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
@@ -124,7 +124,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         const { rows: [updated] } = await db.query(
@@ -138,8 +138,8 @@ describe('POST /api/identity/academies', () => {
 
     it('passes the correct arguments to the blockchain', async () => {
         await seedAcademyUser({
-            academyName: 'Fenerbahce University',
-            shortName: 'FBU',
+            academy_name: 'Fenerbahce University',
+            short_name: 'FBU',
         });
 
         const calls = [];
@@ -151,7 +151,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(calls.length, 1);
@@ -165,7 +165,7 @@ describe('POST /api/identity/academies', () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: '0x0000000000000000000000000000000000000001' });
 
         assert.equal(res.status, 404);
@@ -178,7 +178,7 @@ describe('POST /api/identity/academies', () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 403);
@@ -186,12 +186,12 @@ describe('POST /api/identity/academies', () => {
     });
 
     it('returns 409 IDENTITY_ALREADY_ISSUED when identity was already issued', async () => {
-        await seedAcademyUser({ isIdentityIssued: true });
+        await seedAcademyUser({ is_identity_issued: true });
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 409);
@@ -208,7 +208,7 @@ describe('POST /api/identity/academies', () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 404);
@@ -228,7 +228,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 502);
@@ -248,7 +248,7 @@ describe('POST /api/identity/academies', () => {
         });
 
         await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: WALLET_ADDRESS });
 
         const { rows: [unchanged] } = await db.query(
@@ -264,7 +264,7 @@ describe('POST /api/identity/academies', () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({});
 
         assert.equal(res.status, 422);
@@ -277,12 +277,11 @@ describe('POST /api/identity/academies', () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
 
         const res = await request(app)
-            .post('/api/identity/academies')
+            .post('/api/identity/academies/issue')
             .send({ wallet_address: 'not-a-wallet' });
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find(e => e.field === 'wallet_address');
         assert.ok(field, 'errors should contain a wallet_address entry');
     });
-
 });

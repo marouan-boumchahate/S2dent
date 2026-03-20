@@ -26,9 +26,9 @@ const createAcademySchema = Joi.object({
         .messages({
         'string.uri': 'website must be a valid URL (e.g. https://university.edu)',
         }),
-    walletAddress: Joi.string().pattern(ETH_ADDRESS).required()
+    wallet_address: Joi.string().pattern(ETH_ADDRESS).required()
         .messages({
-            'string.pattern.base': 'walletAddress must be a valid Ethereum address (0x…)',
+            'string.pattern.base': 'wallet_address must be a valid Ethereum address (0x…)',
         })
 });
 
