@@ -6,7 +6,7 @@ import { issueIdentity } from './academy.identity.controller.js'
 const router = Router()
 
 router.post(
-  '/',
+  '/issue',
   validate(issueIdentitySchema),
   issueIdentity,
 )

@@ -1,9 +1,9 @@
-import { createAcademyService } from './academies.service.js';
+import { createAcademyService } from './academy.service.js';
 import { created } from '../../utils/response.js';
 
-const createAcademy = async (req, res) => {
+const createAcademyController = async (req, res) => {
     const { 
-        walletAddress,
+        wallet_address,
         email, 
         name, 
         short_name, 
@@ -15,7 +15,7 @@ const createAcademy = async (req, res) => {
     } = req.body;
 
     const result = await createAcademyService({
-        walletAddress,
+        wallet_address,
         email,
         name,
         short_name,
@@ -29,4 +29,4 @@ const createAcademy = async (req, res) => {
     return created(res, result, 'Academy registered successfully');
 };
 
-export { createAcademy };
+export { createAcademyController };

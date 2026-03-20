@@ -67,11 +67,11 @@ const setIssuanceData = async (userId, walletAddress, txHash) => {
     )
 
     return {
-        walletAddress: updated.wallet_address,
+        wallet_address: updated.wallet_address,
         email: updated.email,
         role: updated.role,
-        identityTxHash: updated.identity_tx_hash,
-        isIdentityIssued: updated.is_identity_issued,
+        identity_tx_hash: updated.identity_tx_hash,
+        is_identity_issued: updated.is_identity_issued,
     }
 }
 
@@ -82,13 +82,17 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
     
     const academy = await getAcademy(user.id)
     const txHash = await issueAcademy(
-        normalizedWallet, 
-        academy.id, 
-        academy.name, 
+        normalizedWallet,
+        academy.id,
+        academy.name,
         academy.short_name
     )
 
-    const updatedDto = await setIssuanceData(user.id, normalizedWallet, txHash)
+    const updatedDto = await setIssuanceData(
+        user.id,
+        normalizedWallet,
+        txHash
+    )
 
     return updatedDto;
 }
