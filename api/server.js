@@ -1,12 +1,23 @@
-import express from 'express'
+import app from './src/app.js';
+import { env } from './src/config/env.js';
+import { ensureDatabaseExists } from './src/config/db.js';
+import { runMigrations } from './src/db/migrate.js';
 
-const app = express()
-const port = 3000
+const bootstrap = async () => {
+  try {
+    await ensureDatabaseExists();
 
-app.get('/', (req, res) => {
-  res.send('Hello S2dent!')
-})
+    await runMigrations();
 
-app.listen(port, () => {
-  console.log(`App is listening on port ${port} : http://localhost:${port}`)
-})
+    const PORT = env.port;
+    app.listen(PORT, () => {
+      console.log(`\nApp is listening on port ${PORT} : http://localhost:${PORT}`)
+    });
+
+  } catch (err) {
+    console.error('=> Failed to start server:', err.message);
+    process.exit(1);
+  }
+};
+
+bootstrap();
