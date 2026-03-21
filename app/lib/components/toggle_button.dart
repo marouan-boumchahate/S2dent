@@ -5,12 +5,12 @@ class ToggleButton extends StatelessWidget {
   const ToggleButton({
     super.key,
     required this.onTap,
-    required this.label,
     required this.isSelected,
+    required this.child,
   });
   final Function() onTap;
-  final String label;
   final bool isSelected;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -30,13 +30,7 @@ class ToggleButton extends StatelessWidget {
             ),
           ),
           padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          child: child,
         ),
       ),
     );
