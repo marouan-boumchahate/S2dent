@@ -24,10 +24,16 @@ const seedAcademyUser = async ({
         [email, wallet_address, role, is_identity_issued],
     );
 
+    // Generating a unique academy_number
+    const { rows: [{ nextval }] } = await db.query(
+        `SELECT nextval('academy_seq')`
+    );
+    const SEED_ACADEMY_NUMBER = `ACD_${String(nextval).padStart(7, '0')}`;
+
     await db.query(
-        `INSERT INTO academies (user_id, name, short_name, type, country, city)
-            VALUES ($1, $2, $3, 'university', 'Turkey', 'Istanbul')`,
-        [user.id, academy_name, short_name],
+        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
+            VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')`,
+        [user.id, SEED_ACADEMY_NUMBER, academy_name, short_name],
     );
 
     return user;
@@ -156,7 +162,7 @@ describe('POST /api/identity/academies/issue', () => {
 
         assert.equal(calls.length, 1);
         assert.equal(calls[0].wallet, WALLET_ADDRESS);
-        assert.match(calls[0].id, /^[0-9a-f-]{36}$/);
+        assert.match(calls[0].id, /^ACD_[0-9]{7}$/);
         assert.equal(calls[0].name, 'Fenerbahce University');
         assert.equal(calls[0].code, 'FBU');
     });

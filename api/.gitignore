@@ -7,3 +7,6 @@
 
 # structure
 API-Structure.litcoffee
+
+# private shells
+reset_db.sh

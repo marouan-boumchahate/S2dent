@@ -24,11 +24,17 @@ const seedAcademy = async ({
         [email, wallet_address],
     );
 
+    // Generating a unique academy_number
+    const { rows: [{ nextval }] } = await db.query(
+        `SELECT nextval('academy_seq')`
+    );
+    const SEED_ACADEMY_NUMBER = `ACD_${String(nextval).padStart(7, '0')}`;
+
     const { rows: [academy] } = await db.query(
-        `INSERT INTO academies (user_id, name, short_name, type, country, city)
-            VALUES ($1, $2, $3, 'university', 'Turkey', 'Istanbul')
+        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
+            VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')
         RETURNING id`,
-        [academyUser.id, academy_name, short_name],
+        [academyUser.id, SEED_ACADEMY_NUMBER, academy_name, short_name],
     );
 
     return { academyUser, academy };

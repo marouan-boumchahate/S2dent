@@ -91,15 +91,20 @@ describe('POST /api/academies', () => {
         const { academy } = res.body.data;
 
         assert.ok(academy.id);
-        assert.equal(academy.name,           body.name);
-        assert.equal(academy.short_name,     body.short_name);
-        assert.equal(academy.type,           body.type);
-        assert.equal(academy.email,          body.email);
-        assert.equal(academy.country,        body.country);
-        assert.equal(academy.city,           body.city);
+        assert.equal(academy.name, body.name);
+        assert.equal(academy.short_name, body.short_name);
+        assert.equal(academy.type, body.type);
+        assert.equal(academy.email, body.email);
+        assert.equal(academy.country, body.country);
+        assert.equal(academy.city, body.city);
         assert.equal(academy.wallet_address, body.wallet_address.toLowerCase());
-        assert.equal(academy.address,        null);
-        assert.equal(academy.website,        null);
+        
+        assert.equal(academy.address, null);
+        assert.equal(academy.website, null);
+
+        // checking academy_number shape
+        assert.ok(academy.academy_number);
+        assert.match(academy.academy_number, /^ACD_\d{6}\d+$/);
     });
 
     it('stores wallet_address lowercased regardless of input casing', async () => {
@@ -139,7 +144,7 @@ describe('POST /api/academies', () => {
         const res = await request(app)
             .post('/api/academies')
             .send(validBody({
-                name:          'Test Academy 2',
+                name: 'Test Academy 2',
                 wallet_address: '0x1111222233334444555566667777888899990000',
             }));
 
@@ -155,12 +160,29 @@ describe('POST /api/academies', () => {
         const res = await request(app)
             .post('/api/academies')
             .send(validBody({
-                email:          'other@test.edu.tr',
+                email: 'other@test.edu.tr',
                 wallet_address: '0x2222333344445555666677778888999900001111',
             }));
 
         assert.equal(res.status, 409);
         assert.equal(res.body.code, 'ACADEMY_DUPLICATE');
+    });
+    
+    it('returns 409 ACADEMY_SHORT_NAME_DUPLICATE when academy short name already exists', async () => {
+        await request(app)
+            .post('/api/academies')
+            .send(validBody());
+
+        const res = await request(app)
+            .post('/api/academies')
+            .send(validBody({
+                email: 'other@test.edu.tr',
+                name: 'Test Academy 2',
+                wallet_address: '0x2222333344445555666677778888999900001111',
+            }));
+
+        assert.equal(res.status, 409);
+        assert.equal(res.body.code, 'ACADEMY_SHORT_NAME_DUPLICATE');
     });
 
     it('returns 422 when body is empty', async () => {
@@ -205,7 +227,7 @@ describe('POST /api/academies', () => {
     });
 
     it('returns 422 when each required field is missing', async () => {
-        const requiredFields = ['email', 'wallet_address', 'name', 'type', 'country', 'city'];
+        const requiredFields = ['email', 'wallet_address', 'name', 'short_name', 'type', 'country', 'city'];
 
         for (const field of requiredFields) {
             const body = validBody();

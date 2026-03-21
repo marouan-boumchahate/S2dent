@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS academies (
     
     user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
-    name VARCHAR(255) NOT NULL,
-    short_name VARCHAR(50),
+    academy_number VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    short_name VARCHAR(50) UNIQUE NOT NULL,
     type academy_type NOT NULL,
     country VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
@@ -26,4 +27,6 @@ CREATE TABLE IF NOT EXISTS academies (
 );
 
 CREATE INDEX IF NOT EXISTS idx_academies_user_id ON academies(user_id);
+CREATE INDEX IF NOT EXISTS idx_academies_academy_number ON academies(academy_number);
 CREATE INDEX IF NOT EXISTS idx_academies_name ON academies(name);
+CREATE INDEX IF NOT EXISTS idx_academies_short_name ON academies(short_name);

@@ -36,7 +36,7 @@ const ensureAcademyCanBeIssued = async (wallet_address) => {
 
 const getAcademy = async (userId) => {
     const { rows: [academy] } = await db.query(
-        `SELECT a.id, a.name, a.short_name
+        `SELECT a.academy_number, a.name, a.short_name
             FROM academies a
             JOIN users u ON u.id = a.user_id
             WHERE u.id = $1
@@ -83,7 +83,7 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
     const academy = await getAcademy(user.id)
     const txHash = await issueAcademy(
         normalizedWallet,
-        academy.id,
+        academy.academy_number,
         academy.name,
         academy.short_name
     )
