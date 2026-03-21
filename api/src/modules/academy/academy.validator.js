@@ -14,7 +14,7 @@ const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const createAcademySchema = Joi.object({
     email: Joi.string().email().lowercase().trim().required(),
     name: Joi.string().trim().min(3).max(255).required(),
-    short_name: Joi.string().trim().max(50).optional(),
+    short_name: Joi.string().trim().max(50).required(),
     type: Joi.string().valid(...ACADEMY_TYPES).required()
         .messages({
             'any.only': `type must be one of: ${ACADEMY_TYPES.join(', ')}`,

@@ -8,6 +8,7 @@ import db from '../../src/config/db.js';
 // ========
 const SEED_EMAIL   = 'seed.professor@seed.internal';
 const SEED_WALLET  = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const SEED_ACADEMY_NUMBER = 'ACD_0224016';
 
 let ACADEMY_ID;
 
@@ -32,10 +33,10 @@ const seedAcademy = async () => {
     );
 
     const { rows: [academy] } = await db.query(
-        `INSERT INTO academies (user_id, name, short_name, type, country, city)
-         VALUES ($1, 'Seed Professor University', 'SPU', 'university', 'Turkey', 'Istanbul')
+        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
+         VALUES ($1, $2, 'Seed Professor University', 'SPU', 'university', 'Turkey', 'Istanbul')
          RETURNING id`,
-        [user.id],
+        [user.id, SEED_ACADEMY_NUMBER],
     );
 
     return academy.id;

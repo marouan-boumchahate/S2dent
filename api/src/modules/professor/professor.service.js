@@ -59,56 +59,56 @@ const insertProfessorToDB = async (
 };
 
 const generateRandomEmployeeId = async () => {
-    const result = await db.query(`SELECT nextval('employee_seq')`);
-    const seq = result.rows[0].nextval;
+  const result = await db.query(`SELECT nextval('employee_seq')`);
+  const seq = result.rows[0].nextval;
 
-    const now = new Date();
-    const date = now.toISOString().slice(2,10).replace(/-/g,'');
+  const now = new Date();
+  const date = now.toISOString().slice(2,10).replace(/-/g,'');
 
-    const employeeId = `EMP_${date}${seq}`;
+  const employeeId = `EMP_${date}${seq}`;
 
-    return employeeId;
+  return employeeId;
 }
 
 
 const createProfessorService = async ({
-    email, 
-    full_name, 
-    title, 
-    department, 
-    faculty, 
-    phone,
-    academy_id
+  email, 
+  full_name, 
+  title, 
+  department, 
+  faculty, 
+  phone,
+  academy_id
 }) => {
-    const employeeId = await generateRandomEmployeeId();
-    
-    await ensureProfessorUnique(email, employeeId);
-    
-    const { rows: [user] } = await insertUserToDB(email);
+  const employeeId = await generateRandomEmployeeId();
+  
+  await ensureProfessorUnique(email, employeeId);
+  
+  const { rows: [user] } = await insertUserToDB(email);
 
-    const { rows: [professor] } = await insertProfessorToDB(
-        user.id, 
-        full_name,
-        employeeId,
-        phone ?? null,
-        department,
-        faculty,
-        title ?? null,
-        academy_id
-    );
+  const { rows: [professor] } = await insertProfessorToDB(
+      user.id, 
+      full_name,
+      employeeId,
+      phone ?? null,
+      department,
+      faculty,
+      title ?? null,
+      academy_id
+  );
 
-    return {
-        professor: {
-            id: professor.id,
-            name: professor.full_name,
-            employee_number: professor.employee_number,
-            phone: professor.phone,
-            department: professor.department,
-            faculty: professor.faculty,
-            title: professor.title,
-            academy_id: professor.academy_id
-        },
-    };
+  return {
+      professor: {
+          id: professor.id,
+          name: professor.full_name,
+          employee_number: professor.employee_number,
+          phone: professor.phone,
+          department: professor.department,
+          faculty: professor.faculty,
+          title: professor.title,
+          academy_id: professor.academy_id
+      },
+  };
 };
 
 export { createProfessorService };
