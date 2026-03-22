@@ -4,6 +4,7 @@ import 'package:app/theme/flex_color_scheme.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() async {
@@ -13,9 +14,11 @@ void main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(
     DevicePreview(
-      enabled: true,
-      builder: (context) => MyApp(
-        isLoggedIn: publicKey != null,
+      enabled: false,
+      builder: (context) => ProviderScope(
+        child: MyApp(
+          isLoggedIn: publicKey != null,
+        ),
       ),
     ),
   );
@@ -34,7 +37,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      home: isLoggedIn ? HomePage() : LoginPage(),
+      home: isLoggedIn ? const HomePage() : const LoginPage(),
     );
   }
 }

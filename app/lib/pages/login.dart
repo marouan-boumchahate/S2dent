@@ -8,22 +8,24 @@ import 'package:app/components/toggle_button.dart';
 import 'package:app/config/app_config.dart';
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/home.dart';
+import 'package:app/providers/appkit_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:reown_appkit/reown_appkit.dart'
     hide PrimaryButton, SecondaryButton;
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
 enum LoginMethod { privateKey, mnemonic, metamask }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _privateController = TextEditingController();
   final _mnemonicController = TextEditingController();
@@ -77,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => HomePage(),
+                  builder: (context) => const HomePage(),
                 ),
               );
             }
@@ -85,6 +87,7 @@ class _LoginPageState extends State<LoginPage> {
         },
       );
       await _appKitModal.init();
+      ref.read(appKitModalProvider.notifier).state = _appKitModal;
       if (mounted) {
         setState(() {
           isModalReady = true;
@@ -117,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
               _headerSection(context, icon),
               _toggleButtons(),
               method == LoginMethod.metamask
-                  ? _metamask(context)
+                  ? _metamaskButton(context)
                   : _textField(),
               method != LoginMethod.metamask
                   ? PrimaryButton(
@@ -135,7 +138,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  AnimationWrapper _metamask(BuildContext context) {
+  AnimationWrapper _metamaskButton(BuildContext context) {
     return AnimationWrapper(
       widget: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
