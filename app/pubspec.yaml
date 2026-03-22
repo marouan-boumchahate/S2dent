@@ -44,6 +44,7 @@ dependencies:
   ed25519_hd_key: ^2.3.0
   hex: ^0.2.0
   flutter_secure_storage: ^9.2.4
+  flutter_riverpod: ^3.3.1
 
 dev_dependencies:
   flutter_test:

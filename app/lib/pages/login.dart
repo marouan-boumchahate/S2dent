@@ -8,26 +8,28 @@ import 'package:app/components/toggle_button.dart';
 import 'package:app/config/app_config.dart';
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/home.dart';
+import 'package:app/providers/appkit_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:reown_appkit/reown_appkit.dart'
     hide PrimaryButton, SecondaryButton;
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-enum LoginMethod { privateKey, mnemonic, metamask }
+enum AuthMethod { privateKey, mnemonic, metamask }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _privateController = TextEditingController();
   final _mnemonicController = TextEditingController();
-  LoginMethod method = LoginMethod.privateKey;
+  AuthMethod method = AuthMethod.privateKey;
   bool isDark = true;
 
   late ReownAppKitModal _appKitModal;
@@ -72,12 +74,12 @@ class _LoginPageState extends State<LoginPage> {
           final address = _appKitModal.session?.getAddress("eip155");
           if (address != null) {
             await _secureStorage.write(key: "publicKey", value: address);
-            await _secureStorage.write(key: "loginMethod", value: "MetaMask");
+            await _secureStorage.write(key: "AuthMethod", value: "MetaMask");
             if (mounted) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => HomePage(),
+                  builder: (context) => const HomePage(),
                 ),
               );
             }
@@ -85,6 +87,7 @@ class _LoginPageState extends State<LoginPage> {
         },
       );
       await _appKitModal.init();
+      ref.read(appKitModalProvider.notifier).state = _appKitModal;
       if (mounted) {
         setState(() {
           isModalReady = true;
@@ -97,7 +100,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void onTapAuthenticate() {}
+
   void onTapGenerate() {}
+
   void onTapMetaMask() {
     _appKitModal.openModalView();
   }
@@ -116,10 +121,10 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               _headerSection(context, icon),
               _toggleButtons(),
-              method == LoginMethod.metamask
-                  ? _metamask(context)
+              method == AuthMethod.metamask
+                  ? _metamaskButton(context)
                   : _textField(),
-              method != LoginMethod.metamask
+              method != AuthMethod.metamask
                   ? PrimaryButton(
                       onTap: onTapAuthenticate,
                       label: "Authenticate",
@@ -135,7 +140,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  AnimationWrapper _metamask(BuildContext context) {
+  AnimationWrapper _metamaskButton(BuildContext context) {
     return AnimationWrapper(
       widget: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -211,12 +216,12 @@ class _LoginPageState extends State<LoginPage> {
     return AnimationWrapper(
       widget: AuthTextfield(
         key: ValueKey(method),
-        controller: method == LoginMethod.privateKey
+        controller: method == AuthMethod.privateKey
             ? _privateController
             : _mnemonicController,
-        label: method == LoginMethod.privateKey ? "Private Key" : "Mnemonic",
+        label: method == AuthMethod.privateKey ? "Private Key" : "Mnemonic",
         hint:
-            method == LoginMethod.privateKey ? "ab3cd35..." : "Horse, Apple...",
+            method == AuthMethod.privateKey ? "ab3cd35..." : "Horse, Apple...",
       ),
     );
   }
@@ -229,10 +234,10 @@ class _LoginPageState extends State<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.privateKey;
+                method = AuthMethod.privateKey;
               });
             },
-            isSelected: method == LoginMethod.privateKey,
+            isSelected: method == AuthMethod.privateKey,
             child: Icon(Icons.key, size: 25),
           ),
         ),
@@ -240,10 +245,10 @@ class _LoginPageState extends State<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.mnemonic;
+                method = AuthMethod.mnemonic;
               });
             },
-            isSelected: method == LoginMethod.mnemonic,
+            isSelected: method == AuthMethod.mnemonic,
             child: Icon(Icons.book, size: 25),
           ),
         ),
@@ -251,10 +256,10 @@ class _LoginPageState extends State<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.metamask;
+                method = AuthMethod.metamask;
               });
             },
-            isSelected: method == LoginMethod.metamask,
+            isSelected: method == AuthMethod.metamask,
             child: SvgPicture.asset("assets/metamask.svg", width: 25),
           ),
         ),
