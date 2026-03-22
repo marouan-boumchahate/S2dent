@@ -1,8 +1,8 @@
 const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, {
-    abortEarly: false,
-    stripUnknown: true,
-    convert: true,
+    abortEarly: false, // Return all errors, not just the first one
+    stripUnknown: true, // Remove unknown fields that are not defined in the schema
+    convert: true, // Attempt to convert values to the required types (e.g., strings to numbers)
   });
 
   if (error) {
