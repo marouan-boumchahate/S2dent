@@ -21,3 +21,6 @@
 
 # dotenv environment variable files
 .env
+
+# ignition deployments
+ignition/deployments/
