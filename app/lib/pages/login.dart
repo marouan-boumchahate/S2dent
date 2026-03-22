@@ -23,13 +23,13 @@ class LoginPage extends ConsumerStatefulWidget {
   ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-enum LoginMethod { privateKey, mnemonic, metamask }
+enum AuthMethod { privateKey, mnemonic, metamask }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _privateController = TextEditingController();
   final _mnemonicController = TextEditingController();
-  LoginMethod method = LoginMethod.privateKey;
+  AuthMethod method = AuthMethod.privateKey;
   bool isDark = true;
 
   late ReownAppKitModal _appKitModal;
@@ -74,7 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           final address = _appKitModal.session?.getAddress("eip155");
           if (address != null) {
             await _secureStorage.write(key: "publicKey", value: address);
-            await _secureStorage.write(key: "loginMethod", value: "MetaMask");
+            await _secureStorage.write(key: "AuthMethod", value: "MetaMask");
             if (mounted) {
               Navigator.pushReplacement(
                 context,
@@ -100,7 +100,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void onTapAuthenticate() {}
+
   void onTapGenerate() {}
+
   void onTapMetaMask() {
     _appKitModal.openModalView();
   }
@@ -119,10 +121,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: [
               _headerSection(context, icon),
               _toggleButtons(),
-              method == LoginMethod.metamask
+              method == AuthMethod.metamask
                   ? _metamaskButton(context)
                   : _textField(),
-              method != LoginMethod.metamask
+              method != AuthMethod.metamask
                   ? PrimaryButton(
                       onTap: onTapAuthenticate,
                       label: "Authenticate",
@@ -214,12 +216,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return AnimationWrapper(
       widget: AuthTextfield(
         key: ValueKey(method),
-        controller: method == LoginMethod.privateKey
+        controller: method == AuthMethod.privateKey
             ? _privateController
             : _mnemonicController,
-        label: method == LoginMethod.privateKey ? "Private Key" : "Mnemonic",
+        label: method == AuthMethod.privateKey ? "Private Key" : "Mnemonic",
         hint:
-            method == LoginMethod.privateKey ? "ab3cd35..." : "Horse, Apple...",
+            method == AuthMethod.privateKey ? "ab3cd35..." : "Horse, Apple...",
       ),
     );
   }
@@ -232,10 +234,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.privateKey;
+                method = AuthMethod.privateKey;
               });
             },
-            isSelected: method == LoginMethod.privateKey,
+            isSelected: method == AuthMethod.privateKey,
             child: Icon(Icons.key, size: 25),
           ),
         ),
@@ -243,10 +245,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.mnemonic;
+                method = AuthMethod.mnemonic;
               });
             },
-            isSelected: method == LoginMethod.mnemonic,
+            isSelected: method == AuthMethod.mnemonic,
             child: Icon(Icons.book, size: 25),
           ),
         ),
@@ -254,10 +256,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: ToggleButton(
             onTap: () {
               setState(() {
-                method = LoginMethod.metamask;
+                method = AuthMethod.metamask;
               });
             },
-            isSelected: method == LoginMethod.metamask,
+            isSelected: method == AuthMethod.metamask,
             child: SvgPicture.asset("assets/metamask.svg", width: 25),
           ),
         ),
