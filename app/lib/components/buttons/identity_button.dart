@@ -34,7 +34,10 @@ class IdentityButton extends StatelessWidget {
           leading: Container(
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              border: Border.all(color: context.colors.inversePrimary),
+              border: Border.all(
+                color: context.colors.primary,
+                width: 2,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
