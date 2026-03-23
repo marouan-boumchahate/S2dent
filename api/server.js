@@ -2,6 +2,8 @@ import app from './src/app.js';
 import { env } from './src/config/env.js';
 import { ensureDatabaseExists } from './src/config/db.js';
 import { runMigrations } from './src/db/migrate.js';
+import http from 'http';
+import { initSocket } from './src/config/socket.js';
 
 const bootstrap = async () => {
   try {
@@ -9,8 +11,11 @@ const bootstrap = async () => {
 
     await runMigrations();
 
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
     const PORT = env.port;
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`\nApp is listening on port ${PORT} : http://localhost:${PORT}`)
     });
 

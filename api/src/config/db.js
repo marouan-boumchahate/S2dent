@@ -34,12 +34,12 @@ export const ensureDatabaseExists = async () => {
 // Database connection pool
 // ────────────────────────
 const pool = new Pool({
-  host:     env.db.host,
-  port:     env.db.port,
+  host: env.db.host,
+  port: env.db.port,
   database: env.db.name,
-  user:     env.db.user,
+  user: env.db.user,
   password: env.db.password,
-  ssl:      env.db.ssl ? { rejectUnauthorized: false } : false,
+  ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
 
   max: 10, // Maximum number of connections in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds

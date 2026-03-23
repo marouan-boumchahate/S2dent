@@ -1,5 +1,6 @@
 import db from '../config/db.js'
 import { sendEmail } from '../utils/email.js'
+import { emitToUser } from '../config/socket.js'
 
 const setTransactionStatus = async (txHash, status) => {
     const { rows: [{ payload }] } = await db.query(
@@ -47,11 +48,20 @@ export const listenOnTransaction = (tx) => {
             const { payload } = await setTransactionStatus(tx.hash, 'confirmed')
             await storeIssuanceInfo(tx.hash, payload)
 
-            notifyUser(payload, successMessage)
+            emitToUser(payload.wallet_address, 'identity:confirmed', {
+                tx_hash: tx.hash,
+                status: 'confirmed'
+            })
+            await notifyUser(payload, successMessage)
         })
         .catch(async (err) => {
             const { payload } = await setTransactionStatus(tx.hash, 'failed')
 
-            notifyUser(payload, failedMessage)
+            emitToUser(payload.wallet_address, 'identity:failed', {
+                tx_hash: tx.hash,
+                status: 'failed',
+                reason: err.message
+            })
+            await notifyUser(payload, failedMessage)
         })
 }
