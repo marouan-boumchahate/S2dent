@@ -11,7 +11,7 @@ class SecondaryButton extends StatelessWidget {
   });
 
   final String label;
-  final Function() onTap;
+  final Function()? onTap;
   final bool metamask;
 
   @override

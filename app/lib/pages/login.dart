@@ -1,10 +1,10 @@
 import 'package:app/components/animation_wrapper.dart';
 import 'package:app/components/app_layout.dart';
 import 'package:app/components/auth_textfield.dart';
-import 'package:app/components/primary_button.dart';
-import 'package:app/components/secondary_button.dart';
+import 'package:app/components/buttons/primary_button.dart';
+import 'package:app/components/buttons/secondary_button.dart';
 
-import 'package:app/components/toggle_button.dart';
+import 'package:app/components/buttons/toggle_button.dart';
 import 'package:app/config/app_config.dart';
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/home.dart';
