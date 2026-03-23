@@ -7,7 +7,7 @@ class PrimaryButton extends StatelessWidget {
     required this.onTap,
     required this.label,
   });
-  final Function() onTap;
+  final Function()? onTap;
   final String label;
 
   @override

@@ -1,5 +1,4 @@
-import 'package:app/pages/home.dart';
-import 'package:app/pages/login.dart';
+import 'package:app/pages/role_selection.dart';
 import 'package:app/theme/flex_color_scheme.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +13,7 @@ void main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(
     DevicePreview(
-      enabled: false,
+      enabled: true,
       builder: (context) => ProviderScope(
         child: MyApp(
           isLoggedIn: publicKey != null,
@@ -37,7 +36,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      home: isLoggedIn ? const HomePage() : const LoginPage(),
+      home: RoleSelectionPage(),
     );
   }
 }
