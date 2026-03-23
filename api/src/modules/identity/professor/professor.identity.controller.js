@@ -9,5 +9,5 @@ export const issueIdentity = async (req, res) => {
         email: email.toLowerCase()
     })
 
-    return ok(res, result, 'Professor identity issued successfully')
+    return ok(res, result, 'Professor identity issuance request submitted successfully')
 }

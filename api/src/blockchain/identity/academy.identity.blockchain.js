@@ -29,9 +29,8 @@ const issueAcademyIdentity = async (
             short_name
         )
 
-        const receipt = await tx.wait(1)
+        return tx;
 
-        return receipt.hash
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
