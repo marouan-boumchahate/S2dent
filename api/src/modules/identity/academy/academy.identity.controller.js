@@ -6,5 +6,5 @@ export const issueIdentity = async (req, res) => {
 
   const result = await issueAcademyIdentity({ wallet_address: wallet_address.toLowerCase() })
 
-  return ok(res, result, 'Academy identity issued successfully')
+  return ok(res, result, 'Academy identity issuance request submitted successfully')
 }

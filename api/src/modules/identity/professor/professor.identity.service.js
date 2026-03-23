@@ -1,9 +1,10 @@
 import db from '../../../config/db.js'
 import { issueProfessorIdentity } from '../../../blockchain/identity/professor.identity.blockchain.js'
+import { listenOnTransaction } from '../../../blockchain/listener.js'
 
 const ensureProfessorCanBeIssued = async (email) => {
     const { rows: [user] } = await db.query(
-        `SELECT id, role, is_identity_issued, wallet_address
+        `SELECT id, role, is_identity_issued, wallet_address, email
         FROM users
         WHERE email = $1
         LIMIT 1`,
@@ -63,25 +64,18 @@ const getProfessor = async (userId) => {
     return professor
 }
 
-const setIssuanceData = async (userId, wallet_address, txHash) => {
-    const { rows: [updated] } = await db.query(
-        `UPDATE users
-            SET wallet_address = $1,
-                identity_tx_hash = $2,
-                is_identity_issued = TRUE,
-                updated_at = NOW()
-        WHERE id = $3
-        RETURNING id, email, role, wallet_address, identity_tx_hash, is_identity_issued`,
-        [wallet_address, txHash, userId],
-    )
+const saveTransaction = async (txHash, user, wallet_address) => {
+    const payload = JSON.stringify({ 
+        id: user.id, 
+        wallet_address, 
+        email: user.email 
+    })
 
-    return {
-        wallet_address: updated.wallet_address,
-        email: updated.email,
-        role: updated.role,
-        identity_tx_hash: updated.identity_tx_hash,
-        is_identity_issued: updated.is_identity_issued,
-    }
+    await db.query(
+        `INSERT INTO pending_transactions (tx_hash, payload)
+         VALUES ($1, $2)`,
+        [txHash, payload]
+    )
 }
 
 export const issueProfessorIdentityService = async ({ wallet_address, email }) => {
@@ -90,7 +84,7 @@ export const issueProfessorIdentityService = async ({ wallet_address, email }) =
     const user = await ensureProfessorCanBeIssued(email)
 
     const professor = await getProfessor(user.id)
-    const txHash = await issueProfessorIdentity(
+    const tx = await issueProfessorIdentity(
         normalizedWallet, 
         professor.employee_number,
         professor.full_name,
@@ -100,7 +94,13 @@ export const issueProfessorIdentityService = async ({ wallet_address, email }) =
         professor.academy_wallet_address
     )
 
-    const updatedDto = await setIssuanceData(user.id, normalizedWallet, txHash)
+    await saveTransaction(tx.hash, user, normalizedWallet)
 
-    return updatedDto;
+    // works at the background, no need to await
+    listenOnTransaction(tx)
+
+    return {
+        tx_hash: tx.hash,
+        status: 'pending'
+    }
 }

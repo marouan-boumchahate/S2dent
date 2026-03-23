@@ -6,7 +6,7 @@
 .env.test
 
 # structure
-API-Structure.litcoffee
+structure.litcoffee
 
 # private shells
 reset_db.sh

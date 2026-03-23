@@ -1,8 +1,11 @@
-const sendWelcomeEmail = async ({ to, academyName }) => {
+const sendEmail = async ({ to, subject, message }) => {
   // Will be implemented with actual email sending logic in the future
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   
-  console.log(`Welcome email sent to ${to} for academy ${academyName}`);
+  console.log(`From: S2dent <info@s2dent.com>
+    To: ${to} 
+    Subject: ${subject}
+    Message: ${message}`);
 }
 
-export { sendWelcomeEmail };
+export { sendEmail };

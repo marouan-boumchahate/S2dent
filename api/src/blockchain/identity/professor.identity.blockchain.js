@@ -35,9 +35,8 @@ const issueProfessorIdentity = async (
             academy_wallet_address
         )
 
-        const receipt = await tx.wait(1)
-
-        return receipt.hash
+        return tx;
+        
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 

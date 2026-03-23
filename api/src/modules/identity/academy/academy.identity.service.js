@@ -1,9 +1,10 @@
 import db from '../../../config/db.js'
 import { issueAcademyIdentity as issueAcademy } from '../../../blockchain/identity/academy.identity.blockchain.js'
+import { listenOnTransaction } from '../../../blockchain/listener.js'
 
 const ensureAcademyCanBeIssued = async (wallet_address) => {
     const { rows: [user] } = await db.query(
-        `SELECT id, role, is_identity_issued
+        `SELECT id, role, is_identity_issued, email
         FROM users
         WHERE wallet_address = $1
         LIMIT 1`,
@@ -54,25 +55,18 @@ const getAcademy = async (userId) => {
     return academy
 }
 
-const setIssuanceData = async (userId, walletAddress, txHash) => {
-    const { rows: [updated] } = await db.query(
-        `UPDATE users
-            SET wallet_address = $1,
-                identity_tx_hash = $2,
-                is_identity_issued = TRUE,
-                updated_at = NOW()
-        WHERE id = $3
-        RETURNING id, email, role, wallet_address, identity_tx_hash, is_identity_issued`,
-        [walletAddress, txHash, userId],
-    )
+const saveTransaction = async (txHash, user, wallet_address) => {
+    const payload = JSON.stringify({ 
+        id: user.id, 
+        wallet_address, 
+        email: user.email 
+    })
 
-    return {
-        wallet_address: updated.wallet_address,
-        email: updated.email,
-        role: updated.role,
-        identity_tx_hash: updated.identity_tx_hash,
-        is_identity_issued: updated.is_identity_issued,
-    }
+    await db.query(
+        `INSERT INTO pending_transactions (tx_hash, payload)
+         VALUES ($1, $2)`,
+        [txHash, payload]
+    )
 }
 
 export const issueAcademyIdentity = async ({ wallet_address }) => {
@@ -81,18 +75,20 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
     const user = await ensureAcademyCanBeIssued(normalizedWallet)
     
     const academy = await getAcademy(user.id)
-    const txHash = await issueAcademy(
+    const tx = await issueAcademy(
         normalizedWallet,
         academy.academy_number,
         academy.name,
         academy.short_name
     )
 
-    const updatedDto = await setIssuanceData(
-        user.id,
-        normalizedWallet,
-        txHash
-    )
+    await saveTransaction(tx.hash, user, normalizedWallet)
 
-    return updatedDto;
+    // works at the background, no need to await
+    listenOnTransaction(tx)
+
+    return {
+        tx_hash: tx.hash,
+        status: 'pending'
+    }
 }

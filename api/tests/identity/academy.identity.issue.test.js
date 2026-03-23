@@ -9,9 +9,14 @@ const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123de
 const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
 const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 
+const FAKE_TX = {
+    hash: FAKE_TX_HASH,
+    wait: async () => ({ hash: FAKE_TX_HASH }),
+};
+
 const seedAcademyUser = async ({
     email = 'seed@fenerbahce.edu.tr',
-    wallet_address= WALLET_ADDRESS,
+    wallet_address = WALLET_ADDRESS,
     role = 'academy_admin',
     is_identity_issued = false,
     academy_name = 'Fenerbahce University',
@@ -24,7 +29,6 @@ const seedAcademyUser = async ({
         [email, wallet_address, role, is_identity_issued],
     );
 
-    // Generating a unique academy_number
     const { rows: [{ nextval }] } = await db.query(
         `SELECT nextval('academy_seq')`
     );
@@ -41,12 +45,17 @@ const seedAcademyUser = async ({
 
 const cleanupDB = async () => {
     await db.query(`
+        DELETE FROM pending_transactions
+        WHERE payload->>'wallet_address' = $1
+    `, [WALLET_ADDRESS]);
+
+    await db.query(`
         DELETE FROM academies
         USING users
         WHERE academies.user_id = users.id
             AND (
-            users.email LIKE '%@fenerbahce%'
-            OR users.email LIKE '%@test-identity%'
+                users.email LIKE '%@fenerbahce%'
+                OR users.email LIKE '%@test-identity%'
             )
     `);
     await db.query(`
@@ -56,51 +65,50 @@ const cleanupDB = async () => {
     `);
 };
 
-const makeApp = async (blockchainImpl) => {
+const makeApp = async (blockchainImpl, listenerImpl = { listenOnTransaction: () => {} }) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
         import.meta.url,
         {},
         {
-        '../../src/blockchain/identity/academy.identity.blockchain.js': blockchainImpl,
+            '../../src/blockchain/identity/academy.identity.blockchain.js': blockchainImpl,
+            '../../src/blockchain/listener.js': listenerImpl,
         }
-    )
-    return app
-}
+    );
+    return app;
+};
 
 beforeEach(async () => {
-  await cleanupDB();
+    await cleanupDB();
 });
 
 afterEach(async () => {
-  await cleanupDB();
+    await cleanupDB();
 });
 
+const endpoint = '/api/identity/academies/issue';
 
 // TESTS
 // ─────
 describe('POST /api/identity/academies/issue', () => {
-    it('returns 200 and the identity DTO on valid input', async () => {
+    it('returns 200 and a pending status DTO on valid input', async () => {
         await seedAcademyUser();
 
         const app = await makeApp({
-            issueAcademyIdentity: async () => FAKE_TX_HASH,
+            issueAcademyIdentity: async () => FAKE_TX,
         });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
-        assert.equal(res.body.message, 'Academy identity issued successfully');
+        assert.equal(res.body.message, 'Academy identity issuance request submitted successfully');
 
         const data = res.body.data;
-        assert.equal(data.wallet_address, WALLET_ADDRESS);
-        assert.equal(data.identity_tx_hash, FAKE_TX_HASH);
-        assert.equal(data.is_identity_issued, true);
-        assert.equal(data.role, 'academy_admin');
-        assert.ok(data.email);
+        assert.equal(data.tx_hash, FAKE_TX_HASH);
+        assert.equal(data.status, 'pending');
     });
 
     it('normalizes wallet_address to lowercase before querying', async () => {
@@ -110,36 +118,59 @@ describe('POST /api/identity/academies/issue', () => {
         const app = await makeApp({
             issueAcademyIdentity: async (wallet, id, name, code) => {
                 calls.push({ wallet, id, name, code });
-                return FAKE_TX_HASH;
+                return FAKE_TX;
             },
         });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
         assert.equal(calls[0].wallet, WALLET_ADDRESS);
     });
 
-    it('persists is_identity_issued=true and identity_tx_hash in the DB', async () => {
+    it('inserts a pending_transaction row after submission', async () => {
         const user = await seedAcademyUser();
 
         const app = await makeApp({
-            issueAcademyIdentity: async () => FAKE_TX_HASH,
+            issueAcademyIdentity: async () => FAKE_TX,
         });
 
         await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
-        const { rows: [updated] } = await db.query(
+        const { rows: [pending] } = await db.query(
+            `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
+            [FAKE_TX_HASH]
+        );
+
+        assert.ok(pending, 'pending_transaction row should exist');
+        assert.equal(pending.status, 'pending');
+        assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
+        assert.equal(pending.payload.id, user.id);
+    });
+
+    it('does NOT update users table immediately after submission', async () => {
+        const user = await seedAcademyUser();
+
+        const app = await makeApp({
+            issueAcademyIdentity: async () => FAKE_TX,
+        });
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        const { rows: [unchanged] } = await db.query(
             'SELECT is_identity_issued, identity_tx_hash FROM users WHERE id = $1',
             [user.id],
         );
 
-        assert.equal(updated.is_identity_issued, true);
-        assert.equal(updated.identity_tx_hash,   FAKE_TX_HASH);
+        // Listener still not triggered at this point
+        assert.equal(unchanged.is_identity_issued, false);
+        assert.equal(unchanged.identity_tx_hash, null);
     });
 
     it('passes the correct arguments to the blockchain', async () => {
@@ -152,12 +183,12 @@ describe('POST /api/identity/academies/issue', () => {
         const app = await makeApp({
             issueAcademyIdentity: async (wallet, id, name, code) => {
                 calls.push({ wallet, id, name, code });
-                return FAKE_TX_HASH;
+                return FAKE_TX;
             },
         });
 
         await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(calls.length, 1);
@@ -167,11 +198,28 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(calls[0].code, 'FBU');
     });
 
+    it('fires listenOnTransaction in the background after submission', async () => {
+        await seedAcademyUser();
+
+        const listenerCalls = [];
+        const app = await makeApp(
+            { issueAcademyIdentity: async () => FAKE_TX },
+            { listenOnTransaction: (tx) => listenerCalls.push(tx) }
+        );
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        assert.equal(listenerCalls.length, 1);
+        assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
+    });
+
     it('returns 404 USER_NOT_FOUND when wallet does not exist in DB', async () => {
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: '0x0000000000000000000000000000000000000001' });
 
         assert.equal(res.status, 404);
@@ -179,12 +227,12 @@ describe('POST /api/identity/academies/issue', () => {
     });
 
     it('returns 403 FORBIDDEN when user is not academy_admin', async () => {
-        await seedAcademyUser({ role: 'student' });
+        await seedAcademyUser({ role: 'professor' });
 
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 403);
@@ -194,10 +242,10 @@ describe('POST /api/identity/academies/issue', () => {
     it('returns 409 IDENTITY_ALREADY_ISSUED when identity was already issued', async () => {
         await seedAcademyUser({ is_identity_issued: true });
 
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 409);
@@ -207,14 +255,14 @@ describe('POST /api/identity/academies/issue', () => {
     it('returns 404 ACADEMY_NOT_FOUND when user exists but has no academy row', async () => {
         await db.query(
             `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-                    VALUES ('orphan@test-identity.edu', $1, 'academy_admin', false)`,
+                VALUES ('orphan@test-identity.edu', $1, 'academy_admin', false)`,
             [WALLET_ADDRESS],
         );
 
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 404);
@@ -234,15 +282,15 @@ describe('POST /api/identity/academies/issue', () => {
         });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
     });
 
-    it('does not update the DB when the blockchain call fails', async () => {
-        const user = await seedAcademyUser();
+    it('does not insert a pending_transaction when blockchain submission fails', async () => {
+        await seedAcademyUser();
 
         const app = await makeApp({
             issueAcademyIdentity: async () => {
@@ -254,23 +302,22 @@ describe('POST /api/identity/academies/issue', () => {
         });
 
         await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
-        const { rows: [unchanged] } = await db.query(
-            'SELECT is_identity_issued, identity_tx_hash FROM users WHERE id = $1',
-            [user.id],
+        const { rows } = await db.query(
+            `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
+            [FAKE_TX_HASH]
         );
 
-        assert.equal(unchanged.is_identity_issued, false);
-        assert.equal(unchanged.identity_tx_hash,   null);
+        assert.equal(rows.length, 0);
     });
 
     it('returns 422 when wallet_address is missing', async () => {
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({});
 
         assert.equal(res.status, 422);
@@ -280,10 +327,10 @@ describe('POST /api/identity/academies/issue', () => {
     });
 
     it('returns 422 for an invalid wallet_address format', async () => {
-        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX_HASH });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post('/api/identity/academies/issue')
+            .post(endpoint)
             .send({ wallet_address: 'not-a-wallet' });
 
         assert.equal(res.status, 422);
