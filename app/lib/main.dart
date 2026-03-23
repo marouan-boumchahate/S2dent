@@ -4,32 +4,24 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final secureStorage = FlutterSecureStorage();
-  final publicKey = await secureStorage.read(key: "publicKey");
+
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(
     DevicePreview(
-      enabled: true,
+      enabled: false,
       builder: (context) => ProviderScope(
-        child: MyApp(
-          isLoggedIn: publicKey != null,
-        ),
+        child: MyApp(),
       ),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({
-    super.key,
-    required this.isLoggedIn,
-  });
+  const MyApp({super.key});
 
-  final bool isLoggedIn;
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

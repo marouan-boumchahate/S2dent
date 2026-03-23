@@ -3,6 +3,7 @@ import 'package:app/components/document_container.dart';
 import 'package:app/components/buttons/identity_button.dart';
 import 'package:app/components/buttons/primary_button.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/verify_email.dart';
 import 'package:flutter/material.dart';
 
 class RoleSelectionPage extends StatefulWidget {
@@ -23,28 +24,35 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   void onTapContinue() {
     if (identity == Identity.student) {
-      // pushRpleace the student to the verification process
+      // push the student to the verification process
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VerifyEmailPage(),
+        ),
+      );
     } else {
-      // pushReplace the verifier to the scan screen
+      // push the verifier to the scan screen
     }
+    setState(() {
+      identity = Identity.none;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: AppLayout(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _headerSection(context),
-            _illustrationsSection(context),
-            _identityButtons(),
-            PrimaryButton(
-              label: "Continue",
-              onTap: identity == Identity.none ? null : onTapContinue,
-            )
-          ],
-        ),
+    return AppLayout(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _headerSection(context),
+          _illustrationsSection(context),
+          _identityButtons(),
+          PrimaryButton(
+            label: "CONTINUE",
+            onTap: identity == Identity.none ? null : onTapContinue,
+          )
+        ],
       ),
     );
   }
