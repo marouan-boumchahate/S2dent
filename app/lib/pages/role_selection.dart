@@ -42,19 +42,26 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _headerSection(context),
-          _illustrationsSection(context),
-          _identityButtons(),
-          PrimaryButton(
-            label: "CONTINUE",
-            onTap: identity == Identity.none ? null : onTapContinue,
-          )
-        ],
+        child: LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _headerSection(context),
+              _illustrationsSection(context),
+              _identityButtons(),
+              PrimaryButton(
+                label: "CONTINUE",
+                onTap: identity == Identity.none ? null : onTapContinue,
+                isEnable: identity != Identity.none,
+              )
+            ],
+          ),
+        ),
       ),
-    );
+    ));
   }
 
   Column _identityButtons() {

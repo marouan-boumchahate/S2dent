@@ -37,6 +37,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final image = Theme.of(context).brightness == Brightness.dark
+        ? "assets/email_dark.png"
+        : "assets/email_light.png";
     return AppLayout(
       child: Stack(
         children: [
@@ -51,7 +54,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _headerSection(context),
+                        _headerSection(context, image),
                         _bottomSection(),
                       ],
                     ),
@@ -86,12 +89,15 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     );
   }
 
-  Column _headerSection(BuildContext context) {
+  Column _headerSection(
+    BuildContext context,
+    String image,
+  ) {
     return Column(
       children: [
-        Image.asset("assets/email.png", width: 150),
+        Image.asset(image, width: 130),
         Padding(
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: const EdgeInsets.only(bottom: 32, top: 12),
           child: Text(
             "Verify your student identity",
             style: TextStyle(
@@ -119,7 +125,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
         ),
         _divider(),
         SecondaryButton(
-          label: "LOG IN",
+          label: "SIGN IN WITH A WALLET",
           onTap: () {},
         ),
       ],
@@ -140,7 +146,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
               height: 2,
             ),
           ),
-          Text("OR"),
+          Text("Already verified student ?"),
           Expanded(
             child: Divider(
               color: Colors.blueGrey.withAlpha(160),
