@@ -6,14 +6,16 @@ class PrimaryButton extends StatelessWidget {
     super.key,
     required this.onTap,
     required this.label,
+    this.isEnable = true,
   });
   final Function()? onTap;
   final String label;
+  final bool isEnable;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: context.colors.primary,
+      color: isEnable ? context.colors.primary : Colors.grey,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         splashColor: Colors.white.withAlpha(100),

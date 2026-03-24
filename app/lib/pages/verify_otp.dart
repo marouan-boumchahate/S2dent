@@ -21,6 +21,43 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
     super.dispose();
   }
 
+  void _showDialog() {
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.task_alt_rounded,
+                color: context.colors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text("Request recieved"),
+            ],
+          ),
+          content: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: context.colors.surfaceContainer,
+              ),
+              child: Text(
+                  "Verification process may take some time. You will be notified when its done.")),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("OK"),
+            )
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final image = Theme.of(context).brightness == Brightness.dark
@@ -39,7 +76,9 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
                     children: [
                       _content(context, image),
                       PrimaryButton(
-                        onTap: () {},
+                        onTap: () {
+                          _showDialog();
+                        },
                         label: "SUBMIT",
                       ),
                     ],
@@ -77,7 +116,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
   Column _content(BuildContext context, image) {
     return Column(
       children: [
-        Image.asset(image, width: 150),
+        Image.asset(image, width: 120),
         Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 32),
           child: Text(
