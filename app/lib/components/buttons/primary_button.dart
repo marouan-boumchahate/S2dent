@@ -30,6 +30,7 @@ class PrimaryButton extends StatelessWidget {
             style: TextStyle(
               color: context.colors.onPrimary,
               fontSize: 20,
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),

@@ -6,11 +6,14 @@ class AppLayout extends StatelessWidget {
   const AppLayout({
     super.key,
     required this.child,
+    this.appBar,
   });
   final Widget child;
+  final AppBar? appBar;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: appBar,
       body: Container(
         color: context.colors.onPrimary,
         child: SafeArea(

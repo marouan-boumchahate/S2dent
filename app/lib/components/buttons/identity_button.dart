@@ -22,12 +22,13 @@ class IdentityButton extends StatelessWidget {
         duration: Duration(milliseconds: 300),
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: context.colors.primaryContainer,
+          color: context.colors.surfaceContainer,
           border: Border.all(
-              color: isSelected
-                  ? context.colors.primary
-                  : Colors.blueGrey.withAlpha(160),
-              width: 2),
+            color: isSelected
+                ? context.colors.primary
+                : Colors.blueGrey.withAlpha(160),
+            width: isSelected ? 4 : 2,
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: ListTile(
