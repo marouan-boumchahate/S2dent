@@ -32,17 +32,21 @@ class AuthTextfield extends StatelessWidget {
             ),
           ),
           TextFormField(
+            controller: controller,
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
                 color: context.colors.onSurfaceVariant.withAlpha(200),
               ),
               filled: true,
-              fillColor: context.colors.primaryContainer,
+              fillColor: context.colors.surfaceContainer,
               contentPadding: const EdgeInsets.all(20),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.blueGrey),
+                borderSide: const BorderSide(
+                  color: Colors.blueGrey,
+                  width: 2,
+                ),
               ),
             ),
             textInputAction: textInputAction,

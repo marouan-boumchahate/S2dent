@@ -29,6 +29,7 @@ class SecondaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: context.colors.primary,
+              width: 2,
             ),
           ),
           child: metamask

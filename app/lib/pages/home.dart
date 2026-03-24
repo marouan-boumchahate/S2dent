@@ -1,3 +1,4 @@
+import 'package:app/components/app_layout.dart';
 import 'package:app/pages/login.dart';
 import 'package:app/providers/appkit_provider.dart';
 import 'package:flutter/material.dart';
@@ -31,7 +32,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppLayout(
       appBar: AppBar(
         leading: IconButton(
           onPressed: () {
@@ -40,9 +41,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           icon: Icon(Icons.logout_outlined),
         ),
       ),
-      body: Center(
-        child: Text("HELLOOO"),
-      ),
+      child: Text("Hello"),
     );
   }
 }
