@@ -7,6 +7,8 @@ import academyIdentityRouter from './modules/identity/academy/academy.identity.r
 import professorRouter from './modules/professor/professor.routes.js'
 import professorIdentityRouter from './modules/identity/professor/professor.identity.routes.js'
 
+import authRouter from './modules/auth/auth.routes.js'
+
 const app = express()
 app.use(express.json())
 

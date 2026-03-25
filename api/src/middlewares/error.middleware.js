@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 
 const errorMiddleware = (err, req, res, next) => {
-  //console.error(`[${req.method} ${req.path}]`, err);
+  console.error(`[${req.method} ${req.path}]`, err);
 
   if (res.headersSent) return next(err);
 
