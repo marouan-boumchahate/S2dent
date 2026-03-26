@@ -1,8 +1,9 @@
 import 'package:app/components/app_layout.dart';
-import 'package:app/components/document_container.dart';
+import 'package:app/components/decorations/document_container.dart';
 import 'package:app/components/buttons/identity_button.dart';
 import 'package:app/components/buttons/primary_button.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/scanner.dart';
 import 'package:app/pages/verify_email.dart';
 import 'package:flutter/material.dart';
 
@@ -33,10 +34,13 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       );
     } else {
       // push the verifier to the scan screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ScannerPage(),
+        ),
+      );
     }
-    setState(() {
-      identity = Identity.none;
-    });
   }
 
   @override
@@ -138,7 +142,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
           ),
         ),
         const Text(
-          "Blockchain-powered student identity",
+          "Choose your identity",
           style: TextStyle(color: Colors.blueGrey),
         ),
       ],
