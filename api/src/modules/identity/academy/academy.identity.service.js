@@ -1,6 +1,9 @@
 import db from '../../../config/db.js'
 import { issueAcademyIdentity as issueAcademy } from '../../../blockchain/identity/academy.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
+import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
+import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
+
 
 const ensureAcademyCanBeIssued = async (wallet_address) => {
     const { rows: [user] } = await db.query(
@@ -37,7 +40,7 @@ const ensureAcademyCanBeIssued = async (wallet_address) => {
 
 const getAcademy = async (userId) => {
     const { rows: [academy] } = await db.query(
-        `SELECT a.academy_number, a.name, a.short_name
+        `SELECT a.academy_number, a.name, a.short_name, a.country
             FROM academies a
             JOIN users u ON u.id = a.user_id
             WHERE u.id = $1
@@ -69,26 +72,91 @@ const saveTransaction = async (txHash, user, wallet_address) => {
     )
 }
 
+const getCertificate = async (
+    walletAddress,
+    academy_number,
+    academy_name,
+    academy_short_name
+) => {
+    const certAttrs = getAcademyCertificateAttrs(
+        walletAddress,
+        academy_number,
+        academy_name,
+        academy_short_name
+    )
+
+    const certificate = await buildIdentityCertificate({ 
+        walletAddress, 
+        issuerAddress: null, // because the issuer is the app CA (DOES NOT HAVE A WALLET))
+        uniqueId: academy_number,
+        certAttrs
+    })
+
+    return certificate
+}
+
+const saveCertificate = async (
+    walletAddress,
+    certPem,
+    chainPem,
+    fingerprint,
+    subjectDN
+) => {
+    await db.query(
+        `INSERT INTO identity_certificates 
+            (wallet_address, certificate_pem, chain_pem, fingerprint, subject_distinguished_name, created_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [walletAddress, certPem, chainPem, fingerprint, subjectDN]
+    )
+}
+
+
 export const issueAcademyIdentity = async ({ wallet_address }) => {
     const normalizedWallet = wallet_address.toLowerCase()
 
     const user = await ensureAcademyCanBeIssued(normalizedWallet)
     
     const academy = await getAcademy(user.id)
-    const tx = await issueAcademy(
+
+    const {
+        fingerprint,
+        certificatePem,
+        chainPem,
+        subjectDN,
+        notBefore,
+        notAfter
+    } = await getCertificate(
         normalizedWallet,
         academy.academy_number,
         academy.name,
         academy.short_name
     )
 
+    const tx = await issueAcademy(
+        normalizedWallet,
+        academy.academy_number,
+        academy.name,
+        academy.short_name,
+        academy.country,
+        fingerprint,
+        notBefore,
+        notAfter
+    )
+
+    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint, subjectDN)
     await saveTransaction(tx.hash, user, normalizedWallet)
 
-    // works at the background, no need to await
-    listenOnTransaction(tx)
+    listenOnTransaction(tx) // works at the background, no need to await
 
     return {
-        tx_hash: tx.hash,
-        status: 'pending'
+        blockchain_transaction: {
+            tx_hash: tx.hash,
+            status: 'pending',
+        },
+        certificate_metadata: {
+            certificate_hash: fingerprint,
+            issued_at: notBefore,
+            expires_at: notAfter
+        }
     }
 }
