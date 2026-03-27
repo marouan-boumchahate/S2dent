@@ -12,7 +12,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      child: Center(child: Text("Hello")),
+      child: Center(child: Text("Home Page")),
     );
   }
 }
