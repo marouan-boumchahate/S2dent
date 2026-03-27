@@ -3,19 +3,33 @@ import request from 'supertest';
 import { strict as assert } from 'assert';
 import db from '../../src/config/db.js';
 
-// SETUP
-// ─────
-const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
-const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
-const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
-const PROFESSOR_EMAIL = 'prof.smith@fenerbahce.edu.tr';
-const ACADEMY_WALLET = '0x1111111111111111111111111111111111111111';
 
-// Matches the shape your blockchain layer now returns (full tx object)
+const FAKE_TX_HASH    = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
+const WALLET_ADDRESS  = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
+const WALLET_UPPER    = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
+const PROFESSOR_EMAIL = 'prof.smith@fenerbahce.edu.tr';
+const ACADEMY_WALLET  = '0x1111111111111111111111111111111111111111';
+
+const FAKE_CERT = {
+    fingerprint:    'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD',
+    certificatePem: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+    chainPem:       '-----BEGIN CERTIFICATE-----\nFAKECHAIN\n-----END CERTIFICATE-----',
+    notBefore:      '2024-01-01T00:00:00.000Z',
+    notAfter:       '2025-01-01T00:00:00.000Z',
+};
+
 const FAKE_TX = {
     hash: FAKE_TX_HASH,
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
+
+
+const DEFAULT_CA_ATTRS = {
+    getAcademyCertificateAttrs:  () => ({ fake: 'attrs' }),
+    getProfessorCertificateAttrs: () => ({ fake: 'attrs' }),
+};
+const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
+
 
 const seedAcademy = async ({
     email = 'academy@fenerbahce.edu.tr',
@@ -25,8 +39,8 @@ const seedAcademy = async ({
 } = {}) => {
     const { rows: [academyUser] } = await db.query(
         `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-            VALUES ($1, $2, 'academy_admin', true)
-        RETURNING id`,
+             VALUES ($1, $2, 'academy_admin', true)
+         RETURNING id`,
         [email, wallet_address],
     );
 
@@ -37,8 +51,8 @@ const seedAcademy = async ({
 
     const { rows: [academy] } = await db.query(
         `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-            VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')
-        RETURNING id`,
+             VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')
+         RETURNING id`,
         [academyUser.id, SEED_ACADEMY_NUMBER, academy_name, short_name],
     );
 
@@ -59,15 +73,15 @@ const seedProfessorUser = async ({
 } = {}) => {
     const { rows: [user] } = await db.query(
         `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-            VALUES ($1, $2, $3, $4)
-        RETURNING id`,
+             VALUES ($1, $2, $3, $4)
+         RETURNING id`,
         [email, wallet_address, role, is_identity_issued],
     );
 
     if (academy_id) {
         await db.query(
             `INSERT INTO professors (user_id, full_name, employee_number, department, title, faculty, academy_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [user.id, full_name, employee_number, department, title, faculty, academy_id],
         );
     }
@@ -76,6 +90,11 @@ const seedProfessorUser = async ({
 };
 
 const cleanupDB = async () => {
+    await db.query(`
+        DELETE FROM identity_certificates
+        WHERE wallet_address = $1
+    `, [WALLET_ADDRESS]);
+
     await db.query(`
         DELETE FROM pending_transactions
         WHERE payload->>'wallet_address' = $1
@@ -106,9 +125,12 @@ const cleanupDB = async () => {
     `);
 };
 
+
 const makeApp = async (
-    blockchainImpl,
-    listenerImpl = { listenOnTransaction: () => {} }
+    blockchainImpl  = { issueProfessorIdentity: async () => FAKE_TX },
+    listenerImpl    = { listenOnTransaction: () => {} },
+    caAttrsImpl     = {},
+    caIdentityImpl  = DEFAULT_CA_IDENTITY,
 ) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
@@ -117,44 +139,47 @@ const makeApp = async (
         {
             '../../src/blockchain/identity/professor.identity.blockchain.js': blockchainImpl,
             '../../src/blockchain/listener.js': listenerImpl,
-        }
+            '../../src/ca/ca.attrs.js': { ...DEFAULT_CA_ATTRS, ...caAttrsImpl },
+            '../../src/ca/ca.identity.js': caIdentityImpl,
+        },
     );
     return app;
 };
 
-beforeEach(async () => {
-    await cleanupDB();
-});
 
-afterEach(async () => {
-    await cleanupDB();
-});
+beforeEach(async () => { await cleanupDB(); });
+afterEach(async ()  => { await cleanupDB(); });
 
 const endpoint = '/api/identity/professors/issue';
 
 
-// TESTS
-// ─────
 describe('POST /api/identity/professors/issue', () => {
-    it('returns 200 and a pending status DTO on valid input', async () => {
+
+    it('returns 200 with blockchain_transaction and certificate_metadata on valid input', async () => {
         const { academy } = await seedAcademy();
         await seedProfessorUser({ academy_id: academy.id });
 
-        const app = await makeApp({
-            issueProfessorIdentity: async () => FAKE_TX,
-        });
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
             .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
 
-        assert.equal(res.status, 200);
-        assert.equal(res.body.success, true);
-        assert.equal(res.body.message, 'Professor identity issuance request submitted successfully');
+        assert.equal(res.status,         200);
+        assert.equal(res.body.success,   true);
+        assert.equal(res.body.message,   'Professor identity issuance request submitted successfully');
 
-        const data = res.body.data;
-        assert.equal(data.tx_hash, FAKE_TX_HASH);
-        assert.equal(data.status, 'pending');
+        const { blockchain_transaction, certificate_metadata } = res.body.data;
+
+        // blockchain_transaction block
+        assert.equal(blockchain_transaction.tx_hash, FAKE_TX_HASH);
+        assert.equal(blockchain_transaction.status,  'pending');
+
+        // certificate_metadata block
+        assert.ok(certificate_metadata, 'certificate_metadata should be present');
+        assert.equal(certificate_metadata.certificate_hash, FAKE_CERT.fingerprint);
+        assert.equal(certificate_metadata.issued_at, FAKE_CERT.notBefore);
+        assert.equal(certificate_metadata.expires_at, FAKE_CERT.notAfter);
     });
 
     it('normalizes wallet_address and email to lowercase before processing', async () => {
@@ -163,8 +188,8 @@ describe('POST /api/identity/professors/issue', () => {
 
         const calls = [];
         const app = await makeApp({
-            issueProfessorIdentity: async (wallet, employee_number, full_name, title, department, faculty, academy_wallet) => {
-                calls.push({ wallet, employee_number, full_name, title, department, faculty, academy_wallet });
+            issueProfessorIdentity: async (wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter) => {
+                calls.push({ wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter });
                 return FAKE_TX;
             },
         });
@@ -174,56 +199,10 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: PROFESSOR_EMAIL.toUpperCase(), wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
-        assert.equal(calls[0].wallet, WALLET_ADDRESS);
+        assert.equal(calls[0].wallet, WALLET_ADDRESS, 'wallet must be lowercased');
     });
 
-    it('inserts a pending_transaction row after submission', async () => {
-        const { academy } = await seedAcademy();
-        const user = await seedProfessorUser({ academy_id: academy.id });
-
-        const app = await makeApp({
-            issueProfessorIdentity: async () => FAKE_TX,
-        });
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        const { rows: [pending] } = await db.query(
-            `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
-            [FAKE_TX_HASH]
-        );
-
-        assert.ok(pending, 'pending_transaction row should exist');
-        assert.equal(pending.status, 'pending');
-        assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
-        assert.equal(pending.payload.id, user.id);
-    });
-
-    it('does NOT update users table immediately after submission', async () => {
-        const { academy } = await seedAcademy();
-        const user = await seedProfessorUser({ academy_id: academy.id });
-
-        const app = await makeApp({
-            issueProfessorIdentity: async () => FAKE_TX,
-        });
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        const { rows: [unchanged] } = await db.query(
-            'SELECT is_identity_issued, identity_tx_hash, wallet_address FROM users WHERE id = $1',
-            [user.id],
-        );
-
-        // Still listening on the transaction in the blockchain
-        assert.equal(unchanged.is_identity_issued, false);
-        assert.equal(unchanged.identity_tx_hash, null);
-        assert.equal(unchanged.wallet_address, null);
-    });
-
-    it('passes the correct arguments to the blockchain', async () => {
+    it('passes the correct 10 arguments to issueProfessorIdentity', async () => {
         const { academy } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         await seedProfessorUser({
             academy_id: academy.id,
@@ -236,8 +215,8 @@ describe('POST /api/identity/professors/issue', () => {
 
         const calls = [];
         const app = await makeApp({
-            issueProfessorIdentity: async (wallet, employee_number, full_name, title, department, faculty, academy_wallet) => {
-                calls.push({ wallet, employee_number, full_name, title, department, faculty, academy_wallet });
+            issueProfessorIdentity: async (wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter) => {
+                calls.push({ wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter });
                 return FAKE_TX;
             },
         });
@@ -247,13 +226,114 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
 
         assert.equal(calls.length, 1);
-        assert.equal(calls[0].wallet, WALLET_ADDRESS);
-        assert.equal(calls[0].employee_number, 'EMP-001');
-        assert.equal(calls[0].full_name, 'John Smith');
-        assert.equal(calls[0].title, 'Dr.');
-        assert.equal(calls[0].department, 'Computer Science');
-        assert.equal(calls[0].faculty, 'Engineering');
-        assert.equal(calls[0].academy_wallet, ACADEMY_WALLET);
+
+        const call = calls[0];
+        assert.equal(call.wallet, WALLET_ADDRESS, 'wallet must be normalised');
+        assert.equal(call.academyWallet, ACADEMY_WALLET, 'academy wallet must be passed');
+        assert.equal(call.employeeNumber, 'EMP-001', 'employee number must match');
+        assert.equal(call.fullName, 'John Smith', 'full name must match');
+        assert.equal(call.title, 'Dr.', 'title must match');
+        assert.equal(call.department, 'Computer Science', 'department must match');
+        assert.equal(call.country, 'Turkey', 'country must be passed from academy');
+        assert.equal(call.fingerprint, FAKE_CERT.fingerprint, 'fingerprint must come from the certificate');
+        assert.equal(call.notBefore, FAKE_CERT.notBefore, 'notBefore must come from the certificate');
+        assert.equal(call.notAfter, FAKE_CERT.notAfter, 'notAfter must come from the certificate');
+    });
+
+    it('passes the correct arguments to getProfessorCertificateAttrs', async () => {
+        const { academy } = await seedAcademy();
+        await seedProfessorUser({
+            academy_id: academy.id,
+            full_name: 'John Smith',
+            employee_number: 'EMP-001',
+            department: 'Computer Science',
+        });
+
+        const attrCalls = [];
+        const app = await makeApp(
+            { issueProfessorIdentity: async () => FAKE_TX },
+            { listenOnTransaction: () => {} },
+            {
+                getProfessorCertificateAttrs: (wallet, employeeNumber, fullName, department, academyName) => {
+                    attrCalls.push({ wallet, employeeNumber, fullName, department, academyName });
+                    return { fake: 'attrs' };
+                },
+            },
+        );
+
+        await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        assert.equal(attrCalls.length, 1);
+        assert.equal(attrCalls[0].wallet, WALLET_ADDRESS);
+        assert.equal(attrCalls[0].employeeNumber, 'EMP-001');
+        assert.equal(attrCalls[0].fullName, 'John Smith');
+        assert.equal(attrCalls[0].department, 'Computer Science');
+        assert.equal(attrCalls[0].academyName, 'Fenerbahce University');
+    });
+
+    it('inserts a pending_transaction row after successful submission', async () => {
+        const { academy } = await seedAcademy();
+        const user = await seedProfessorUser({ academy_id: academy.id });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
+
+        await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        const { rows: [pending] } = await db.query(
+            `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
+            [FAKE_TX_HASH],
+        );
+
+        assert.ok(pending, 'pending_transaction row should exist');
+        assert.equal(pending.status, 'pending');
+        assert.equal(pending.payload.wallet_address,  WALLET_ADDRESS);
+        assert.equal(pending.payload.id, user.id);
+        assert.ok(pending.payload.email, 'payload must contain email');
+    });
+
+    it('inserts an identity_certificate row after successful submission', async () => {
+        const { academy } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
+
+        await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        const { rows: [cert] } = await db.query(
+            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
+            [WALLET_ADDRESS],
+        );
+
+        assert.ok(cert, 'identity_certificates row should exist');
+        assert.equal(cert.certificate_pem, FAKE_CERT.certificatePem);
+        assert.equal(cert.chain_pem, FAKE_CERT.chainPem);
+        assert.equal(cert.fingerprint, FAKE_CERT.fingerprint);
+    });
+
+    it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {
+        const { academy } = await seedAcademy();
+        const user = await seedProfessorUser({ academy_id: academy.id });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
+
+        await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        const { rows: [unchanged] } = await db.query(
+            'SELECT is_identity_issued, identity_tx_hash, wallet_address FROM users WHERE id = $1',
+            [user.id],
+        );
+
+        assert.equal(unchanged.is_identity_issued, false);
+        assert.equal(unchanged.identity_tx_hash, null);
+        assert.equal(unchanged.wallet_address, null);
     });
 
     it('fires listenOnTransaction in the background after submission', async () => {
@@ -263,7 +343,7 @@ describe('POST /api/identity/professors/issue', () => {
         const listenerCalls = [];
         const app = await makeApp(
             { issueProfessorIdentity: async () => FAKE_TX },
-            { listenOnTransaction: (tx) => listenerCalls.push(tx) }
+            { listenOnTransaction: (tx) => listenerCalls.push(tx) },
         );
 
         await request(app)
@@ -285,7 +365,7 @@ describe('POST /api/identity/professors/issue', () => {
         assert.equal(res.body.code, 'USER_NOT_FOUND');
     });
 
-    it('returns 403 FORBIDDEN when user is not a professor', async () => {
+    it('returns 403 FORBIDDEN when user role is not professor', async () => {
         const { academy } = await seedAcademy();
         await seedProfessorUser({ academy_id: academy.id, role: 'academy_admin' });
 
@@ -330,7 +410,7 @@ describe('POST /api/identity/professors/issue', () => {
     it('returns 404 PROFESSOR_NOT_FOUND when user exists but has no professor row', async () => {
         await db.query(
             `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-                VALUES ('orphan@test-identity.edu', NULL, 'professor', false)`,
+                 VALUES ('orphan@test-identity.edu', NULL, 'professor', false)`,
         );
 
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
@@ -383,13 +463,37 @@ describe('POST /api/identity/professors/issue', () => {
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
-            [FAKE_TX_HASH]
+            [FAKE_TX_HASH],
         );
-
         assert.equal(rows.length, 0);
     });
 
-    it('returns 422 when wallet_address is missing', async () => {
+    it('does not insert an identity_certificate when blockchain submission fails', async () => {
+        const { academy } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id });
+
+        const app = await makeApp({
+            issueProfessorIdentity: async () => {
+                const err = new Error('issueProfessorIdentity failed: execution reverted');
+                err.statusCode = 502;
+                err.code = 'BLOCKCHAIN_ERROR';
+                throw err;
+            },
+        });
+
+        await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        const { rows } = await db.query(
+            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
+            [WALLET_ADDRESS],
+        );
+        assert.equal(rows.length, 0,
+            'No certificate row should be written when the blockchain call reverts');
+    });
+
+    it('returns 422 VALIDATION_ERROR when wallet_address is missing', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -402,7 +506,7 @@ describe('POST /api/identity/professors/issue', () => {
         assert.ok(field, 'errors should contain a wallet_address entry');
     });
 
-    it('returns 422 when email is missing', async () => {
+    it('returns 422 VALIDATION_ERROR when email is missing', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -415,7 +519,7 @@ describe('POST /api/identity/professors/issue', () => {
         assert.ok(field, 'errors should contain an email entry');
     });
 
-    it('returns 422 for an invalid wallet_address format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid wallet_address format', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -427,7 +531,7 @@ describe('POST /api/identity/professors/issue', () => {
         assert.ok(field, 'errors should contain a wallet_address entry');
     });
 
-    it('returns 422 for an invalid email format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid email format', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)

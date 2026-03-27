@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS identity_certificates (
     certificate_pem TEXT NOT NULL,
     chain_pem TEXT NOT NULL,
     fingerprint TEXT NOT NULL UNIQUE,
-    subject_distinguished_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

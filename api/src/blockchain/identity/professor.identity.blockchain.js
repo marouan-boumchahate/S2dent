@@ -14,25 +14,31 @@ const getContract = () =>
 
 
 const issueProfessorIdentity = async (
-    wallet_address,
-    employee_id,
-    full_name,
+    walletAddress,
+    academyAddress,
+    professorId,
+    name,
     title,
     department,
-    faculty,
-    academy_wallet_address
+    country,
+    fingerprint,
+    notBefore,
+    notAfter
 ) => {
     try {
         const contract = getContract()
 
         const tx = await contract.issueProfessorIdentity(
-            wallet_address,
-            employee_id,
-            full_name,
+            walletAddress,
+            academyAddress,
+            professorId,
+            name,
             title,
             department,
-            faculty,
-            academy_wallet_address
+            country,
+            fingerprint,
+            Math.floor(notBefore.getTime() / 1000),
+            Math.floor(notAfter.getTime() / 1000)
         )
 
         return tx;

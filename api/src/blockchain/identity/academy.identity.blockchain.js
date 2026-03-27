@@ -33,8 +33,8 @@ const issueAcademyIdentity = async (
             short_name,
             country,
             fingerprint,
-            not_before,
-            not_after
+            Math.floor(not_before.getTime() / 1000),
+            Math.floor(not_after.getTime() / 1000)
         )
 
         return tx;
