@@ -100,13 +100,12 @@ const saveCertificate = async (
     certPem,
     chainPem,
     fingerprint,
-    subjectDN
 ) => {
     await db.query(
         `INSERT INTO identity_certificates 
-            (wallet_address, certificate_pem, chain_pem, fingerprint, subject_distinguished_name, created_at)
-        VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [walletAddress, certPem, chainPem, fingerprint, subjectDN]
+            (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
+        VALUES ($1, $2, $3, $4, NOW())`,
+        [walletAddress, certPem, chainPem, fingerprint]
     )
 }
 
@@ -122,7 +121,6 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         fingerprint,
         certificatePem,
         chainPem,
-        subjectDN,
         notBefore,
         notAfter
     } = await getCertificate(
@@ -143,7 +141,7 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         notAfter
     )
 
-    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint, subjectDN)
+    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
     await saveTransaction(tx.hash, user, normalizedWallet)
 
     listenOnTransaction(tx) // works at the background, no need to await

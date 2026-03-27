@@ -12,7 +12,6 @@ const FAKE_CERT = {
     fingerprint: 'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD',
     certificatePem: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
     chainPem: '-----BEGIN CERTIFICATE-----\nFAKECHAIN\n-----END CERTIFICATE-----',
-    subjectDN: 'CN=FBU,O=Fenerbahce University,C=TR',
     notBefore: '2024-01-01T00:00:00.000Z',
     notAfter: '2025-01-01T00:00:00.000Z',
 };
@@ -22,7 +21,10 @@ const FAKE_TX = {
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
 
-const DEFAULT_CA_ATTRS  = { getAcademyCertificateAttrs: () => ({ fake: 'attrs' }) };
+const DEFAULT_CA_ATTRS = {
+    getAcademyCertificateAttrs:  () => ({ fake: 'attrs' }),
+    getProfessorCertificateAttrs: () => ({ fake: 'attrs' }),
+};
 const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
 
 const seedAcademyUser = async ({
@@ -86,7 +88,7 @@ const cleanupDB = async () => {
 const makeApp = async (
     blockchainImpl  = { issueAcademyIdentity: async () => FAKE_TX },
     listenerImpl    = { listenOnTransaction: () => {} },
-    caAttrsImpl     = DEFAULT_CA_ATTRS,
+    caAttrsImpl     = {},
     caIdentityImpl  = DEFAULT_CA_IDENTITY,
 ) => {
     const { default: app } = await esmock.strict(
@@ -95,9 +97,9 @@ const makeApp = async (
         {},
         {
             '../../src/blockchain/identity/academy.identity.blockchain.js': blockchainImpl,
-            '../../src/blockchain/listener.js':                             listenerImpl,
-            '../../src/ca/ca.attrs.js':                                     caAttrsImpl,
-            '../../src/ca/ca.identity.js':                                  caIdentityImpl,
+            '../../src/blockchain/listener.js': listenerImpl,
+            '../../src/ca/ca.attrs.js': { ...DEFAULT_CA_ATTRS, ...caAttrsImpl },
+            '../../src/ca/ca.identity.js': caIdentityImpl,
         },
     );
     return app;
@@ -252,7 +254,6 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(cert.certificate_pem, FAKE_CERT.certificatePem);
         assert.equal(cert.chain_pem, FAKE_CERT.chainPem);
         assert.equal(cert.fingerprint, FAKE_CERT.fingerprint);
-        assert.equal(cert.subject_distinguished_name, FAKE_CERT.subjectDN);
     });
 
     it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {

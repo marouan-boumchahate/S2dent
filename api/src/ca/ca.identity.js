@@ -20,14 +20,6 @@ const initializeCertMetadata = (cert, pubKey, walletAddress, uniqueId) => {
     return cert
 }
 
-// const getAttrs = (walletAddress, uniqueId, name, department) => ([
-//     { name: 'commonName', value: walletAddress },
-//     { name: 'organizationalUnitName', value: department },
-//     { name: 'givenName', value: name },
-//     { name: 'serialNumber', value: uniqueId },
-//     { name: 'countryName', value: 'TR' },
-// ])
-
 const getExtensions = (issuerWallet, uniqueId, appCa) => ([
   { name: 'basicConstraints', cA: false, critical: true },
   { name: 'keyUsage', digitalSignature: true, nonRepudiation: true, critical: true },
@@ -39,7 +31,6 @@ const getExtensions = (issuerWallet, uniqueId, appCa) => ([
   { id: '1.3.6.1.4.1.99999.1', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, issuerWallet || '') },
   { id: '1.3.6.1.4.1.99999.2', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, uniqueId) },
 ])
-
 
 const getCertHash = (cert) => {
     const certDer = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes()
@@ -85,7 +76,6 @@ export const buildIdentityCertificate = async (payload) => {
         fingerprint: `0x${fingerprintHex}`,
         certificatePem: certPem,
         chainPem,
-        subjectDN: `CN=${walletAddress}, OU=${department}, SN=${uniqueId}`,
         notBefore: cert.validity.notBefore,
         notAfter: cert.validity.notAfter,
     }
