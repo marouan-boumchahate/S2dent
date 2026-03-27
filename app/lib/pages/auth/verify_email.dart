@@ -1,9 +1,9 @@
 import 'package:app/components/app_layout.dart';
 import 'package:app/components/auth_textfield.dart';
+import 'package:app/components/buttons/custom_backbutton.dart';
 import 'package:app/components/buttons/primary_button.dart';
-import 'package:app/components/buttons/secondary_button.dart';
 import 'package:app/extensions/context_extensions.dart';
-import 'package:app/pages/verify_otp.dart';
+import 'package:app/pages/auth/verify_otp.dart';
 import 'package:flutter/material.dart';
 
 class VerifyEmailPage extends StatefulWidget {
@@ -55,7 +55,12 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _headerSection(context, image),
-                        _bottomSection(),
+                        PrimaryButton(
+                          onTap: () {
+                            onTapSendOTP();
+                          },
+                          label: "VERIFY",
+                        ),
                       ],
                     ),
                   ),
@@ -64,26 +69,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
             },
           ),
           //backbutton
-          Positioned(
-            top: 20,
-            left: 0,
-            child: Container(
-              width: 55,
-              height: 55,
-              decoration: BoxDecoration(
-                color: context.colors.surfaceContainer,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.blueGrey.withAlpha(160),
-                  width: 2,
-                ),
-              ),
-              child: BackButton(
-                onPressed: () => Navigator.pop(context),
-                color: context.colors.primary,
-              ),
-            ),
-          ),
+          CustomBackButton(),
         ],
       ),
     );
@@ -111,52 +97,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
           controller: _emailController,
         ),
       ],
-    );
-  }
-
-  Column _bottomSection() {
-    return Column(
-      children: [
-        PrimaryButton(
-          onTap: () {
-            onTapSendOTP();
-          },
-          label: "SUBMIT",
-        ),
-        _divider(),
-        SecondaryButton(
-          label: "SIGN IN WITH A WALLET",
-          onTap: () {},
-        ),
-      ],
-    );
-  }
-
-  Padding _divider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Divider(
-              color: Colors.blueGrey.withAlpha(160),
-              thickness: 2,
-              endIndent: 6,
-              height: 2,
-            ),
-          ),
-          Text("Already verified student ?"),
-          Expanded(
-            child: Divider(
-              color: Colors.blueGrey.withAlpha(160),
-              thickness: 2,
-              indent: 6,
-              height: 2,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
