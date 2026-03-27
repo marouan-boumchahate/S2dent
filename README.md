@@ -57,7 +57,7 @@ We used a mix of technologies across different parts of the project:
 
 **Mobile app** (for students and verifiers) → Flutter
 
-**Web dashboard** (for universities) → React.js
+**Web dashboard** (for universities) → Next.js
 
 **Backend** (the server that connects everything) → Node.js + Express.js, with Ethers.js for talking to the blockchain
 
