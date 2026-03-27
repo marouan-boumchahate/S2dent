@@ -14,19 +14,27 @@ const getContract = () =>
 
 
 const issueAcademyIdentity = async (
-    walletAddress, 
-    academyId, 
-    name, 
-    short_name
+    wallet_address,
+    academy_id,
+    name,
+    short_name,
+    country,
+    fingerprint,
+    not_before,
+    not_after
 ) => {
     try {
         const contract = getContract()
 
         const tx = await contract.issueAcademyIdentity(
-            walletAddress,
-            academyId,
+            wallet_address,
+            academy_id,
             name,
-            short_name
+            short_name,
+            country,
+            fingerprint,
+            not_before,
+            not_after
         )
 
         return tx;

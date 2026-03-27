@@ -3,16 +3,27 @@ import request from 'supertest';
 import { strict as assert } from 'assert';
 import db from '../../src/config/db.js';
 
-// SETUP
-// ─────
+
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
 const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
 const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
+
+const FAKE_CERT = {
+    fingerprint: 'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD',
+    certificatePem: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+    chainPem: '-----BEGIN CERTIFICATE-----\nFAKECHAIN\n-----END CERTIFICATE-----',
+    subjectDN: 'CN=FBU,O=Fenerbahce University,C=TR',
+    notBefore: '2024-01-01T00:00:00.000Z',
+    notAfter: '2025-01-01T00:00:00.000Z',
+};
 
 const FAKE_TX = {
     hash: FAKE_TX_HASH,
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
+
+const DEFAULT_CA_ATTRS  = { getAcademyCertificateAttrs: () => ({ fake: 'attrs' }) };
+const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
 
 const seedAcademyUser = async ({
     email = 'seed@fenerbahce.edu.tr',
@@ -21,11 +32,12 @@ const seedAcademyUser = async ({
     is_identity_issued = false,
     academy_name = 'Fenerbahce University',
     short_name = 'FBU',
+    country = 'Turkey'
 } = {}) => {
     const { rows: [user] } = await db.query(
         `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-            VALUES ($1, $2, $3, $4)
-        RETURNING id`,
+             VALUES ($1, $2, $3, $4)
+         RETURNING id`,
         [email, wallet_address, role, is_identity_issued],
     );
 
@@ -36,14 +48,19 @@ const seedAcademyUser = async ({
 
     await db.query(
         `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-            VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')`,
-        [user.id, SEED_ACADEMY_NUMBER, academy_name, short_name],
+             VALUES ($1, $2, $3, $4, 'university', $5, 'Istanbul')`,
+        [user.id, SEED_ACADEMY_NUMBER, academy_name, short_name, country],
     );
 
     return user;
 };
 
 const cleanupDB = async () => {
+    await db.query(`
+        DELETE FROM identity_certificates
+        WHERE wallet_address = $1
+    `, [WALLET_ADDRESS]);
+
     await db.query(`
         DELETE FROM pending_transactions
         WHERE payload->>'wallet_address' = $1
@@ -65,38 +82,39 @@ const cleanupDB = async () => {
     `);
 };
 
-const makeApp = async (blockchainImpl, listenerImpl = { listenOnTransaction: () => {} }) => {
+
+const makeApp = async (
+    blockchainImpl  = { issueAcademyIdentity: async () => FAKE_TX },
+    listenerImpl    = { listenOnTransaction: () => {} },
+    caAttrsImpl     = DEFAULT_CA_ATTRS,
+    caIdentityImpl  = DEFAULT_CA_IDENTITY,
+) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
         import.meta.url,
         {},
         {
             '../../src/blockchain/identity/academy.identity.blockchain.js': blockchainImpl,
-            '../../src/blockchain/listener.js': listenerImpl,
-        }
+            '../../src/blockchain/listener.js':                             listenerImpl,
+            '../../src/ca/ca.attrs.js':                                     caAttrsImpl,
+            '../../src/ca/ca.identity.js':                                  caIdentityImpl,
+        },
     );
     return app;
 };
 
-beforeEach(async () => {
-    await cleanupDB();
-});
-
-afterEach(async () => {
-    await cleanupDB();
-});
+beforeEach(async () => { await cleanupDB(); });
+afterEach(async ()  => { await cleanupDB(); });
 
 const endpoint = '/api/identity/academies/issue';
 
-// TESTS
-// ─────
+
 describe('POST /api/identity/academies/issue', () => {
-    it('returns 200 and a pending status DTO on valid input', async () => {
+
+    it('returns 200 with blockchain_transaction and certificate_metadata on valid input', async () => {
         await seedAcademyUser();
 
-        const app = await makeApp({
-            issueAcademyIdentity: async () => FAKE_TX,
-        });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
@@ -106,9 +124,15 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(res.body.success, true);
         assert.equal(res.body.message, 'Academy identity issuance request submitted successfully');
 
-        const data = res.body.data;
-        assert.equal(data.tx_hash, FAKE_TX_HASH);
-        assert.equal(data.status, 'pending');
+        const { blockchain_transaction, certificate_metadata } = res.body.data;
+
+        assert.equal(blockchain_transaction.tx_hash, FAKE_TX_HASH);
+        assert.equal(blockchain_transaction.status,  'pending');
+
+        assert.ok(certificate_metadata, 'certificate_metadata should be present');
+        assert.equal(certificate_metadata.certificate_hash, FAKE_CERT.fingerprint);
+        assert.equal(certificate_metadata.issued_at, FAKE_CERT.notBefore);
+        assert.equal(certificate_metadata.expires_at, FAKE_CERT.notAfter);
     });
 
     it('normalizes wallet_address to lowercase before querying', async () => {
@@ -116,10 +140,7 @@ describe('POST /api/identity/academies/issue', () => {
 
         const calls = [];
         const app = await makeApp({
-            issueAcademyIdentity: async (wallet, id, name, code) => {
-                calls.push({ wallet, id, name, code });
-                return FAKE_TX;
-            },
+            issueAcademyIdentity: async (...args) => { calls.push(args); return FAKE_TX; },
         });
 
         const res = await request(app)
@@ -127,15 +148,75 @@ describe('POST /api/identity/academies/issue', () => {
             .send({ wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
-        assert.equal(calls[0].wallet, WALLET_ADDRESS);
+        assert.equal(calls[0][0], WALLET_ADDRESS);
     });
 
-    it('inserts a pending_transaction row after submission', async () => {
+
+    it('passes the correct 8 arguments to issueAcademyIdentity', async () => {
+        await seedAcademyUser({
+            academy_name: 'Fenerbahce University',
+            short_name: 'FBU',
+        });
+
+        const calls = [];
+        const app = await makeApp({
+            issueAcademyIdentity: async (wallet, academyNumber, name, shortName, country, fingerprint, notBefore, notAfter) => {
+                calls.push({ wallet, academyNumber, name, shortName, country, fingerprint, notBefore, notAfter });
+                return FAKE_TX;
+            },
+        });
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        assert.equal(calls.length, 1);
+
+        const call = calls[0];
+        assert.equal(call.wallet, WALLET_ADDRESS, 'wallet must be normalised');
+        assert.match(call.academyNumber, /^ACD_[0-9]{7}$/, 'academyNumber must match ACD_ format');
+        assert.equal(call.name, 'Fenerbahce University', 'academy name must match');
+        assert.equal(call.shortName, 'FBU', 'short name must match');
+        assert.equal(call.country, 'Turkey', 'country must be passed');
+        assert.equal(call.fingerprint, FAKE_CERT.fingerprint, 'fingerprint must come from the certificate');
+        assert.equal(call.notBefore, FAKE_CERT.notBefore, 'notBefore must come from the certificate');
+        assert.equal(call.notAfter, FAKE_CERT.notAfter, 'notAfter must come from the certificate');
+    });
+
+    it('passes the correct attrs to getAcademyCertificateAttrs', async () => {
+        await seedAcademyUser({
+            academy_name: 'Fenerbahce University',
+            short_name: 'FBU',
+        });
+
+        const attrCalls = [];
+        const app = await makeApp(
+            { issueAcademyIdentity: async () => FAKE_TX },
+            { listenOnTransaction: () => {} },
+            {
+                getAcademyCertificateAttrs: (wallet, number, name, shortName) => {
+                    attrCalls.push({ wallet, number, name, shortName });
+                    return { fake: 'attrs' };
+                },
+            },
+        );
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        assert.equal(attrCalls.length, 1);
+        assert.equal(attrCalls[0].wallet, WALLET_ADDRESS);
+        assert.match(attrCalls[0].number, /^ACD_[0-9]{7}$/);
+        assert.equal(attrCalls[0].name, 'Fenerbahce University');
+        assert.equal(attrCalls[0].shortName, 'FBU');
+    });
+
+
+    it('inserts a pending_transaction row after successful submission', async () => {
         const user = await seedAcademyUser();
 
-        const app = await makeApp({
-            issueAcademyIdentity: async () => FAKE_TX,
-        });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         await request(app)
             .post(endpoint)
@@ -143,21 +224,41 @@ describe('POST /api/identity/academies/issue', () => {
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
-            [FAKE_TX_HASH]
+            [FAKE_TX_HASH],
         );
 
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
         assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
         assert.equal(pending.payload.id, user.id);
+        assert.ok(pending.payload.email, 'payload must contain email');
     });
 
-    it('does NOT update users table immediately after submission', async () => {
+    it('inserts an identity_certificate row after successful submission', async () => {
+        await seedAcademyUser();
+
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        const { rows: [cert] } = await db.query(
+            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
+            [WALLET_ADDRESS],
+        );
+
+        assert.ok(cert, 'identity_certificates row should exist');
+        assert.equal(cert.certificate_pem, FAKE_CERT.certificatePem);
+        assert.equal(cert.chain_pem, FAKE_CERT.chainPem);
+        assert.equal(cert.fingerprint, FAKE_CERT.fingerprint);
+        assert.equal(cert.subject_distinguished_name, FAKE_CERT.subjectDN);
+    });
+
+    it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {
         const user = await seedAcademyUser();
 
-        const app = await makeApp({
-            issueAcademyIdentity: async () => FAKE_TX,
-        });
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         await request(app)
             .post(endpoint)
@@ -168,35 +269,10 @@ describe('POST /api/identity/academies/issue', () => {
             [user.id],
         );
 
-        // Listener still not triggered at this point
         assert.equal(unchanged.is_identity_issued, false);
         assert.equal(unchanged.identity_tx_hash, null);
     });
 
-    it('passes the correct arguments to the blockchain', async () => {
-        await seedAcademyUser({
-            academy_name: 'Fenerbahce University',
-            short_name: 'FBU',
-        });
-
-        const calls = [];
-        const app = await makeApp({
-            issueAcademyIdentity: async (wallet, id, name, code) => {
-                calls.push({ wallet, id, name, code });
-                return FAKE_TX;
-            },
-        });
-
-        await request(app)
-            .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
-
-        assert.equal(calls.length, 1);
-        assert.equal(calls[0].wallet, WALLET_ADDRESS);
-        assert.match(calls[0].id, /^ACD_[0-9]{7}$/);
-        assert.equal(calls[0].name, 'Fenerbahce University');
-        assert.equal(calls[0].code, 'FBU');
-    });
 
     it('fires listenOnTransaction in the background after submission', async () => {
         await seedAcademyUser();
@@ -204,7 +280,7 @@ describe('POST /api/identity/academies/issue', () => {
         const listenerCalls = [];
         const app = await makeApp(
             { issueAcademyIdentity: async () => FAKE_TX },
-            { listenOnTransaction: (tx) => listenerCalls.push(tx) }
+            { listenOnTransaction: (tx) => listenerCalls.push(tx) },
         );
 
         await request(app)
@@ -215,6 +291,7 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
     });
 
+ 
     it('returns 404 USER_NOT_FOUND when wallet does not exist in DB', async () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
@@ -226,7 +303,7 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(res.body.code, 'USER_NOT_FOUND');
     });
 
-    it('returns 403 FORBIDDEN when user is not academy_admin', async () => {
+    it('returns 403 FORBIDDEN when user role is not academy_admin', async () => {
         await seedAcademyUser({ role: 'professor' });
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
@@ -255,7 +332,7 @@ describe('POST /api/identity/academies/issue', () => {
     it('returns 404 ACADEMY_NOT_FOUND when user exists but has no academy row', async () => {
         await db.query(
             `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-                VALUES ('orphan@test-identity.edu', $1, 'academy_admin', false)`,
+                 VALUES ('orphan@test-identity.edu', $1, 'academy_admin', false)`,
             [WALLET_ADDRESS],
         );
 
@@ -307,13 +384,37 @@ describe('POST /api/identity/academies/issue', () => {
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
-            [FAKE_TX_HASH]
+            [FAKE_TX_HASH],
         );
-
         assert.equal(rows.length, 0);
     });
 
-    it('returns 422 when wallet_address is missing', async () => {
+    it('does not insert an identity_certificate when blockchain submission fails', async () => {
+        await seedAcademyUser();
+
+        const app = await makeApp({
+            issueAcademyIdentity: async () => {
+                const err = new Error('issueAcademyIdentity failed: execution reverted');
+                err.statusCode = 502;
+                err.code = 'BLOCKCHAIN_ERROR';
+                throw err;
+            },
+        });
+
+        await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        const { rows } = await db.query(
+            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
+            [WALLET_ADDRESS],
+        );
+        assert.equal(rows.length, 0,
+            'No certificate row should be written when the blockchain call reverts');
+    });
+
+
+    it('returns 422 VALIDATION_ERROR when wallet_address is missing', async () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -322,11 +423,12 @@ describe('POST /api/identity/academies/issue', () => {
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
+
         const field = res.body.errors.find(e => e.field === 'wallet_address');
-        assert.ok(field, 'errors should contain a wallet_address entry');
+        assert.ok(field, 'errors array should contain a wallet_address entry');
     });
 
-    it('returns 422 for an invalid wallet_address format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid wallet_address format', async () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -335,6 +437,6 @@ describe('POST /api/identity/academies/issue', () => {
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find(e => e.field === 'wallet_address');
-        assert.ok(field, 'errors should contain a wallet_address entry');
+        assert.ok(field, 'errors array should contain a wallet_address entry');
     });
 });

@@ -21,7 +21,8 @@
     "express": "^5.2.1",
     "joi": "^18.0.2",
     "node-forge": "^1.4.0",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "esmock": "^2.7.3",
