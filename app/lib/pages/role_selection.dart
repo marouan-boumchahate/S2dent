@@ -3,8 +3,8 @@ import 'package:app/components/decorations/document_container.dart';
 import 'package:app/components/buttons/identity_button.dart';
 import 'package:app/components/buttons/primary_button.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/auth/login.dart';
 import 'package:app/pages/scanner.dart';
-import 'package:app/pages/verify_email.dart';
 import 'package:flutter/material.dart';
 
 class RoleSelectionPage extends StatefulWidget {
@@ -23,13 +23,13 @@ enum Identity {
 class _RoleSelectionPageState extends State<RoleSelectionPage> {
   Identity identity = Identity.none;
 
-  void onTapContinue() {
+  void onTapContinue() async {
     if (identity == Identity.student) {
       // push the student to the verification process
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => VerifyEmailPage(),
+          builder: (context) => LoginPage(),
         ),
       );
     } else {
@@ -41,31 +41,31 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         ),
       );
     }
+    await Future.delayed(
+      Duration(milliseconds: 350),
+      () => setState(() {
+        identity = Identity.none;
+      }),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-        child: LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _headerSection(context),
-              _illustrationsSection(context),
-              _identityButtons(),
-              PrimaryButton(
-                label: "CONTINUE",
-                onTap: identity == Identity.none ? null : onTapContinue,
-                isEnable: identity != Identity.none,
-              )
-            ],
-          ),
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _headerSection(context),
+          _illustrationsSection(context),
+          _identityButtons(),
+          PrimaryButton(
+            label: "CONTINUE",
+            onTap: identity == Identity.none ? null : onTapContinue,
+            isEnable: identity != Identity.none,
+          )
+        ],
       ),
-    ));
+    );
   }
 
   Column _identityButtons() {

@@ -1,6 +1,8 @@
 import 'package:app/components/app_layout.dart';
+import 'package:app/components/buttons/custom_backbutton.dart';
 import 'package:app/components/buttons/primary_button.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/role_selection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pinput/pinput.dart';
@@ -25,7 +27,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
     showDialog(
       barrierDismissible: false,
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: Row(
             children: [
@@ -48,7 +50,14 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RoleSelectionPage(),
+                  ),
+                  (route) => false,
+                );
               },
               child: Text("OK"),
             )
@@ -79,7 +88,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
                         onTap: () {
                           _showDialog();
                         },
-                        label: "SUBMIT",
+                        label: "VERIFY",
                       ),
                     ],
                   ),
@@ -87,27 +96,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
               );
             },
           ),
-          //Back Button
-          Positioned(
-            top: 20,
-            left: 0,
-            child: Container(
-              width: 55,
-              height: 55,
-              decoration: BoxDecoration(
-                color: context.colors.surfaceContainer,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.blueGrey.withAlpha(160),
-                  width: 2,
-                ),
-              ),
-              child: BackButton(
-                onPressed: () => Navigator.pop(context),
-                color: context.colors.primary,
-              ),
-            ),
-          ),
+          CustomBackButton(),
         ],
       ),
     );

@@ -1,8 +1,8 @@
 import 'package:app/components/app_layout.dart';
 import 'package:flutter/material.dart';
 
-class VerificationResultPage extends StatelessWidget {
-  const VerificationResultPage({
+class ScanResultPage extends StatelessWidget {
+  const ScanResultPage({
     super.key,
     required this.result,
   });

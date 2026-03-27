@@ -1,6 +1,6 @@
 import 'package:app/components/decorations/scanner_corners.dart';
 import 'package:app/extensions/context_extensions.dart';
-import 'package:app/pages/verification_result.dart';
+import 'package:app/pages/scan_result.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -32,8 +32,7 @@ class _ScannerPageState extends State<ScannerPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            VerificationResultPage(result: barcode!.rawValue!),
+        builder: (context) => ScanResultPage(result: barcode!.rawValue!),
       ),
     );
     isScanned = false;
