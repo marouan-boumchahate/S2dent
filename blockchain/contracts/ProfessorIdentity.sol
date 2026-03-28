@@ -19,7 +19,7 @@ contract ProfessorIdentity is AcademyIdentity{
 
     // Structs
     struct Professor {
-        bytes32 employeeIdHash;
+        bytes32 professorIdHash;
         string name;
         string title;
         string department;
@@ -29,7 +29,7 @@ contract ProfessorIdentity is AcademyIdentity{
         uint256 notBefore;
         uint256 notAfter;
 
-        bool isRevoked;
+        bool isNotRevoked;
         uint256 issuedAt;
         uint256 revokedAt;
         address issuedBy;
@@ -99,7 +99,7 @@ contract ProfessorIdentity is AcademyIdentity{
         uint256 _notBefore,
         uint256 _notAfter
 
-    ) public onlyAcademy(_academyAddress) {
+    ) public onlyOwner onlyAcademy(_academyAddress) {
 
         _validateProfessorIdentityArgs(
             _walletAddress,
@@ -125,7 +125,7 @@ contract ProfessorIdentity is AcademyIdentity{
             _fingerprint,
             _notBefore,
             _notAfter,
-            false,
+            true,
             block.timestamp,
             0,
             _academyAddress,

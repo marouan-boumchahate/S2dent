@@ -12,7 +12,7 @@ describe("ProfessorIdentity", () => {
 
     // Professor details
     const PROFESSOR_ID = "PROF001";
-    const PROFESSOR_NAME = "Dr. Ahmet Yılmaz";
+    const PROFESSOR_NAME = "Osman SELVI";
     const PROFESSOR_TITLE = "Associate Professor";
     const PROFESSOR_DEPARTMENT = "Computer Science";
     const PROFESSOR_COUNTRY = "Turkey";
@@ -64,9 +64,9 @@ describe("ProfessorIdentity", () => {
     async function deployWithProfessorFixture() {
         const { networkHelpers } = await hre.network.connect();
         const base = await networkHelpers.loadFixture(deployFixture);
-        const { instance, academy, professor, notBefore, notAfter } = base;
+        const { instance, owner, academy, professor, notBefore, notAfter } = base;
 
-        await instance.connect(academy).issueProfessorIdentity(
+        await instance.connect(owner).issueProfessorIdentity(
             professor.address,
             academy.address,
             PROFESSOR_ID,
@@ -85,11 +85,11 @@ describe("ProfessorIdentity", () => {
     describe("issueProfessorIdentity", () => {
 
         it("Should store all fields correctly after a valid issuance", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(academy).issueProfessorIdentity(
+            await instance.connect(owner).issueProfessorIdentity(
                 professor.address,
                 academy.address,
                 PROFESSOR_ID,
@@ -111,18 +111,20 @@ describe("ProfessorIdentity", () => {
             expect(record.fingerprint).to.equal(FINGERPRINT);
             expect(record.notBefore).to.equal(notBefore);
             expect(record.notAfter).to.equal(notAfter);
-            expect(record.isRevoked).to.equal(false);
+
+            expect(record.isNotRevoked).to.equal(true);
             expect(record.revokedAt).to.equal(0);
             expect(record.issuedBy).to.equal(academy.address);
             expect(record.issuedAt).to.be.gt(0);
+            expect(record.revokedBy).to.equal(ethers.ZeroAddress);
         });
 
         it("Should store employeeIdHash as keccak256 of the provided professor ID", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(academy).issueProfessorIdentity(
+            await instance.connect(owner).issueProfessorIdentity(
                 professor.address,
                 academy.address,
                 PROFESSOR_ID,
@@ -138,16 +140,16 @@ describe("ProfessorIdentity", () => {
             const record = await instance.professors(professor.address);
             const expectedHash = ethers.keccak256(ethers.toUtf8Bytes(PROFESSOR_ID));
 
-            expect(record.employeeIdHash).to.equal(expectedHash);
+            expect(record.professorIdHash).to.equal(expectedHash);
         });
 
         it("Should revert when called by an unregistered (non-academy) address", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, fakeAcademy, professor, notBefore, notAfter } =
+            const { instance, owner, fakeAcademy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(fakeAcademy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     fakeAcademy.address,
                     PROFESSOR_ID,
@@ -164,12 +166,35 @@ describe("ProfessorIdentity", () => {
             );
         });
 
-        it("Should overwrite an existing record on re-issuance by the same academy", async () => {
+        it("Should revert when called by a non-owner account", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, academy, professor, notBefore, notAfter } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            await expect(
+                instance.connect(academy).issueProfessorIdentity(
+                    professor.address,
+                    academy.address,
+                    PROFESSOR_ID,
+                    PROFESSOR_NAME,
+                    PROFESSOR_TITLE,
+                    PROFESSOR_DEPARTMENT,
+                    PROFESSOR_COUNTRY,
+                    FINGERPRINT,
+                    notBefore,
+                    notAfter
+                )
+            ).to.be.revertedWith(
+                "Not authorized: Only owner can perform this operation."
+            );
+        });
+
+        it("Should overwrite an existing record on re-issuance by the same academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
-            await instance.connect(academy).issueProfessorIdentity(
+            await instance.connect(owner).issueProfessorIdentity(
                 professor.address,
                 academy.address,
                 PROFESSOR_ID,
@@ -193,11 +218,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on zero professor wallet address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, academy, notBefore, notAfter } =
+            const { instance, owner, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     ethers.ZeroAddress,
                     academy.address,
                     PROFESSOR_ID,
@@ -214,11 +239,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on empty professor ID", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     "",
@@ -235,11 +260,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on professor ID shorter than minimum length (< 3 chars)", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     "AB",  // 2 chars only
@@ -256,11 +281,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on professor ID longer than maximum length (> 20 chars)", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     "PROF_ID_THAT_IS_TOO_LONG_123",   // MAX_ID_LENGTH of 20
@@ -277,11 +302,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on empty name", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -298,11 +323,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on empty title", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -319,11 +344,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on empty department", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -340,11 +365,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on empty country", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -361,11 +386,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert on zero fingerprint", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -382,11 +407,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert when notAfter <= notBefore", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore } =
+            const { instance, owner, academy, professor, notBefore } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -403,11 +428,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert when notAfter is in the past", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, now } =
+            const { instance, owner, academy, professor, now } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,
@@ -424,11 +449,11 @@ describe("ProfessorIdentity", () => {
 
         it("Should revert when notBefore is zero", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notAfter } =
+            const { instance, owner, academy, professor, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(academy).issueProfessorIdentity(
+                instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     academy.address,
                     PROFESSOR_ID,

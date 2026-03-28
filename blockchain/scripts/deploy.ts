@@ -2,15 +2,15 @@ import { network } from "hardhat";
 
 const { ethers, networkName } = await network.connect();
 
-console.log(`=> Deploying ProfessorIdentity to ${networkName}...`);
+console.log(`=> Deploying StudentIdentity to ${networkName}...`);
 
-const professorIdentity = await ethers.deployContract("ProfessorIdentity");
+const studentIdentity = await ethers.deployContract("StudentIdentity");
 
 console.log("=> Waiting for the deployment tx to confirm");
-await professorIdentity.waitForDeployment();
-const professorIdentityAddress = await professorIdentity.getAddress();
+await studentIdentity.waitForDeployment();
+const studentIdentityAddress = await studentIdentity.getAddress();
 
-console.log("=> ProfessorIdentity address: ", professorIdentityAddress);
-console.log("=> Check it here: https://sepolia.etherscan.io/address/" + professorIdentityAddress);
+console.log("=> StudentIdentity address: ", studentIdentityAddress);
+console.log("=> Check it here: https://sepolia.etherscan.io/address/" + studentIdentityAddress);
 
 console.log("=> Deployment successful!");
