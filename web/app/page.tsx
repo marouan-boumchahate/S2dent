@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
   title: "S2dent System | Dashboard Overview",
@@ -7,11 +8,8 @@ export const metadata: Metadata = {
 // mian dashboard page for the system it will be edit later for now this tempporary interface 
 export default function Home() {
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-electric">Dashboard Overview</h1>
-        <p className="text-textMuted mt-2">Welcome back to S2dent System Admin Panel.</p>
-      </div>
+    <div className="flex flex-col h-full">
+      <PageHeader title="Dashboard Overview"/>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
