@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "copy:abis": "cp artifacts/contracts/ProfessorIdentity.sol/ProfessorIdentity.json ../api/src/blockchain/contracts/S2dent.json"
+    "copy:abis": "cp artifacts/contracts/StudentIdentity.sol/StudentIdentity.json ../api/src/blockchain/contracts/S2dent.json"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.6",

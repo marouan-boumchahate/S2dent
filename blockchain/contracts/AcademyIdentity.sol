@@ -32,7 +32,7 @@ contract AcademyIdentity is S2dent {
         uint256 notBefore;
         uint256 notAfter;
 
-        bool isRevoked;
+        bool isNotRevoked;
         uint256 issuedAt;
         uint256 revokedAt;
         address issuedBy;
@@ -45,7 +45,7 @@ contract AcademyIdentity is S2dent {
     // Modifiers
     modifier onlyAcademy(address _caller) {
         require(
-            academies[_caller].issuedBy != address(0),
+            academies[_caller].isNotRevoked,
             "Not authorized: Only a registered academy can perform this operation."
         );
         _;
@@ -71,8 +71,8 @@ contract AcademyIdentity is S2dent {
         if (idLen > MAX_ID_LENGTH) revert InvalidAcademyId("Academy ID exceeds maximum length.");
 
         uint256 nameLen = bytes(_name).length;
-        if (nameLen == 0) revert InvalidName("Name must not be empty.");
-        if (nameLen > MAX_STRING_LENGTH) revert InvalidName("Name exceeds maximum length.");
+        if (nameLen == 0) revert InvalidName("Academy name must not be empty.");
+        if (nameLen > MAX_STRING_LENGTH) revert InvalidName("Academy name exceeds maximum length.");
 
         uint256 codeLen = bytes(_code).length;
         if (codeLen == 0) revert InvalidCode("Code must not be empty.");
@@ -123,7 +123,7 @@ contract AcademyIdentity is S2dent {
             _fingerprint,
             _notBefore,
             _notAfter,
-            false,
+            true,
             block.timestamp,
             0,
             msg.sender,

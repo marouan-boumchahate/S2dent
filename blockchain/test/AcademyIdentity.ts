@@ -77,7 +77,7 @@ describe("AcademyIdentity", () => {
             expect(record.fingerprint).to.equal(FINGERPRINT);
             expect(record.notBefore).to.equal(notBefore);
             expect(record.notAfter).to.equal(notAfter);
-            expect(record.isRevoked).to.equal(false);
+            expect(record.isNotRevoked).to.equal(true);
             expect(record.revokedAt).to.equal(0);
             expect(record.issuedBy).to.equal(owner.address);
             expect(record.issuedAt).to.be.gt(0);
