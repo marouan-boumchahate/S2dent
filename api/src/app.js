@@ -7,6 +7,8 @@ import academyIdentityRouter from './modules/identity/academy/academy.identity.r
 import professorRouter from './modules/professor/professor.routes.js'
 import professorIdentityRouter from './modules/identity/professor/professor.identity.routes.js'
 
+import studentRouter from './modules/student/student.routes.js'
+
 const app = express()
 app.use(express.json())
 
@@ -15,6 +17,8 @@ app.use('/api/identity/academies', academyIdentityRouter)
 
 app.use('/api/professors', professorRouter)
 app.use('/api/identity/professors', professorIdentityRouter)
+
+app.use('/api/students', studentRouter)
 
 app.use(errorMiddleware)
 
