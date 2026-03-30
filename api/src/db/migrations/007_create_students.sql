@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS students (
 
     phone VARCHAR(20),
 
-    address TEXT NOT NULL,
+    address TEXT NULL,
     country VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
 

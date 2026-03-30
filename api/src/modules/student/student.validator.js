@@ -27,7 +27,7 @@ const createStudentSchema = Joi.object({
       'string.pattern.base': 'phone must be a valid international phone number',
     }),
 
-  address: Joi.string().trim().required(),
+  address: Joi.string().trim().optional(),
   city: Joi.string().trim().max(100).required(),
   country: Joi.string().trim().max(100).required(),
 
