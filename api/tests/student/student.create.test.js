@@ -152,6 +152,8 @@ after(async () => {
   await teardownSeed();
 });
 
+const endpoint = "/api/students"
+
 // MY TESTS
 // ========
 describe('POST /api/students', () => {
@@ -159,7 +161,7 @@ describe('POST /api/students', () => {
     const body = validBody();
 
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -185,12 +187,13 @@ describe('POST /api/students', () => {
     const body = validBody({
       middle_name: undefined,
       phone: undefined,
+      address: undefined,
       photo_url: undefined,
       notes: undefined,
     });
 
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -198,6 +201,7 @@ describe('POST /api/students', () => {
     const { student } = res.body.data;
     assert.equal(student.middle_name, null);
     assert.equal(student.phone, null);
+    assert.equal(student.address, null);
     assert.equal(student.photo_url, null);
     assert.equal(student.notes, null);
   });
@@ -213,7 +217,7 @@ describe('POST /api/students', () => {
       });
 
       const res = await request(app)
-        .post('/api/students')
+        .post(endpoint)
         .send(body);
 
       assert.equal(
@@ -226,11 +230,11 @@ describe('POST /api/students', () => {
 
   it('returns 409 EMAIL_DUPLICATE when email already exists', async () => {
     await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody());
 
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({
         national_id: 'TR-99887766554',
       }));
@@ -241,11 +245,11 @@ describe('POST /api/students', () => {
 
   it('returns 409 STUDENT_NATIONAL_ID_DUPLICATE when national_id already exists', async () => {
     await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody());
 
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({
         email: 'another.student@studentcases.edu.tr',
       }));
@@ -256,7 +260,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send({});
 
     assert.equal(res.status, 422);
@@ -274,7 +278,6 @@ describe('POST /api/students', () => {
       'gender',
       'national_id',
       'email',
-      'address',
       'city',
       'country',
       'department',
@@ -288,7 +291,7 @@ describe('POST /api/students', () => {
       delete body[field];
 
       const res = await request(app)
-        .post('/api/students')
+        .post(endpoint)
         .send(body);
 
       assert.equal(
@@ -303,7 +306,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 for an invalid email format', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({ email: 'not-an-email' }));
 
     assert.equal(res.status, 422);
@@ -314,7 +317,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 for an invalid phone format', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({ phone: '05551234567' }));
 
     assert.equal(res.status, 422);
@@ -325,7 +328,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 for an invalid gender value', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({ gender: 'other' }));
 
     assert.equal(res.status, 422);
@@ -336,7 +339,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 when academy_id is not a valid UUID', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({ academy_id: 'not-a-uuid' }));
 
     assert.equal(res.status, 422);
@@ -347,7 +350,7 @@ describe('POST /api/students', () => {
 
   it('returns 422 when actual_study_duration_in_years is out of range', async () => {
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody({ actual_study_duration_in_years: 0 }));
 
     assert.equal(res.status, 422);
@@ -360,7 +363,7 @@ describe('POST /api/students', () => {
     sinon.stub(db, 'query').rejects(new Error('DB connection lost'));
 
     const res = await request(app)
-      .post('/api/students')
+      .post(endpoint)
       .send(validBody());
 
     assert.equal(res.status, 500);

@@ -160,7 +160,7 @@ const insertStudentToDB = async ({
       gender,
       national_id,
       phone ?? null,
-      address,
+      address ?? null,
       country,
       city,
       department,
