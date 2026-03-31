@@ -1,4 +1,4 @@
-import 'package:app/components/app_layout.dart';
+import 'package:app/components/layouts/app_layout.dart';
 import 'package:flutter/material.dart';
 
 class ScanResultPage extends StatelessWidget {
