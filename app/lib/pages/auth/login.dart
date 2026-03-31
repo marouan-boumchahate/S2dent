@@ -1,7 +1,6 @@
-import 'package:app/components/app_layout.dart';
-import 'package:app/components/buttons/custom_backbutton.dart';
 import 'package:app/components/buttons/primary_button.dart';
 import 'package:app/components/buttons/secondary_button.dart';
+import 'package:app/components/layouts/auth_layout.dart';
 
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/auth/verify_email.dart';
@@ -32,29 +31,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final icon = Theme.brightnessOf(context) == Brightness.dark
         ? "assets/password.png"
         : "assets/password_light.png";
-    return AppLayout(
-        child: Stack(
+    return AuthLayout(
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _headerSection(context, icon),
-                  _bottomSection(context)
-                ],
-              ),
-            ),
-          ),
-        ),
-        CustomBackButton(),
+        _headerSection(context, icon),
+        _actions(context),
       ],
-    ));
+    );
   }
 
-  Column _bottomSection(BuildContext context) {
+  Column _actions(BuildContext context) {
     return Column(
       children: [
         PrimaryButton(
@@ -111,32 +96,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               color: context.colors.onSurface.withAlpha(200),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.colors.surfaceContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.colors.primary),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: context.colors.primary),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        "Unverified students cannot sign in until they verify their identity",
-                        overflow: TextOverflow.clip,
-                      ),
-                    ),
-                  ),
-                ],
+          _infoBox(context),
+        ],
+      ),
+    );
+  }
+
+  Padding _infoBox(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.colors.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.colors.primary),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: context.colors.primary),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  "Unverified students cannot sign in until they verify their identity",
+                  overflow: TextOverflow.clip,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

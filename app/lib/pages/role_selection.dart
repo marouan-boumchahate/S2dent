@@ -1,4 +1,4 @@
-import 'package:app/components/app_layout.dart';
+import 'package:app/components/layouts/app_layout.dart';
 import 'package:app/components/decorations/document_container.dart';
 import 'package:app/components/buttons/identity_button.dart';
 import 'package:app/components/buttons/primary_button.dart';
