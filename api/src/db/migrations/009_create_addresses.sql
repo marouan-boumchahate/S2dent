@@ -1,6 +1,9 @@
 CREATE TABLE IF NOT EXISTS addresses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    academy_id UUID NULL REFERENCES academies(id) ON DELETE RESTRICT,
+    user_id UUID NULL REFERENCES tusers(id) ON DELETE RESTRICT,
+
     address_line1 VARCHAR(255),
     address_line2 VARCHAR(255),
     street VARCHAR(255),
@@ -12,7 +15,14 @@ CREATE TABLE IF NOT EXISTS addresses (
     country VARCHAR(100) NOT NULL,
 
     latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8)
+    longitude DECIMAL(11, 8),
+
+    CONSTRAINT chk_only_one_fk CHECK (
+        (academy_id IS NOT NULL AND user_id IS NULL)
+        OR
+        (academy_id IS NULL AND user_id IS NOT NULL)
+    )
+
 );
 
 CREATE INDEX IF NOT EXISTS idx_addresses_city ON addresses(city);

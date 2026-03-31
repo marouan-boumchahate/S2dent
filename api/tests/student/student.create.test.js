@@ -4,43 +4,35 @@ import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
 
-// MY SETUP
-// ========
 const SEED_EMAIL = 'seed.student@seed.internal';
 const SEED_WALLET = '0xcccccccccccccccccccccccccccccccccccccccc';
-const SEED_ACADEMY_NUMBER = 'ACD_0224026';
+const SEED_ACADEMY_NUMBER = 'ACD_STU_0001';
 
 let ACADEMY_ID;
+let DEPARTMENT_ID;
+let TUSER_ID;
 
 const seedAcademy = async () => {
-  await db.query(`
-    DELETE FROM students
-    WHERE academy_id IN (
-      SELECT academies.id
-      FROM academies
-      JOIN users ON academies.user_id = users.id
-      WHERE users.email = $1
-    )
-  `, [SEED_EMAIL]);
-
-  await db.query(`
-    DELETE FROM students
-    USING users
-    WHERE students.user_id = users.id
-      AND users.email = $1
-  `, [SEED_EMAIL]);
-
-  await db.query(`
-    DELETE FROM academies
-    USING users
-    WHERE academies.user_id = users.id
-      AND users.email = $1
-  `, [SEED_EMAIL]);
-
   await db.query(
-    `DELETE FROM users WHERE email = $1`,
+    `DELETE FROM departments
+     WHERE academy_id IN (
+       SELECT academies.id
+       FROM academies
+       JOIN users ON academies.user_id = users.id
+       WHERE users.email = $1
+     )`,
     [SEED_EMAIL],
   );
+
+  await db.query(
+    `DELETE FROM academies
+     USING users
+     WHERE academies.user_id = users.id
+       AND users.email = $1`,
+    [SEED_EMAIL],
+  );
+
+  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
 
   const { rows: [user] } = await db.query(
     `INSERT INTO users (email, wallet_address, role)
@@ -51,7 +43,7 @@ const seedAcademy = async () => {
 
   const { rows: [academy] } = await db.query(
     `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-     VALUES ($1, $2, 'Seed Student University', 'SSU', 'university', 'Turkey', 'Istanbul')
+     VALUES ($1, $2, 'Seed Student Academy', 'SSA', 'university', 'Turkey', 'Istanbul')
      RETURNING id`,
     [user.id, SEED_ACADEMY_NUMBER],
   );
@@ -59,92 +51,88 @@ const seedAcademy = async () => {
   return academy.id;
 };
 
-const validBody = (overrides = {}) => ({
-  academy_id: ACADEMY_ID,
-  first_name: 'Marouan',
-  middle_name: 'Santetu',
-  last_name: 'Boumchahate',
-  date_of_birth: '2004-01-15',
-  gender: 'male',
-  national_id: 'TR-12345678901',
-  email: 'marouan.boumchahate@studentcases.edu.tr',
-  phone: '+905551234567',
-  address: 'Kadikoy Istanbul',
-  city: 'Istanbul',
-  country: 'Turkey',
-  department: 'Computer Engineering',
-  faculty: 'Engineering',
-  current_level: '4th Year',
-  actual_study_duration_in_years: 4,
-  actual_graduation_date: '2028-06-30',
-  photo_url: 'https://example.com/student-photo.png',
-  notes: 'Scholarship student',
-  ...overrides,
-});
+const seedDepartment = async (academyId) => {
+  const { rows: [department] } = await db.query(
+    `INSERT INTO departments (academy_id, code, name, faculty, total_years)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [academyId, 'CENG', 'Computer Engineering', 'Engineering', 4],
+  );
+
+  return department.id;
+};
+
+const seedTUser = async () => {
+  const { rows: [u] } = await db.query(
+    `INSERT INTO tusers (
+      first_name, middle_name, last_name, full_name,
+      date_of_birth, gender, national_id, email, phone, photo_url, notes
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id`,
+    [
+      'Student',
+      'Cases',
+      'Test',
+      'Student Cases Test',
+      '2004-01-15',
+      'male',
+      'STU-NID-001',
+      'student.001@studentcases.test',
+      '+905551234567',
+      null,
+      null,
+    ],
+  );
+
+  return u.id;
+};
 
 const cleanupStudents = async () => {
-  await db.query(`
-    DELETE FROM students
-    USING users
-    WHERE students.user_id = users.id
-      AND (
-        users.email LIKE '%@fenerbahce.edu.tr'
-        OR users.email LIKE '%@student.test'
-        OR users.email LIKE '%@studentcases.edu.tr'
-        OR users.email LIKE '%@test%'
-      )
-  `);
-
-  await db.query(`
-    DELETE FROM users
-    WHERE (
-      email LIKE '%@studentcases.edu.tr'
-      OR email LIKE '%@test%'
-    )
-  `);
+  await db.query(
+    `DELETE FROM students
+     WHERE user_id IN (
+       SELECT id FROM tusers WHERE email LIKE '%@studentcases.test'
+     )`,
+  );
+  await db.query(`DELETE FROM tusers WHERE email LIKE '%@studentcases.test'`);
 };
 
 const teardownSeed = async () => {
-  await db.query(`
-    DELETE FROM students
-    WHERE academy_id IN (
-      SELECT academies.id
-      FROM academies
-      JOIN users ON academies.user_id = users.id
-      WHERE users.email = $1
-    )
-  `, [SEED_EMAIL]);
-
-  await db.query(`
-    DELETE FROM students
-    USING users
-    WHERE students.user_id = users.id
-      AND users.email = $1
-  `, [SEED_EMAIL]);
-
-  await db.query(`
-    DELETE FROM academies
-    USING users
-    WHERE academies.user_id = users.id
-      AND users.email = $1
-  `, [SEED_EMAIL]);
-
   await db.query(
-    `DELETE FROM users WHERE email = $1`,
+    `DELETE FROM departments
+     WHERE academy_id IN (
+       SELECT academies.id
+       FROM academies
+       JOIN users ON academies.user_id = users.id
+       WHERE users.email = $1
+     )`,
     [SEED_EMAIL],
   );
+
+  await db.query(
+    `DELETE FROM academies
+     USING users
+     WHERE academies.user_id = users.id
+       AND users.email = $1`,
+    [SEED_EMAIL],
+  );
+
+  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
 };
 
 before(async () => {
-    ACADEMY_ID = await seedAcademy()
+  ACADEMY_ID = await seedAcademy();
+  DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
 });
 
 beforeEach(async () => {
-    await cleanupStudents()
+  await cleanupStudents();
+  TUSER_ID = await seedTUser();
 });
 
 afterEach(async () => {
-    sinon.restore()
+  sinon.restore();
 });
 
 after(async () => {
@@ -154,11 +142,23 @@ after(async () => {
 
 const endpoint = "/api/students"
 
-// MY TESTS
-// ========
 describe('POST /api/students', () => {
+  const formatLocalDateOnly = (isoStringOrDate) => {
+    const d = new Date(isoStringOrDate);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   it('returns 201 and the student DTO on valid input', async () => {
-    const body = validBody();
+    const body = {
+      user_id: TUSER_ID,
+      academy_id: ACADEMY_ID,
+      department_id: DEPARTMENT_ID,
+      current_level: '4th Year',
+      actual_graduation_date: '2028-06-30',
+    };
 
     const res = await request(app)
       .post(endpoint)
@@ -171,91 +171,33 @@ describe('POST /api/students', () => {
     const { student } = res.body.data;
 
     assert.ok(student.id);
-    assert.equal(student.first_name, body.first_name);
-    assert.equal(student.middle_name, body.middle_name);
-    assert.equal(student.last_name, body.last_name);
-    assert.equal(student.gender, body.gender);
-    assert.equal(student.national_id, body.national_id);
-    assert.equal(student.email, body.email);
-    assert.equal(student.academy_id, body.academy_id);
-
     assert.ok(student.student_number);
     assert.match(student.student_number, /^STU_\d{6}\d+$/);
+    assert.equal(student.current_level, body.current_level);
+    assert.equal(student.enrollment_status, 'active');
+
+    assert.equal(student.department_code, 'CENG');
+    assert.equal(student.department_name, 'Computer Engineering');
+
+    assert.ok(student.enrollment_date);
+    assert.ok(student.expected_graduation_date);
+    assert.equal(formatLocalDateOnly(student.actual_graduation_date), body.actual_graduation_date);
   });
 
-  it('stores nullable optional fields as null when not provided', async () => {
-    const body = validBody({
-      middle_name: undefined,
-      phone: undefined,
-      address: undefined,
-      photo_url: undefined,
-      notes: undefined,
-    });
+  it('stores actual_graduation_date as null when not provided', async () => {
+    const body = {
+      user_id: TUSER_ID,
+      academy_id: ACADEMY_ID,
+      department_id: DEPARTMENT_ID,
+      current_level: '1st Year',
+    };
 
     const res = await request(app)
       .post(endpoint)
       .send(body);
 
     assert.equal(res.status, 201);
-
-    const { student } = res.body.data;
-    assert.equal(student.middle_name, null);
-    assert.equal(student.phone, null);
-    assert.equal(student.address, null);
-    assert.equal(student.photo_url, null);
-    assert.equal(student.notes, null);
-  });
-
-  it('accepts every valid gender value without error', async () => {
-    const GENDER_TYPES = ['male', 'female'];
-
-    for (const [index, gender] of GENDER_TYPES.entries()) {
-      const body = validBody({
-        email: `student.gender.${index}@studentcases.edu.tr`,
-        national_id: `TR-00000000${index + 10}`,
-        gender,
-      });
-
-      const res = await request(app)
-        .post(endpoint)
-        .send(body);
-
-      assert.equal(
-        res.status, 201,
-        `Expected 201 for gender "${gender}", got ${res.status}`,
-      );
-      assert.equal(res.body.data.student.gender, gender);
-    }
-  });
-
-  it('returns 409 EMAIL_DUPLICATE when email already exists', async () => {
-    await request(app)
-      .post(endpoint)
-      .send(validBody());
-
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({
-        national_id: 'TR-99887766554',
-      }));
-
-    assert.equal(res.status, 409);
-    assert.equal(res.body.code, 'EMAIL_DUPLICATE');
-  });
-
-  it('returns 409 STUDENT_NATIONAL_ID_DUPLICATE when national_id already exists', async () => {
-    await request(app)
-      .post(endpoint)
-      .send(validBody());
-
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({
-        email: 'another.student@studentcases.edu.tr',
-      }));
-
-    assert.equal(res.status, 409);
-    assert.equal(res.body.code, 'STUDENT_NATIONAL_ID_DUPLICATE');
+    assert.equal(res.body.data.student.actual_graduation_date, null);
   });
 
   it('returns 422 when body is empty', async () => {
@@ -271,23 +213,20 @@ describe('POST /api/students', () => {
 
   it('returns 422 when each required field is missing', async () => {
     const requiredFields = [
+      'user_id',
       'academy_id',
-      'first_name',
-      'last_name',
-      'date_of_birth',
-      'gender',
-      'national_id',
-      'email',
-      'city',
-      'country',
-      'department',
-      'faculty',
+      'department_id',
       'current_level',
-      'actual_study_duration_in_years',
     ];
 
     for (const field of requiredFields) {
-      const body = validBody();
+      const body = {
+        user_id: TUSER_ID,
+        academy_id: ACADEMY_ID,
+        department_id: DEPARTMENT_ID,
+        current_level: '2nd Year',
+        actual_graduation_date: '2029-06-30',
+      };
       delete body[field];
 
       const res = await request(app)
@@ -304,43 +243,31 @@ describe('POST /api/students', () => {
     }
   });
 
-  it('returns 422 for an invalid email format', async () => {
+  it('returns 422 when user_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
-      .send(validBody({ email: 'not-an-email' }));
+      .send({
+        user_id: 'not-a-uuid',
+        academy_id: ACADEMY_ID,
+        department_id: DEPARTMENT_ID,
+        current_level: '2nd Year',
+      });
 
     assert.equal(res.status, 422);
 
-    const field = res.body.errors.find((e) => e.field === 'email');
-    assert.ok(field, 'errors should contain an email entry');
-  });
-
-  it('returns 422 for an invalid phone format', async () => {
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({ phone: '05551234567' }));
-
-    assert.equal(res.status, 422);
-
-    const field = res.body.errors.find((e) => e.field === 'phone');
-    assert.ok(field, 'errors should contain a phone entry');
-  });
-
-  it('returns 422 for an invalid gender value', async () => {
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({ gender: 'other' }));
-
-    assert.equal(res.status, 422);
-
-    const field = res.body.errors.find((e) => e.field === 'gender');
-    assert.ok(field, 'errors should contain a gender entry');
+    const field = res.body.errors.find((e) => e.field === 'user_id');
+    assert.ok(field, 'errors should contain a user_id entry');
   });
 
   it('returns 422 when academy_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
-      .send(validBody({ academy_id: 'not-a-uuid' }));
+      .send({
+        user_id: TUSER_ID,
+        academy_id: 'not-a-uuid',
+        department_id: DEPARTMENT_ID,
+        current_level: '2nd Year',
+      });
 
     assert.equal(res.status, 422);
 
@@ -348,15 +275,37 @@ describe('POST /api/students', () => {
     assert.ok(field, 'errors should contain an academy_id entry');
   });
 
-  it('returns 422 when actual_study_duration_in_years is out of range', async () => {
+  it('returns 422 when department_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
-      .send(validBody({ actual_study_duration_in_years: 0 }));
+      .send({
+        user_id: TUSER_ID,
+        academy_id: ACADEMY_ID,
+        department_id: 'not-a-uuid',
+        current_level: '2nd Year',
+      });
 
     assert.equal(res.status, 422);
 
-    const field = res.body.errors.find((e) => e.field === 'actual_study_duration_in_years');
-    assert.ok(field, 'errors should contain an actual_study_duration_in_years entry');
+    const field = res.body.errors.find((e) => e.field === 'department_id');
+    assert.ok(field, 'errors should contain a department_id entry');
+  });
+
+  it('returns 422 when actual_graduation_date is invalid', async () => {
+    const res = await request(app)
+      .post(endpoint)
+      .send({
+        user_id: TUSER_ID,
+        academy_id: ACADEMY_ID,
+        department_id: DEPARTMENT_ID,
+        current_level: '2nd Year',
+        actual_graduation_date: 'not-a-date',
+      });
+
+    assert.equal(res.status, 422);
+
+    const field = res.body.errors.find((e) => e.field === 'actual_graduation_date');
+    assert.ok(field, 'errors should contain an actual_graduation_date entry');
   });
 
   it('returns 500 when the database throws unexpectedly', async () => {
@@ -364,7 +313,12 @@ describe('POST /api/students', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .send(validBody());
+      .send({
+        user_id: TUSER_ID,
+        academy_id: ACADEMY_ID,
+        department_id: DEPARTMENT_ID,
+        current_level: '4th Year',
+      });
 
     assert.equal(res.status, 500);
     assert.equal(res.body.success, false);

@@ -8,6 +8,7 @@ const endpoint = '/api/addresses';
 
 const cleanupAddresses = async () => {
   await db.query('DELETE FROM addresses');
+  await db.query(`DELETE FROM tusers WHERE email LIKE '%@addresscases.test'`);
 };
 
 const validBody = (overrides = {}) => ({
@@ -24,8 +25,41 @@ const validBody = (overrides = {}) => ({
   ...overrides,
 });
 
+const seedTUser = async () => {
+  const { rows: [u] } = await db.query(
+    `INSERT INTO tusers (
+      first_name, middle_name, last_name, full_name,
+      date_of_birth, gender, national_id, email, phone, photo_url, notes
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id`,
+    [
+      'Address',
+      'Cases',
+      'Test',
+      'Address Cases Test',
+      '2000-01-15',
+      'male',
+      'ADDR-TEST-001',
+      'address.001@addresscases.test',
+      '+905551234567',
+      null,
+      null,
+    ],
+  );
+  return u.id;
+};
+
+let USER_ID;
+
+before(async () => {
+  await cleanupAddresses();
+  USER_ID = await seedTUser();
+});
+
 beforeEach(async () => {
   await cleanupAddresses();
+  USER_ID = await seedTUser();
 });
 
 afterEach(async () => {
@@ -34,7 +68,7 @@ afterEach(async () => {
 
 describe('POST /api/addresses', () => {
   it('returns 201 and the address DTO on valid input', async () => {
-    const body = validBody();
+    const body = validBody({ user_id: USER_ID });
 
     const res = await request(app)
       .post(endpoint)
@@ -61,6 +95,7 @@ describe('POST /api/addresses', () => {
 
   it('stores nullable optional fields as null when not provided', async () => {
     const body = validBody({
+      user_id: USER_ID,
       address_line1: undefined,
       address_line2: undefined,
       street: undefined,
@@ -162,7 +197,7 @@ describe('POST /api/addresses', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .send(validBody());
+      .send(validBody({ user_id: USER_ID }));
 
     assert.equal(res.status, 500);
     assert.equal(res.body.success, false);
