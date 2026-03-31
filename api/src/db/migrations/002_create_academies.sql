@@ -13,7 +13,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS academies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
+
     user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
     academy_number VARCHAR(20) UNIQUE NOT NULL,

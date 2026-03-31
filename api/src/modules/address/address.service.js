@@ -1,6 +1,8 @@
 import db from '../../config/db.js';
 
 const insertAddressToDB = async ({
+  user_id,
+  academy_id,
   address_line1,
   address_line2,
   street,
@@ -10,10 +12,12 @@ const insertAddressToDB = async ({
   city,
   country,
   latitude,
-  longitude,
+  longitude
 }) => {
   const { rows: [address] } = await db.query(
     `INSERT INTO addresses (
+      user_id,
+      academy_id,
       address_line1,
       address_line2,
       street,
@@ -26,10 +30,12 @@ const insertAddressToDB = async ({
       longitude
     )
     VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
     )
     RETURNING
       id,
+      user_id,
+      academy_id,
       address_line1,
       address_line2,
       street,
@@ -41,6 +47,8 @@ const insertAddressToDB = async ({
       latitude,
       longitude`,
     [
+      user_id ?? null,
+      academy_id ?? null,
       address_line1 ?? null,
       address_line2 ?? null,
       street ?? null,
@@ -58,9 +66,10 @@ const insertAddressToDB = async ({
 };
 
 const createAddressService = async (payload) => {
-  const {
-    rows: [address],
-  } = await insertAddressToDB(payload);
+  const { rows: [address] } = await insertAddressToDB({ ...payload });
+
+  if (address.user_id) payload.user_id = address.user_id;
+  if (address.academy_id) payload.academy_id = address.academy_id;
 
   return {
     address: {
@@ -74,8 +83,8 @@ const createAddressService = async (payload) => {
       city: address.city,
       country: address.country,
       latitude: address.latitude,
-      longitude: address.longitude,
-    },
+      longitude: address.longitude
+    }
   };
 };
 

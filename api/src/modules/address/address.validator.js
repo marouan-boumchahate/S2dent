@@ -1,6 +1,8 @@
 import Joi from 'joi';
 
 const createAddressSchema = Joi.object({
+  user_id: Joi.string().uuid().optional(),
+  academy_id: Joi.string().uuid().optional(),
   address_line1: Joi.string().trim().max(255).optional(),
   address_line2: Joi.string().trim().max(255).optional(),
   street: Joi.string().trim().max(255).optional(),
