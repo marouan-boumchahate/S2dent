@@ -1,0 +1,369 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidNumber",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidString",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "academies",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "academyId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "shortName",
+          "type": "string"
+        },
+        {
+          "internalType": "enum AcademyIdentity.AcademyType",
+          "name": "academyType",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "website",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "logoUrl",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "email",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "phone",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "legalName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "registrationNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "taxId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "billingEmail",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "addressLine1",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "addressLine2",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "street",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "district",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "state",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "postalCode",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "city",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "country",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "latitude",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "longitude",
+          "type": "string"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "fingerprint",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "certificatePem",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "chainPem",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "notBefore",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "notAfter",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "isNotRevoked",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "issuedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "revokedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "issuer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "revoker",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_walletAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "_academyNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_shortName",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_academyType",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "_description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_website",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_logoUrl",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_email",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_phone",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_legalName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_registrationNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_taxId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_billingEmail",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_addressLine1",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_addressLine2",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_street",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_district",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_state",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_postalCode",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_city",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_country",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_latitude",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_longitude",
+          "type": "string"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_fingerprint",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "_certificatePem",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_chainPem",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_notBefore",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_notAfter",
+          "type": "uint256"
+        }
+      ],
+      "name": "issueAcademyIdentity",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}
