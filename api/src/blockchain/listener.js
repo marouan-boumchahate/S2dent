@@ -3,24 +3,22 @@ import { sendEmail } from '../utils/email.js'
 import { emitToUser } from '../config/socket.js'
 
 const setTransactionStatus = async (txHash, status) => {
-    const { rows: [{ payload }] } = await db.query(
+    const { rows: [{ payload, records_to_delete }] } = await db.query(
         `UPDATE pending_transactions
             SET status = $1, updated_at = NOW()
             WHERE tx_hash = $2
-            RETURNING payload`,
+            RETURNING payload, records_to_delete`,
         [status, txHash]
     )
 
-    return { payload }
+    return { payload, records_to_delete }
 }
 
-const storeIssuanceInfo = async (txHash, payload) => {
-    await db.query(
-        `UPDATE users
-            SET is_identity_issued = true, identity_tx_hash = $1, wallet_address = $2
-            WHERE id = $3`,
-        [txHash, payload.wallet_address, payload.id]
-    )
+const deleteRecords = async (recordsToDelete) => {
+    for (const record of recordsToDelete) {
+        console.log("=> I'm deleting: ", record)
+        await db.query(`DELETE FROM ${record.table} WHERE id = $1`, [record.id])
+    }
 }
 
 const successMessage = (email) => {
@@ -45,8 +43,8 @@ const notifyUser = async (payload, func) => {
 export const listenOnTransaction = (tx) => {
     tx.wait(1) // I'll wait for 3 confirmations in the production environment
         .then(async (receipt) => {
-            const { payload } = await setTransactionStatus(tx.hash, 'confirmed')
-            await storeIssuanceInfo(tx.hash, payload)
+            const { payload, records_to_delete } = await setTransactionStatus(tx.hash, 'confirmed')
+            await deleteRecords(records_to_delete.records)
 
             emitToUser(payload.wallet_address, 'identity:confirmed', {
                 tx_hash: tx.hash,
@@ -63,5 +61,7 @@ export const listenOnTransaction = (tx) => {
                 reason: err.message
             })
             await notifyUser(payload, failedMessage)
+
+            console.log(`\n\n=> ${err.message} <=`)
         })
 }

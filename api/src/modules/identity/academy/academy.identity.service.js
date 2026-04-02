@@ -4,52 +4,29 @@ import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
 import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
 
+// academy_type enum order must match AcademyIdentity.AcademyType (uint8).
+const ACADEMY_TYPE_TO_UINT8 = {
+    university: 0,
+    college: 1,
+    school: 2,
+    institute: 3,
+    online_platform: 4,
+    other: 5,
+}
 
-const ensureAcademyCanBeIssued = async (wallet_address) => {
-    const { rows: [user] } = await db.query(
-        `SELECT id, role, is_identity_issued, email
-        FROM users
-        WHERE wallet_address = $1
-        LIMIT 1`,
+const getAcademyByWallet = async (wallet_address) => {
+    const { rows: [academy] } = await db.query(
+        `SELECT id, wallet_address, academy_number, name, short_name, type,
+                description, website, logo_url, email, phone,
+                legal_name, registration_number, tax_id, billing_email
+         FROM academies
+         WHERE wallet_address = $1
+         LIMIT 1`,
         [wallet_address],
     )
 
-    if (!user) {
-        const err = new Error('User not found')
-        err.statusCode = 404
-        err.code = 'USER_NOT_FOUND'
-        throw err
-    }
-
-    if (user.role !== 'academy_admin') {
-        const err = new Error('Only academy admins can issue an academy identity')
-        err.statusCode = 403
-        err.code = 'FORBIDDEN'
-        throw err
-    }
-
-    if (user.is_identity_issued) {
-        const err = new Error('Identity has already been issued for this academy')
-        err.statusCode = 409
-        err.code = 'IDENTITY_ALREADY_ISSUED'
-        throw err
-    }
-
-    return user;
-}
-
-const getAcademy = async (userId) => {
-    const { rows: [academy] } = await db.query(
-        `SELECT a.academy_number, a.name, a.short_name, a.country
-            FROM academies a
-            JOIN users u ON u.id = a.user_id
-            WHERE u.id = $1
-            LIMIT 1`,
-        [userId],
-    )
-
     if (!academy) {
-        const err = new Error('Academy not found for user')
+        const err = new Error('Academy not found for wallet address')
         err.statusCode = 404
         err.code = 'ACADEMY_NOT_FOUND'
         throw err
@@ -58,18 +35,45 @@ const getAcademy = async (userId) => {
     return academy
 }
 
-const saveTransaction = async (txHash, user, wallet_address) => {
-    const payload = JSON.stringify({ 
-        id: user.id, 
-        wallet_address, 
-        email: user.email 
-    })
+const getAcademyAddress = async (academyId) => {
+    const { rows: [address] } = await db.query(
+        `SELECT *
+         FROM addresses
+         WHERE academy_id = $1
+         LIMIT 1`,
+        [academyId],
+    )
+
+    if (!address) {
+        const err = new Error('Academy address not found')
+        err.statusCode = 409
+        err.code = 'ACADEMY_ADDRESS_REQUIRED'
+        throw err
+    }
+
+    return address
+}
+
+const saveTransaction = async (txHash, payloadObj, recordsToDeleteObj) => {
+    const payload = JSON.stringify(payloadObj)
 
     await db.query(
-        `INSERT INTO pending_transactions (tx_hash, payload)
-         VALUES ($1, $2)`,
-        [txHash, payload]
+        `INSERT INTO pending_transactions (tx_hash, payload, records_to_delete)
+         VALUES ($1, $2, $3)`,
+        [txHash, payload, recordsToDeleteObj]
     )
+}
+
+const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
+    const { rows: [{ id }] } = await db.query(
+        `INSERT INTO identity_certificates
+            (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        RETURNING id;`,
+        [walletAddress, certPem, chainPem, fingerprintHex]
+    )
+
+    return id
 }
 
 const getCertificate = async (
@@ -95,27 +99,11 @@ const getCertificate = async (
     return certificate
 }
 
-const saveCertificate = async (
-    walletAddress,
-    certPem,
-    chainPem,
-    fingerprint,
-) => {
-    await db.query(
-        `INSERT INTO identity_certificates 
-            (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
-        VALUES ($1, $2, $3, $4, NOW())`,
-        [walletAddress, certPem, chainPem, fingerprint]
-    )
-}
-
-
 export const issueAcademyIdentity = async ({ wallet_address }) => {
     const normalizedWallet = wallet_address.toLowerCase()
 
-    const user = await ensureAcademyCanBeIssued(normalizedWallet)
-    
-    const academy = await getAcademy(user.id)
+    const academy = await getAcademyByWallet(normalizedWallet)
+    const address = await getAcademyAddress(academy.id)
 
     const {
         fingerprint,
@@ -130,21 +118,59 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         academy.short_name
     )
 
-    const tx = await issueAcademy(
-        normalizedWallet,
-        academy.academy_number,
-        academy.name,
-        academy.short_name,
-        academy.country,
+    const tx = await issueAcademy({
+        walletAddress: normalizedWallet,
+        academyNumber: academy.academy_number,
+        name: academy.name,
+        shortName: academy.short_name,
+        academyType: ACADEMY_TYPE_TO_UINT8[academy.type],
+        description: academy.description ?? '',
+        website: academy.website ?? '',
+        logoUrl: academy.logo_url ?? '',
+        email: academy.email,
+        phone: academy.phone ?? '',
+        legalName: academy.legal_name,
+        registrationNumber: academy.registration_number,
+        taxId: academy.tax_id,
+        billingEmail: academy.billing_email ?? '',
+        addressLine1: address.address_line1 ?? '',
+        addressLine2: address.address_line2 ?? '',
+        street: address.street ?? '',
+        district: address.district ?? '',
+        state: address.state ?? '',
+        postalCode: address.postal_code ?? '',
+        city: address.city,
+        country: address.country,
+        latitude: address.latitude != null ? String(address.latitude) : '',
+        longitude: address.longitude != null ? String(address.longitude) : '',
         fingerprint,
+        certificatePem,
+        chainPem,
         notBefore,
-        notAfter
-    )
+        notAfter,
+    })
 
-    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
-    await saveTransaction(tx.hash, user, normalizedWallet)
+    const certificate_id = await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
 
-    listenOnTransaction(tx) // works at the background, no need to await
+    // Saving Transaction Information
+    const payload = {
+        wallet_address: normalizedWallet,
+        academy_number: academy.academy_number,
+        name: academy.name,
+        short_name: academy.short_name,
+        email: academy.email,
+        certificate_fingerprint: fingerprint,
+    }
+    const recordsToDelete = {
+        records: [
+            {table: "addresses", id: address.id},
+            {table: "academies", id: academy.id},
+            {table: "identity_certificates", id: certificate_id}
+        ]
+    }
+    await saveTransaction(tx.hash, payload, recordsToDelete)
+
+    listenOnTransaction(tx)
 
     return {
         blockchain_transaction: {

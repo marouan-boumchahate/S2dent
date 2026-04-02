@@ -12,24 +12,35 @@ const ACADEMY_TYPES = [
 const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
 const createAcademySchema = Joi.object({
-    email: Joi.string().email().lowercase().trim().required(),
-    name: Joi.string().trim().min(3).max(255).required(),
-    short_name: Joi.string().trim().max(50).required(),
-    type: Joi.string().valid(...ACADEMY_TYPES).required()
-        .messages({
-            'any.only': `type must be one of: ${ACADEMY_TYPES.join(', ')}`,
-        }),
-    country: Joi.string().trim().max(100).required(),
-    city: Joi.string().trim().max(100).required(),
-    address: Joi.string().trim().optional(),
-    website: Joi.string().uri().trim().optional()
-        .messages({
-        'string.uri': 'website must be a valid URL (e.g. https://university.edu)',
-        }),
-    wallet_address: Joi.string().pattern(ETH_ADDRESS).required()
-        .messages({
-            'string.pattern.base': 'wallet_address must be a valid Ethereum address (0x…)',
-        })
+  wallet_address: Joi.string().pattern(ETH_ADDRESS).required()
+    .messages({
+      'string.pattern.base': 'wallet_address must be a valid Ethereum address (0x…)',
+    }),
+
+  name: Joi.string().trim().min(3).max(255).required(),
+  short_name: Joi.string().trim().max(50).required(),
+  type: Joi.string().valid(...ACADEMY_TYPES).required()
+    .messages({
+      'any.only': `type must be one of: ${ACADEMY_TYPES.join(', ')}`,
+    }),
+
+  description: Joi.string().trim().max(5000).optional(),
+  website: Joi.string().uri().trim().optional()
+    .messages({
+      'string.uri': 'website must be a valid URL (e.g. https://university.edu)',
+    }),
+  logo_url: Joi.string().uri().trim().optional()
+    .messages({
+      'string.uri': 'logo_url must be a valid URL',
+    }),
+
+  email: Joi.string().email().lowercase().trim().required(),
+  phone: Joi.string().trim().max(32).optional(),
+
+  legal_name: Joi.string().trim().max(255).required(),
+  registration_number: Joi.string().trim().max(100).required(),
+  tax_id: Joi.string().trim().max(100).required(),
+  billing_email: Joi.string().email().lowercase().trim().optional(),
 });
 
 export { createAcademySchema };

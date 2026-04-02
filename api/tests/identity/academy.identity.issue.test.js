@@ -9,7 +9,8 @@ const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
 const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 
 const FAKE_CERT = {
-    fingerprint: 'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD',
+    fingerprint:
+        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     certificatePem: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
     chainPem: '-----BEGIN CERTIFICATE-----\nFAKECHAIN\n-----END CERTIFICATE-----',
     notBefore: '2024-01-01T00:00:00.000Z',
@@ -48,13 +49,37 @@ const seedAcademyUser = async ({
     );
     const SEED_ACADEMY_NUMBER = `ACD_${String(nextval).padStart(7, '0')}`;
 
-    await db.query(
-        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-             VALUES ($1, $2, $3, $4, 'university', $5, 'Istanbul')`,
-        [user.id, SEED_ACADEMY_NUMBER, academy_name, short_name, country],
+    const academyEmail = `academy-${nextval}@fenerbahce.edu.tr`;
+    const legalName = `${academy_name} Legal ${nextval}`;
+    const registrationNumber = `REG-${nextval}`;
+    const taxId = `TAX-${nextval}`;
+
+    const { rows: [academy] } = await db.query(
+        `INSERT INTO academies (
+            wallet_address, academy_number, name, short_name, type,
+            email, legal_name, registration_number, tax_id
+         )
+         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8)
+         RETURNING id`,
+        [
+            wallet_address,
+            SEED_ACADEMY_NUMBER,
+            academy_name,
+            short_name,
+            academyEmail,
+            legalName,
+            registrationNumber,
+            taxId,
+        ],
     );
 
-    return user;
+    await db.query(
+        `INSERT INTO addresses (academy_id, city, country)
+         VALUES ($1, 'Istanbul', $2)`,
+        [academy.id, country],
+    );
+
+    return { user, academy };
 };
 
 const cleanupDB = async () => {
@@ -69,14 +94,16 @@ const cleanupDB = async () => {
     `, [WALLET_ADDRESS]);
 
     await db.query(`
+        DELETE FROM addresses
+        WHERE academy_id IN (
+            SELECT id FROM academies WHERE wallet_address = $1
+        )
+    `, [WALLET_ADDRESS]);
+
+    await db.query(`
         DELETE FROM academies
-        USING users
-        WHERE academies.user_id = users.id
-            AND (
-                users.email LIKE '%@fenerbahce%'
-                OR users.email LIKE '%@test-identity%'
-            )
-    `);
+        WHERE wallet_address = $1
+    `, [WALLET_ADDRESS]);
     await db.query(`
         DELETE FROM users
         WHERE email LIKE '%@fenerbahce%'
@@ -150,11 +177,11 @@ describe('POST /api/identity/academies/issue', () => {
             .send({ wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
-        assert.equal(calls[0][0], WALLET_ADDRESS);
+        assert.equal(calls[0][0].walletAddress, WALLET_ADDRESS);
     });
 
 
-    it('passes the correct 8 arguments to issueAcademyIdentity', async () => {
+    it('passes the correct payload to issueAcademyIdentity', async () => {
         await seedAcademyUser({
             academy_name: 'Fenerbahce University',
             short_name: 'FBU',
@@ -162,8 +189,8 @@ describe('POST /api/identity/academies/issue', () => {
 
         const calls = [];
         const app = await makeApp({
-            issueAcademyIdentity: async (wallet, academyNumber, name, shortName, country, fingerprint, notBefore, notAfter) => {
-                calls.push({ wallet, academyNumber, name, shortName, country, fingerprint, notBefore, notAfter });
+            issueAcademyIdentity: async (payload) => {
+                calls.push(payload);
                 return FAKE_TX;
             },
         });
@@ -175,11 +202,14 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(calls.length, 1);
 
         const call = calls[0];
-        assert.equal(call.wallet, WALLET_ADDRESS, 'wallet must be normalised');
+        assert.equal(call.walletAddress, WALLET_ADDRESS, 'wallet must be normalised');
         assert.match(call.academyNumber, /^ACD_[0-9]{7}$/, 'academyNumber must match ACD_ format');
         assert.equal(call.name, 'Fenerbahce University', 'academy name must match');
         assert.equal(call.shortName, 'FBU', 'short name must match');
         assert.equal(call.country, 'Turkey', 'country must be passed');
+        assert.equal(call.academyType, 0, 'university maps to uint8 0');
+        assert.equal(call.certificatePem, FAKE_CERT.certificatePem);
+        assert.equal(call.chainPem, FAKE_CERT.chainPem);
         assert.equal(call.fingerprint, FAKE_CERT.fingerprint, 'fingerprint must come from the certificate');
         assert.equal(call.notBefore, FAKE_CERT.notBefore, 'notBefore must come from the certificate');
         assert.equal(call.notAfter, FAKE_CERT.notAfter, 'notAfter must come from the certificate');
@@ -216,7 +246,7 @@ describe('POST /api/identity/academies/issue', () => {
 
 
     it('inserts a pending_transaction row after successful submission', async () => {
-        const user = await seedAcademyUser();
+        const { academy } = await seedAcademyUser();
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
@@ -232,7 +262,6 @@ describe('POST /api/identity/academies/issue', () => {
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
         assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
-        assert.equal(pending.payload.id, user.id);
         assert.ok(pending.payload.email, 'payload must contain email');
     });
 
@@ -257,7 +286,7 @@ describe('POST /api/identity/academies/issue', () => {
     });
 
     it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {
-        const user = await seedAcademyUser();
+        const { user } = await seedAcademyUser();
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
@@ -293,7 +322,7 @@ describe('POST /api/identity/academies/issue', () => {
     });
 
  
-    it('returns 404 USER_NOT_FOUND when wallet does not exist in DB', async () => {
+    it('returns 404 ACADEMY_NOT_FOUND when wallet has no academy row', async () => {
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -301,10 +330,10 @@ describe('POST /api/identity/academies/issue', () => {
             .send({ wallet_address: '0x0000000000000000000000000000000000000001' });
 
         assert.equal(res.status, 404);
-        assert.equal(res.body.code, 'USER_NOT_FOUND');
+        assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
     });
 
-    it('returns 403 FORBIDDEN when user role is not academy_admin', async () => {
+    it('returns 200 when user role is not academy_admin (route does not enforce role)', async () => {
         await seedAcademyUser({ role: 'professor' });
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
@@ -313,11 +342,10 @@ describe('POST /api/identity/academies/issue', () => {
             .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
-        assert.equal(res.status, 403);
-        assert.equal(res.body.code, 'FORBIDDEN');
+        assert.equal(res.status, 200);
     });
 
-    it('returns 409 IDENTITY_ALREADY_ISSUED when identity was already issued', async () => {
+    it('returns 200 when user.is_identity_issued is already true (not checked for academies)', async () => {
         await seedAcademyUser({ is_identity_issued: true });
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
@@ -326,8 +354,7 @@ describe('POST /api/identity/academies/issue', () => {
             .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
-        assert.equal(res.status, 409);
-        assert.equal(res.body.code, 'IDENTITY_ALREADY_ISSUED');
+        assert.equal(res.status, 200);
     });
 
     it('returns 404 ACADEMY_NOT_FOUND when user exists but has no academy row', async () => {
