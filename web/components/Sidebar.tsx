@@ -3,7 +3,7 @@ import SidebarItems from './sidebarItems';
 import { usePathname } from 'next/navigation';
 
 const Sidebar_ITEMS = [
-  { href: '/', label: 'Students', activeColor: 'bg-mint text-navy shadow-lg shadow-mint/20' },
+  { href: '/createStudent', label: 'Students', activeColor: 'bg-mint text-navy shadow-lg shadow-mint/20' },
   { href: '/createProfessor', label: 'Professors',  activeColor: 'bg-mint text-navy shadow-lg shadow-mint/20' },
 ];
 
