@@ -13,7 +13,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    user_id UUID UNIQUE NOT NULL REFERENCES tusers(id) ON DELETE RESTRICT,
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     academy_id UUID NOT NULL REFERENCES academies(id) ON DELETE RESTRICT,
     department_id UUID NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
 

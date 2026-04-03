@@ -1,28 +1,40 @@
 import Joi from 'joi';
 
-const PROFESSOR_TITLES = [
-    'Asst. Prof.',
-    'Assoc. Prof.',
-    'Prof.',
-    'Lect.',
-    'Res.',
-    'Other'
+const professorRanks = [
+  'Assist. Prof',
+  'Assoc. Prof',
+  'Prof',
+  'Lecturer',
+  'Instructor'
+];
+
+const employmentTypes = [
+  'full_time',
+  'part_time',
+  'adjunct',
+  'visiting',
+  'contract'
 ];
 
 const createProfessorSchema = Joi.object({
-    email: Joi.string().email().lowercase().trim().required(),
-    full_name: Joi.string().trim().min(5).max(255).required(),
-    phone: Joi.string().regex(/^\+\d{1,3}\d{10}$/)
-        .messages({
-            'string.pattern.base': `Phone number must have 10 digits.`
-        }).optional(),
-    department: Joi.string().trim().max(100).required(),
-    faculty: Joi.string().trim().required(),
-    title: Joi.string().valid(...PROFESSOR_TITLES).optional()
-        .messages({
-            'any.only': `type must be one of: ${PROFESSOR_TITLES.join(', ')}`,
-        }),
-    academy_id: Joi.string().uuid().required()
+  user_id: Joi.string().uuid().required(),
+  academy_id: Joi.string().uuid().required(),
+  department_id: Joi.string().uuid().required(),
+
+  title: Joi.string().trim().max(100).required(),
+  rank: Joi.string()
+    .valid(...professorRanks)
+    .required(),
+  specialization: Joi.string().trim().max(255).optional(),
+  hire_date: Joi.date().iso().optional(),
+  employment_type: Joi.string()
+    .valid(...employmentTypes)
+    .default('full_time'),
+
+  office_location: Joi.string().trim().max(255).optional(),
+  office_hours: Joi.string().trim().optional(),
+
+  bio: Joi.string().trim().optional()
 });
 
 export { createProfessorSchema };

@@ -12,15 +12,16 @@ END $$;
 CREATE TABLE IF NOT EXISTS identities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    role user_role NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-
     wallet_address VARCHAR(42) UNIQUE,
+    
     is_identity_issued BOOLEAN DEFAULT FALSE,
     identity_tx_hash VARCHAR(66),
     
     nonce VARCHAR(64),
     nonce_expires_at TIMESTAMP,
+
+    role user_role NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()

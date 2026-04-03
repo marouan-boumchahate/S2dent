@@ -4,93 +4,131 @@ import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
 
-// MY SETUP
-// ========
-const SEED_EMAIL   = 'seed.professor@seed.internal';
+const SEED_ACADEMY_EMAIL = 'seed.professor@seed.internal';
 const SEED_WALLET  = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-const SEED_ACADEMY_NUMBER = 'ACD_0224016';
+const SEED_ACADEMY_NUMBER = 'ACD_PROF_0001';
 
 let ACADEMY_ID;
+let DEPARTMENT_ID;
+let TUSER_ID;
 
 const seedAcademy = async () => {
-    await db.query(`
-        DELETE FROM academies
-        USING users
-        WHERE academies.user_id = users.id
-          AND users.email = $1
-    `, [SEED_EMAIL]);
+    await db.query(
+      `DELETE FROM professors
+       WHERE academy_id IN (
+         SELECT id FROM academies WHERE email = $1
+       )`,
+      [SEED_ACADEMY_EMAIL],
+    );
 
     await db.query(
-        `DELETE FROM users WHERE email = $1`,
-        [SEED_EMAIL],
+      `DELETE FROM departments
+       WHERE academy_id IN (
+         SELECT id FROM academies WHERE email = $1
+       )`,
+      [SEED_ACADEMY_EMAIL],
     );
 
-    const { rows: [user] } = await db.query(
-        `INSERT INTO users (email, wallet_address, role)
-         VALUES ($1, $2, 'academy_admin')
-         RETURNING id`,
-        [SEED_EMAIL, SEED_WALLET],
-    );
+    await db.query(`DELETE FROM academies WHERE email = $1`, [SEED_ACADEMY_EMAIL]);
 
     const { rows: [academy] } = await db.query(
-        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-         VALUES ($1, $2, 'Seed Professor University', 'SPU', 'university', 'Turkey', 'Istanbul')
-         RETURNING id`,
-        [user.id, SEED_ACADEMY_NUMBER],
+      `INSERT INTO academies (
+         wallet_address, academy_number, name, short_name, type,
+         email, legal_name, registration_number, tax_id
+       )
+       VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8)
+       RETURNING id`,
+      [
+        SEED_WALLET,
+        SEED_ACADEMY_NUMBER,
+        'Seed Professor University',
+        'SPU',
+        SEED_ACADEMY_EMAIL,
+        'Seed Professor University Legal',
+        'REG-PROF-0001',
+        'TAX-PROF-0001',
+      ],
     );
 
     return academy.id;
 };
 
+const seedDepartment = async (academyId) => {
+  const { rows: [department] } = await db.query(
+    `INSERT INTO departments (academy_id, code, name, faculty, total_years)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [academyId, 'CENG', 'Computer Engineering', 'Engineering', 4],
+  );
+
+  return department.id;
+};
+
+const seedTUser = async () => {
+  const { rows: [u] } = await db.query(
+    `INSERT INTO users (
+      first_name, middle_name, last_name, full_name,
+      date_of_birth, gender, national_id, email, phone, photo_url, notes
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id`,
+    [
+      'Professor',
+      'Cases',
+      'Test',
+      `Professor Cases Test ${Date.now()}`,
+      '1980-03-20',
+      'male',
+      `PROF-NID-${Date.now()}`,
+      `prof.${Date.now()}@profcases.test`,
+      '+905551234567',
+      null,
+      null,
+    ],
+  );
+
+  return u.id;
+};
+
 const validBody = (overrides = {}) => ({
-    email:      'john.doe@fenerbahce.edu.tr',
-    full_name:  'John Doe Professor',
-    department: 'Computer Engineering',
-    faculty:    'Engineering',
+    user_id: TUSER_ID,
     academy_id: ACADEMY_ID,
+    department_id: DEPARTMENT_ID,
+    title: 'Dr.',
+    rank: 'Assoc. Prof',
+    hire_date: '2022-09-01',
+    employment_type: 'full_time',
+    specialization: 'Computer Vision',
+    office_location: 'Building A - 301',
+    office_hours: 'Mon 10:00-12:00',
+    bio: 'Researcher in machine learning.',
     ...overrides,
 });
 
 const cleanupProfessors = async () => {
-    await db.query(`
-        DELETE FROM professors
-        USING users
-        WHERE professors.user_id = users.id
-          AND (
-              users.email LIKE '%@fenerbahce%'
-           OR users.email LIKE '%@test%'
-          )
-    `);
-
-    await db.query(`
-        DELETE FROM users
-        WHERE (
-            email LIKE '%@fenerbahce%'
-         OR email LIKE '%@test%'
-        )
-    `);
+  await db.query(
+    `DELETE FROM professors
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@profcases.test'
+     )`,
+  );
+      await db.query(`DELETE FROM users WHERE email LIKE '%@profcases.test'`);
 };
 
 const teardownSeed = async () => {
-    await db.query(`
-        DELETE FROM academies
-        USING users
-        WHERE academies.user_id = users.id
-          AND users.email = $1
-    `, [SEED_EMAIL]);
-
-    await db.query(
-        `DELETE FROM users WHERE email = $1`,
-        [SEED_EMAIL],
-    );
+  await db.query(`DELETE FROM professors WHERE academy_id = $1`, [ACADEMY_ID]);
+  await db.query(`DELETE FROM departments WHERE academy_id = $1`, [ACADEMY_ID]);
+  await db.query(`DELETE FROM academies WHERE id = $1`, [ACADEMY_ID]);
 };
 
 before(async () => {
     ACADEMY_ID = await seedAcademy();
+    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
 });
 
 beforeEach(async () => {
     await cleanupProfessors();
+    TUSER_ID = await seedTUser();
 });
 
 afterEach(async () => {
@@ -105,6 +143,14 @@ after(async () => {
 // MY TESTS
 // ========
 describe('POST /api/professors', () => {
+    const formatLocalDateOnly = (isoStringOrDate) => {
+      const d = new Date(isoStringOrDate);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     it('returns 201 and the professor DTO on valid input', async () => {
         const body = validBody();
 
@@ -119,81 +165,74 @@ describe('POST /api/professors', () => {
         const { professor } = res.body.data;
 
         assert.ok(professor.id);
-        assert.equal(professor.name,       body.full_name);
-        assert.equal(professor.department, body.department);
-        assert.equal(professor.faculty,    body.faculty);
+        assert.equal(professor.user_id, body.user_id);
         assert.equal(professor.academy_id, body.academy_id);
-
-        assert.equal(professor.phone, null);
-        assert.equal(professor.title, null);
+        assert.equal(professor.department_id, body.department_id);
+        assert.equal(professor.title, body.title);
+        assert.equal(professor.rank, body.rank);
+        assert.equal(professor.employment_type, body.employment_type);
+        assert.equal(formatLocalDateOnly(professor.hire_date), body.hire_date);
 
         // checking employee_number shape
         assert.ok(professor.employee_number);
         assert.match(professor.employee_number, /^EMP_\d{6}\d+$/);
     });
 
-    it('includes optional fields when provided', async () => {
-        const body = validBody({
-            phone: '+905551234567',
-            title: 'Assoc. Prof.',
-        });
+    it('returns 404 USER_NOT_FOUND when user_id does not exist', async () => {
+      const res = await request(app)
+        .post('/api/professors')
+        .send(validBody({ user_id: '00000000-0000-0000-0000-000000000001' }));
 
-        const res = await request(app)
-            .post('/api/professors')
-            .send(body);
-
-        assert.equal(res.status, 201);
-
-        const { professor } = res.body.data;
-
-        assert.equal(professor.phone, body.phone);
-        assert.equal(professor.title, body.title);
+      assert.equal(res.status, 404);
+      assert.equal(res.body.code, 'USER_NOT_FOUND');
     });
 
-    it('accepts every valid title value without error', async () => {
-        const PROFESSOR_TITLES = [
-            'Asst. Prof.',
-            'Assoc. Prof.',
-            'Prof.',
-            'Lect.',
-            'Res.',
-            'Other',
-        ];
+    it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
+      const res = await request(app)
+        .post('/api/professors')
+        .send(validBody({ academy_id: '00000000-0000-0000-0000-000000000001' }));
 
-        for (const [index, title] of PROFESSOR_TITLES.entries()) {
-            // Unique email each request
-            const body = validBody({
-                email: `prof.title.${index}@fenerbahce.edu.tr`,
-                title,
-            });
-
-            const res = await request(app)
-                .post('/api/professors')
-                .send(body);
-
-            assert.equal(
-                res.status, 201,
-                `Expected 201 for title "${title}", got ${res.status}`,
-            );
-            assert.equal(res.body.data.professor.title, title);
-        }
+      assert.equal(res.status, 404);
+      assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
     });
 
-    it('returns 409 EMAIL_DUPLICATE when email already exists', async () => {
-        await request(app)
-            .post('/api/professors')
-            .send(validBody());
+    it('returns 404 DEPARTMENT_NOT_FOUND when department is not in the academy', async () => {
+      const otherAcademy = await db.query(
+        `INSERT INTO academies (
+           wallet_address, academy_number, name, short_name, type,
+           email, legal_name, registration_number, tax_id
+         )
+         VALUES ($1,$2,$3,$4,'university',$5,$6,$7,$8)
+         RETURNING id`,
+        [
+          '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          'ACD_PROF_0002',
+          'Other Academy',
+          'OAC',
+          'other.academy@seed.internal',
+          'Other Academy Legal',
+          'REG-PROF-0002',
+          'TAX-PROF-0002',
+        ],
+      );
 
-        // Second request — same email, every other field is different
-        const res = await request(app)
-            .post('/api/professors')
-            .send(validBody({
-                full_name:  'Another Professor Name',
-                department: 'Mathematics',
-            }));
+      const otherAcademyId = otherAcademy.rows[0].id;
+      const otherDepartment = await db.query(
+        `INSERT INTO departments (academy_id, code, name, faculty, total_years)
+         VALUES ($1, 'MATH', 'Mathematics', 'Science', 4)
+         RETURNING id`,
+        [otherAcademyId],
+      );
 
-        assert.equal(res.status, 409);
-        assert.equal(res.body.code, 'EMAIL_DUPLICATE');
+      const res = await request(app)
+        .post('/api/professors')
+        .send(validBody({ department_id: otherDepartment.rows[0].id }));
+
+      assert.equal(res.status, 404);
+      assert.equal(res.body.code, 'DEPARTMENT_NOT_FOUND');
+
+      await db.query(`DELETE FROM departments WHERE academy_id = $1`, [otherAcademyId]);
+      await db.query(`DELETE FROM academies WHERE id = $1`, [otherAcademyId]);
     });
 
     it('returns 422 when body is empty', async () => {
@@ -208,7 +247,7 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 422 when each required field is missing', async () => {
-        const requiredFields = ['email', 'full_name', 'department', 'faculty', 'academy_id'];
+        const requiredFields = ['user_id', 'academy_id', 'department_id', 'title', 'rank'];
 
         for (const field of requiredFields) {
             const body = validBody();
@@ -228,48 +267,15 @@ describe('POST /api/professors', () => {
         }
     });
 
-    it('returns 422 for an invalid email format', async () => {
+    it('returns 422 when user_id is not a valid UUID', async () => {
         const res = await request(app)
             .post('/api/professors')
-            .send(validBody({ email: 'not-an-email' }));
+            .send(validBody({ user_id: 'not-a-uuid' }));
 
         assert.equal(res.status, 422);
 
-        const field = res.body.errors.find(e => e.field === 'email');
-        assert.ok(field, 'errors should contain an email entry');
-    });
-
-    it('returns 422 when full_name is too short (< 5 chars)', async () => {
-        const res = await request(app)
-            .post('/api/professors')
-            .send(validBody({ full_name: 'Ab' }));
-
-        assert.equal(res.status, 422);
-
-        const field = res.body.errors.find(e => e.field === 'full_name');
-        assert.ok(field, 'errors should contain a full_name entry');
-    });
-
-    it('returns 422 for an invalid phone format', async () => {
-        const res = await request(app)
-            .post('/api/professors')
-            .send(validBody({ phone: '05551234567' })); // no country code
-
-        assert.equal(res.status, 422);
-
-        const field = res.body.errors.find(e => e.field === 'phone');
-        assert.ok(field, 'errors should contain a phone entry');
-    });
-
-    it('returns 422 for an invalid title value', async () => {
-        const res = await request(app)
-            .post('/api/professors')
-            .send(validBody({ title: 'Director' }));
-
-        assert.equal(res.status, 422);
-
-        const field = res.body.errors.find(e => e.field === 'title');
-        assert.ok(field, 'errors should contain a title entry');
+        const field = res.body.errors.find(e => e.field === 'user_id');
+        assert.ok(field, 'errors should contain a user_id entry');
     });
 
     it('returns 422 when academy_id is not a valid UUID', async () => {
@@ -281,6 +287,39 @@ describe('POST /api/professors', () => {
 
         const field = res.body.errors.find(e => e.field === 'academy_id');
         assert.ok(field, 'errors should contain an academy_id entry');
+    });
+
+    it('returns 422 when department_id is not a valid UUID', async () => {
+        const res = await request(app)
+            .post('/api/professors')
+            .send(validBody({ department_id: 'not-a-uuid' }));
+
+        assert.equal(res.status, 422);
+
+        const field = res.body.errors.find(e => e.field === 'department_id');
+        assert.ok(field, 'errors should contain a department_id entry');
+    });
+
+    it('returns 422 for an invalid rank value', async () => {
+        const res = await request(app)
+            .post('/api/professors')
+            .send(validBody({ rank: 'Director' }));
+
+        assert.equal(res.status, 422);
+
+        const field = res.body.errors.find(e => e.field === 'rank');
+        assert.ok(field, 'errors should contain a rank entry');
+    });
+
+    it('returns 422 for an invalid employment_type value', async () => {
+        const res = await request(app)
+            .post('/api/professors')
+            .send(validBody({ employment_type: 'temporary' }));
+
+        assert.equal(res.status, 422);
+
+        const field = res.body.errors.find(e => e.field === 'employment_type');
+        assert.ok(field, 'errors should contain an employment_type entry');
     });
 
     it('returns 500 when the database throws unexpectedly', async () => {

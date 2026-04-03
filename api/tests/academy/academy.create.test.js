@@ -12,47 +12,30 @@ const validBody = (overrides = {}) => ({
     name: 'Fenerbahce University',
     short_name: 'FBU',
     type: 'university',
-    country: 'Turkey',
-    city: 'Istanbul',
+    legal_name: 'Fenerbahce University A.S.',
+    registration_number: 'REG-FBU-001',
+    tax_id: 'TAX-FBU-001',
     ...overrides,
 });
 
 const cleanupDB = async () => {
     await db.query(`
         DELETE FROM professors
-        USING users
-        WHERE professors.user_id = users.id
-          AND (
-              users.email LIKE '%@fenerbahce%'
-           OR users.email LIKE '%@test%'
-           OR users.wallet_address IN (
-               '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
-               '0x1111222233334444555566667777888899990000',
-               '0x2222333344445555666677778888999900001111',
-               '0xabcdef1234567890abcdef1234567890abcdef12'
-           )
-          )
+        WHERE academy_id IN (
+            SELECT id FROM academies
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test%'
+               OR wallet_address IN (
+                   '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
+                   '0x1111222233334444555566667777888899990000',
+                   '0x2222333344445555666677778888999900001111',
+                   '0xabcdef1234567890abcdef1234567890abcdef12'
+               )
+        )
     `);
 
     await db.query(`
         DELETE FROM academies
-        USING users
-        WHERE academies.user_id = users.id
-          AND (
-              users.email LIKE '%@fenerbahce%'
-           OR users.email LIKE '%@test%'
-           OR users.wallet_address IN (
-               '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
-               '0x1111222233334444555566667777888899990000',
-               '0x2222333344445555666677778888999900001111',
-               '0xabcdef1234567890abcdef1234567890abcdef12'
-           )
-          )
-    `);
-
-    // 3. Now it is safe to remove the users themselves
-    await db.query(`
-        DELETE FROM users
         WHERE email LIKE '%@fenerbahce%'
            OR email LIKE '%@test%'
            OR wallet_address IN (
@@ -95,12 +78,16 @@ describe('POST /api/academies', () => {
         assert.equal(academy.short_name, body.short_name);
         assert.equal(academy.type, body.type);
         assert.equal(academy.email, body.email);
-        assert.equal(academy.country, body.country);
-        assert.equal(academy.city, body.city);
         assert.equal(academy.wallet_address, body.wallet_address.toLowerCase());
-        
-        assert.equal(academy.address, null);
+
+        assert.equal(academy.description, null);
         assert.equal(academy.website, null);
+        assert.equal(academy.logo_url, null);
+        assert.equal(academy.phone, null);
+        assert.equal(academy.legal_name, body.legal_name);
+        assert.equal(academy.registration_number, body.registration_number);
+        assert.equal(academy.tax_id, body.tax_id);
+        assert.equal(academy.billing_email, null);
 
         // checking academy_number shape
         assert.ok(academy.academy_number);
@@ -123,8 +110,11 @@ describe('POST /api/academies', () => {
 
     it('includes optional fields when provided', async () => {
         const body = validBody({
-            address: '123 University Ave',
+            description: 'A university for tests',
             website: 'https://fenerbahce.edu.tr',
+            logo_url: 'https://fenerbahce.edu.tr/logo.png',
+            phone: '+902121234567',
+            billing_email: 'billing@fenerbahce.edu.tr',
         });
 
         const res = await request(app)
@@ -132,11 +122,14 @@ describe('POST /api/academies', () => {
             .send(body);
 
         assert.equal(res.status, 201);
-        assert.equal(res.body.data.academy.address, body.address);
+        assert.equal(res.body.data.academy.description, body.description);
         assert.equal(res.body.data.academy.website, body.website);
+        assert.equal(res.body.data.academy.logo_url, body.logo_url);
+        assert.equal(res.body.data.academy.phone, body.phone);
+        assert.equal(res.body.data.academy.billing_email, body.billing_email);
     });
 
-    it('returns 409 EMAIL_DUPLICATE when email already exists', async () => {
+    it('returns 409 ACADEMY_EMAIL_DUPLICATE when email already exists', async () => {
         await request(app)
             .post('/api/academies')
             .send(validBody());
@@ -149,7 +142,7 @@ describe('POST /api/academies', () => {
             }));
 
         assert.equal(res.status, 409);
-        assert.equal(res.body.code, 'EMAIL_DUPLICATE');
+        assert.equal(res.body.code, 'ACADEMY_EMAIL_DUPLICATE');
     });
 
     it('returns 409 ACADEMY_DUPLICATE when academy name already exists', async () => {
@@ -227,7 +220,16 @@ describe('POST /api/academies', () => {
     });
 
     it('returns 422 when each required field is missing', async () => {
-        const requiredFields = ['email', 'wallet_address', 'name', 'short_name', 'type', 'country', 'city'];
+        const requiredFields = [
+            'email',
+            'wallet_address',
+            'name',
+            'short_name',
+            'type',
+            'legal_name',
+            'registration_number',
+            'tax_id',
+        ];
 
         for (const field of requiredFields) {
             const body = validBody();

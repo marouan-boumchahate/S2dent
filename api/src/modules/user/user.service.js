@@ -2,8 +2,8 @@ import db from '../../config/db.js';
 
 const ensureUserUnique = async (email, nationalId) => {
   const [emailExists, nationalIdExists] = await Promise.all([
-    db.query('SELECT id FROM tusers WHERE email = $1 LIMIT 1', [email]),
-    db.query('SELECT id FROM tusers WHERE national_id = $1 LIMIT 1', [nationalId]),
+    db.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]),
+    db.query('SELECT id FROM users WHERE national_id = $1 LIMIT 1', [nationalId]),
   ]);
 
   if (emailExists.rows.length > 0) {
@@ -36,7 +36,7 @@ const insertUserToDB = async ({
   const full_name = `${first_name} ${middle_name ? `${middle_name} ` : ''}${last_name}`.trim();
 
   const { rows: [user] } = await db.query(
-    `INSERT INTO tusers (
+    `INSERT INTO users (
           first_name,
           middle_name,
           last_name,
