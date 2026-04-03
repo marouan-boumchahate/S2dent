@@ -3,133 +3,139 @@ pragma solidity ^0.8.0;
 
 import "./AcademyIdentity.sol";
 
-contract ProfessorIdentity is AcademyIdentity{
-
-    // Errors
-    error InvalidProfessorId(string reason);
-    error InvalidTitle(string reason);
-    error InvalidDepartment(string reason);
-
-    // Constants
+contract ProfessorIdentity is AcademyIdentity {
     uint256 private constant MAX_STRING_LENGTH = 256;
-    uint256 private constant MIN_STRING_LENGTH = 3;
+    uint256 private constant MIN_EMPLOYEE_ID_LENGTH = 3;
+    uint256 private constant MAX_EMPLOYEE_ID_LENGTH = 50;
 
-    uint256 private constant MAX_ID_LENGTH = 20;
-    uint256 private constant MIN_ID_LENGTH = 3;
-
-    // Structs
-    struct Professor {
-        bytes32 professorIdHash;
-        string name;
-        string title;
-        string department;
-        string country;
-
-        bytes32 fingerprint;
-        uint256 notBefore;
-        uint256 notAfter;
-
-        bool isNotRevoked;
-        uint256 issuedAt;
-        uint256 revokedAt;
-        address issuedBy;
-        address revokedBy;
+    // Enums
+    enum Gender {
+        male,
+        female
+    }
+    enum ProfessorRank {
+        AssistProf,
+        AssocProf,
+        Prof_,
+        Lecturer,
+        Instructor
+    }
+    enum EmploymentType {
+        full_time,
+        part_time,
+        adjunct,
+        visiting,
+        employment_contract
     }
 
+    // Structs
+    struct ProfessorIssueArgs {
+        string employeeId;
+        string nationalId;
+        string full_name;
+        uint8 rank;
+        uint8 employmentType;
+    }
+
+    // Stored Data Structs
+    struct ProfessorIdentityData {
+        bytes32 employeeIdHash;
+        bytes32 nationalIdHash;
+        string fullName;
+        ProfessorRank rank;
+        EmploymentType employmentType;
+    }
+    struct ProfessorStatusData {
+        bool isNotRevoked;
+        uint64 issuedAt;
+        uint64 revokedAt;
+        address issuer;
+        address revoker;
+    }
+    struct Professor {
+        ProfessorIdentityData identity;
+        ProfessorStatusData status;
+    }
+
+    // Errors
+    error ProfessorIdentityAlreadyIssued();
+    error ProfessorEmployeeIdAlreadyUsed();
+    error ProfessorNationalIdAlreadyUsed();
+
     // Mappers
-    mapping ( address => Professor) public professors;
+    mapping(address => Professor) public professors;
+
+    // Uniqueness indexes
+    mapping(bytes32 => address) private professorByEmployeeInAcademyHash;
+    mapping(bytes32 => address) private professorByNationalIdHash;
 
     // Validations
-    // function _validateProfessorIdentityArgs(
-    //     address _walletAddress,
-    //     address _academyAddress,
-    //     string  memory _professorId,
-    //     string  memory _name,
-    //     string  memory _title,
-    //     string  memory _department,
-    //     string  memory _country,
-    //     bytes32 _fingerprint,
-    //     uint256 _notBefore,
-    //     uint256 _notAfter
-    // ) internal view {
+    function _validateProfessorInfos(ProfessorIssueArgs calldata i) internal pure {
+        _validateStringIsNotShort(i.employeeId, MIN_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too short.");
+        _validateStringIsNotLong(i.employeeId, MAX_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too long.");
 
-    //     if (_walletAddress == address(0)) revert InvalidWalletAddress("Wallet address must not be zero.");
+        _validateStringIsNotEmpty(i.nationalId, "Invalid professor: nationalId is required.");
 
-    //     if (_academyAddress == address(0)) revert InvalidWalletAddress("Academy address must not be zero.");
+        _validateStringIsNotEmpty(i.full_name, "Invalid professor: full_name is required.");
 
-    //     uint256 idLen = bytes(_professorId).length;
-    //     if (idLen == 0) revert InvalidProfessorId("Professor ID must not be empty.");
-    //     if (idLen < MIN_ID_LENGTH) revert InvalidProfessorId("Professor ID is too short.");
-    //     if (idLen > MAX_ID_LENGTH) revert InvalidProfessorId("Professor ID exceeds maximum length.");
-
-    //     uint256 nameLen = bytes(_name).length;
-    //     if (nameLen == 0) revert InvalidName("Name must not be empty.");
-    //     if (nameLen > MAX_STRING_LENGTH) revert InvalidName("Name exceeds maximum length.");
-
-    //     uint256 titleLen = bytes(_title).length;
-    //     if (titleLen == 0) revert InvalidTitle("Title must not be empty.");
-    //     if (titleLen > MAX_STRING_LENGTH) revert InvalidTitle("Title exceeds maximum length.");
-
-    //     uint256 deptLen = bytes(_department).length;
-    //     if (deptLen == 0) revert InvalidDepartment("Department must not be empty.");
-    //     if (deptLen > MAX_STRING_LENGTH) revert InvalidDepartment("Department exceeds maximum length.");
-
-    //     uint256 countryLen = bytes(_country).length;
-    //     if (countryLen == 0) revert InvalidCountry("Country must not be empty.");
-    //     if (countryLen > MAX_STRING_LENGTH) revert InvalidCountry("Country exceeds maximum length.");
-
-    //     if (_fingerprint == bytes32(0)) revert InvalidFingerprint("Fingerprint must not be zero.");
-
-    //     if (_notBefore == 0) revert InvalidValidityWindow("notBefore must be a non-zero timestamp.");
-    //     if (_notAfter <= _notBefore) revert InvalidValidityWindow("notAfter must be greater than notBefore.");
-    //     if (_notAfter <= block.timestamp) revert InvalidValidityWindow("notAfter must be in the future.");
-    // }
-
-    // External / Public Functions
-    function issueProfessorIdentity
-    (
+        require(i.rank <= uint8(ProfessorRank.Instructor), "Invalid professor: rank out of range.");
+        require(
+            i.employmentType <= uint8(EmploymentType.employment_contract),
+            "Invalid professor: employmentType out of range."
+        );
+    }
+    function _validateProfessorIssue(
         address _walletAddress,
         address _academyAddress,
-        string  memory _professorId,
-        string  memory _name,
-        string  memory _title,
-        string  memory _department,
-        string  memory _country,
-        bytes32 _fingerprint,
-        uint256 _notBefore,
-        uint256 _notAfter
+        ProfessorIssueArgs calldata args
+    ) internal pure {
+        _validateWalletAddressSet(_walletAddress);
+        _validateWalletAddressSet(_academyAddress);
 
+        _validateProfessorInfos(args);
+    }
+
+    // External Functions
+    function issueProfessorIdentity(
+        address _walletAddress,
+        address _academyAddress,
+        ProfessorIssueArgs calldata args
     ) public onlyOwner onlyAcademy(_academyAddress) {
+        _validateProfessorIssue(_walletAddress, _academyAddress, args);
 
-        // _validateProfessorIdentityArgs(
-        //     _walletAddress,
-        //     _academyAddress,
-        //     _professorId,
-        //     _name,
-        //     _title,
-        //     _department,
-        //     _country,
-        //     _fingerprint,
-        //     _notBefore,
-        //     _notAfter
-        // );
+        if (professors[_walletAddress].status.issuer != address(0)) {
+            revert ProfessorIdentityAlreadyIssued();
+        }
 
-        bytes32 employeeIdHash = keccak256(abi.encodePacked(_professorId));
+        bytes32 employeeIdHash = keccak256(abi.encodePacked(args.employeeId));
+        bytes32 nationalIdHash = keccak256(abi.encodePacked(args.nationalId));
+        bytes32 employeeInAcademyHash = keccak256(abi.encodePacked(_academyAddress, employeeIdHash));
 
-        professors[_walletAddress] = Professor(
-            employeeIdHash,
-            _name,
-            _title,
-            _department,
-            _country,
-            _fingerprint,
-            _notBefore,
-            _notAfter,
-            true,
-            block.timestamp,
-            0,
-            _academyAddress,
-            address(0)
-        );
+        if (professorByEmployeeInAcademyHash[employeeInAcademyHash] != address(0)) {
+            revert ProfessorEmployeeIdAlreadyUsed();
+        }
+        if (professorByNationalIdHash[nationalIdHash] != address(0)) {
+            revert ProfessorNationalIdAlreadyUsed();
+        }
+
+        professors[_walletAddress] = Professor({
+            identity: ProfessorIdentityData({
+                employeeIdHash: employeeIdHash,
+                nationalIdHash: nationalIdHash,
+                fullName: args.full_name,
+                rank: ProfessorRank(args.rank),
+                employmentType: EmploymentType(args.employmentType)
+            }),
+            status: ProfessorStatusData({
+                isNotRevoked: true,
+                issuedAt: uint64(block.timestamp),
+                revokedAt: 0,
+                issuer: _academyAddress,
+                revoker: address(0)
+            })
+        });
+
+        professorByEmployeeInAcademyHash[employeeInAcademyHash] = _walletAddress;
+        professorByNationalIdHash[nationalIdHash] = _walletAddress;
     }
 }

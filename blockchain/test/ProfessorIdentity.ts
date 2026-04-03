@@ -2,29 +2,40 @@ import { expect } from "chai";
 import hre from "hardhat";
 
 describe("ProfessorIdentity", () => {
-
-    // Academy details
-    const ACADEMY_ID = "ACADEMY001";
+    const ACADEMY_NUMBER = "ACD_PROF_TST01";
     const ACADEMY_NAME = "Fenerbahçe University";
-    const ACADEMY_CODE = "FBU";
-    const ACADEMY_COUNTRY = "Turkey";
+    const ACADEMY_SHORT = "FBU";
     const ACADEMY_FP = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
-
-    // Professor details
-    const PROFESSOR_ID = "PROF001";
-    const PROFESSOR_NAME = "Osman SELVI";
-    const PROFESSOR_TITLE = "Associate Professor";
-    const PROFESSOR_DEPARTMENT = "Computer Science";
-    const PROFESSOR_COUNTRY = "Turkey";
-    const FINGERPRINT = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     const ONE_DAY_SECS = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
+    function academyIssueArgs() {
+        return {
+            legalName: "Fenerbahçe University A.Ş.",
+            registrationNumber: "REG-FBU-001",
+            taxId: "TAX-FBU-001",
+            billingEmail: "billing@fbu.edu.tr",
+            certificatePem: "-----BEGIN CERTIFICATE-----\nACADEMY\n-----END CERTIFICATE-----",
+            chainPem: "-----BEGIN CERTIFICATE-----\nCHAIN\n-----END CERTIFICATE-----",
+        };
+    }
+
+    function professorIssueArgs(overrides: any = {}) {
+        const base = {
+            employeeId: "EMP_20240315001",
+            nationalId: "TR-12345678901",
+            full_name: "Ada Lovelace",
+            rank: 1,
+            employmentType: 0,
+        };
+
+        return { ...base, ...overrides };
+    }
+
     async function deployFixture() {
         const { ethers } = await hre.network.connect();
-        const [owner, fakeAcademy, academy, professor, secondProfessor] =
-            await ethers.getSigners();
+        const [owner, fakeAcademy, academy, professor, professor2] = await ethers.getSigners();
 
         const latestBlock = await ethers.provider.getBlock("latest");
         if (!latestBlock) throw new Error("Failed to fetch latest block");
@@ -37,16 +48,29 @@ describe("ProfessorIdentity", () => {
         const instance = await ProfessorIdentity.deploy();
         await instance.waitForDeployment();
 
-        await instance.issueAcademyIdentity(
-            academy.address,
-            ACADEMY_ID,
-            ACADEMY_NAME,
-            ACADEMY_CODE,
-            ACADEMY_COUNTRY,
-            ACADEMY_FP,
-            notBefore,
-            notAfter
-        );
+        const a = academyIssueArgs();
+
+        await instance.connect(owner).issueAcademyIdentity(academy.address, {
+            infos: {
+                academyId: ACADEMY_NUMBER,
+                name: ACADEMY_NAME,
+                shortName: ACADEMY_SHORT,
+                academyType: 0,
+            },
+            proofs: {
+                legalName: a.legalName,
+                registrationNumber: a.registrationNumber,
+                taxId: a.taxId,
+                billingEmail: a.billingEmail,
+            },
+            cert: {
+                fingerprint: ACADEMY_FP,
+                certificate: a.certificatePem,
+                chain: a.chainPem,
+                notBefore: BigInt(notBefore),
+                notAfter: BigInt(notAfter),
+            },
+        });
 
         return {
             instance,
@@ -54,7 +78,7 @@ describe("ProfessorIdentity", () => {
             fakeAcademy,
             academy,
             professor,
-            secondProfessor,
+            professor2,
             notBefore,
             notAfter,
             now,
@@ -62,410 +86,209 @@ describe("ProfessorIdentity", () => {
     }
 
     async function deployWithProfessorFixture() {
-        const { networkHelpers } = await hre.network.connect();
+        const { networkHelpers, ethers } = await hre.network.connect();
         const base = await networkHelpers.loadFixture(deployFixture);
-        const { instance, owner, academy, professor, notBefore, notAfter } = base;
+        const { instance, owner, academy, professor } = base;
 
         await instance.connect(owner).issueProfessorIdentity(
             professor.address,
             academy.address,
-            PROFESSOR_ID,
-            PROFESSOR_NAME,
-            PROFESSOR_TITLE,
-            PROFESSOR_DEPARTMENT,
-            PROFESSOR_COUNTRY,
-            FINGERPRINT,
-            notBefore,
-            notAfter
+            professorIssueArgs(),
         );
 
         return base;
     }
 
     describe("issueProfessorIdentity", () => {
-
-        it("Should store all fields correctly after a valid issuance", async () => {
+        it("stores professor identity data and sets issuer to academy", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(owner).issueProfessorIdentity(
-                professor.address,
-                academy.address,
-                PROFESSOR_ID,
-                PROFESSOR_NAME,
-                PROFESSOR_TITLE,
-                PROFESSOR_DEPARTMENT,
-                PROFESSOR_COUNTRY,
-                FINGERPRINT,
-                notBefore,
-                notAfter
-            );
+            const args = professorIssueArgs();
+            await instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args);
 
             const record = await instance.professors(professor.address);
 
-            expect(record.name).to.equal(PROFESSOR_NAME);
-            expect(record.title).to.equal(PROFESSOR_TITLE);
-            expect(record.department).to.equal(PROFESSOR_DEPARTMENT);
-            expect(record.country).to.equal(PROFESSOR_COUNTRY);
-            expect(record.fingerprint).to.equal(FINGERPRINT);
-            expect(record.notBefore).to.equal(notBefore);
-            expect(record.notAfter).to.equal(notAfter);
-
-            expect(record.isNotRevoked).to.equal(true);
-            expect(record.revokedAt).to.equal(0);
-            expect(record.issuedBy).to.equal(academy.address);
-            expect(record.issuedAt).to.be.gt(0);
-            expect(record.revokedBy).to.equal(ethers.ZeroAddress);
-        });
-
-        it("Should store employeeIdHash as keccak256 of the provided professor ID", async () => {
-            const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await instance.connect(owner).issueProfessorIdentity(
-                professor.address,
-                academy.address,
-                PROFESSOR_ID,
-                PROFESSOR_NAME,
-                PROFESSOR_TITLE,
-                PROFESSOR_DEPARTMENT,
-                PROFESSOR_COUNTRY,
-                FINGERPRINT,
-                notBefore,
-                notAfter
+            expect(record.identity.employeeIdHash).to.equal(
+                ethers.keccak256(ethers.toUtf8Bytes(args.employeeId)),
             );
+            expect(record.identity.nationalIdHash).to.equal(
+                ethers.keccak256(ethers.toUtf8Bytes(args.nationalId)),
+            );
+            expect(record.identity.fullName).to.equal(args.full_name);
+            expect(record.identity.rank).to.equal(BigInt(args.rank));
+            expect(record.identity.employmentType).to.equal(BigInt(args.employmentType));
 
-            const record = await instance.professors(professor.address);
-            const expectedHash = ethers.keccak256(ethers.toUtf8Bytes(PROFESSOR_ID));
-
-            expect(record.professorIdHash).to.equal(expectedHash);
+            expect(record.status.isNotRevoked).to.equal(true);
+            expect(record.status.revokedAt).to.equal(0);
+            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.issuedAt).to.be.gt(0);
+            expect(record.status.revoker).to.equal(ethers.ZeroAddress);
         });
 
-        it("Should revert when called by an unregistered (non-academy) address", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, fakeAcademy, professor, notBefore, notAfter } =
+        it("reverts when the academy is not registered", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, fakeAcademy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
                     professor.address,
                     fakeAcademy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWith(
-                "Not authorized: Only a registered academy can perform this operation."
-            );
+                    professorIssueArgs(),
+                ),
+            ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("Should revert when called by a non-owner account", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, academy, professor, notBefore, notAfter } =
+        it("reverts when called by a non-owner", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(academy).issueProfessorIdentity(
                     professor.address,
                     academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWith(
-                "Not authorized: Only owner can perform this operation."
-            );
+                    professorIssueArgs(),
+                ),
+            ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
 
-        it("Should overwrite an existing record on re-issuance by the same academy", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
+        it("reverts on re-issuance (no overwrite)", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(
+                    professor.address,
+                    academy.address,
+                    professorIssueArgs(),
+                ),
+            ).to.be.revertedWithCustomError(instance, "ProfessorIdentityAlreadyIssued");
+        });
+
+        it("enforces unique employeeId per academy", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor, professor2 } =
+                await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueProfessorIdentity(
                 professor.address,
                 academy.address,
-                PROFESSOR_ID,
-                "Renamed Professor",
-                "Full Professor",
-                "Mathematics",
-                PROFESSOR_COUNTRY,
-                FINGERPRINT,
-                notBefore,
-                notAfter
+                professorIssueArgs(),
             );
 
-            const record = await instance.professors(professor.address);
-            expect(record.name).to.equal("Renamed Professor");
-            expect(record.title).to.equal("Full Professor");
-            expect(record.department).to.equal("Mathematics");
+            const args2 = professorIssueArgs({ nationalId: "TR-999" });
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(
+                    professor2.address,
+                    academy.address,
+                    args2,
+                ),
+            ).to.be.revertedWithCustomError(instance, "ProfessorEmployeeIdAlreadyUsed");
+        });
+
+        it("enforces unique nationalIdHash globally", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor, professor2 } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            await instance.connect(owner).issueProfessorIdentity(
+                professor.address,
+                academy.address,
+                professorIssueArgs(),
+            );
+
+            const args2 = professorIssueArgs({ employeeId: "EMP_20240315002" });
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(
+                    professor2.address,
+                    academy.address,
+                    args2,
+                ),
+            ).to.be.revertedWithCustomError(instance, "ProfessorNationalIdAlreadyUsed");
         });
     });
 
     describe("Input validation", () => {
-
-        it("Should revert on zero professor wallet address", async () => {
+        it("reverts on zero professor wallet", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, academy, notBefore, notAfter } =
+            const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
                     ethers.ZeroAddress,
                     academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidWalletAddress");
+                    professorIssueArgs(),
+                ),
+            )
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be zero.");
         });
 
-        it("Should revert on empty professor ID", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    "",
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidProfessorId");
-        });
-
-        it("Should revert on professor ID shorter than minimum length (< 3 chars)", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    "AB",  // 2 chars only
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidProfessorId");
-        });
-
-        it("Should revert on professor ID longer than maximum length (> 20 chars)", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    "PROF_ID_THAT_IS_TOO_LONG_123",   // MAX_ID_LENGTH of 20
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidProfessorId");
-        });
-
-        it("Should revert on empty name", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    "",
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidName");
-        });
-
-        it("Should revert on empty title", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    "",
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidTitle");
-        });
-
-        it("Should revert on empty department", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    "",
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidDepartment");
-        });
-
-        it("Should revert on empty country", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
-                await networkHelpers.loadFixture(deployFixture);
-
-            await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    "",
-                    FINGERPRINT,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidCountry");
-        });
-
-        it("Should revert on zero fingerprint", async () => {
+        it("reverts when employeeId is too short", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore, notAfter } =
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
+            const args = professorIssueArgs({ employeeId: "AB" });
+
             await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    ethers.ZeroHash,
-                    notBefore,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidFingerprint");
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: employeeId is too short.");
         });
 
-        it("Should revert when notAfter <= notBefore", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notBefore } =
+        it("reverts when rank is out of range", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
+            const args = professorIssueArgs({ rank: 9 });
+
             await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    notBefore,
-                    notBefore   // notAfter === notBefore
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidValidityWindow");
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: rank out of range.");
         });
 
-        it("Should revert when notAfter is in the past", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, now } =
+        it("reverts when employmentType is out of range", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
+            const args = professorIssueArgs({ employmentType: 99 });
+
             await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    now - ONE_YEAR_SECS,  // notBefore: 1 year ago
-                    now - ONE_DAY_SECS    // notAfter:  yesterday (past)
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidValidityWindow");
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: employmentType out of range.");
         });
 
-        it("Should revert when notBefore is zero", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, professor, notAfter } =
+        it("reverts when nationalId is missing", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
+            const args = professorIssueArgs({ nationalId: "" });
+
             await expect(
-                instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
-                    PROFESSOR_ID,
-                    PROFESSOR_NAME,
-                    PROFESSOR_TITLE,
-                    PROFESSOR_DEPARTMENT,
-                    PROFESSOR_COUNTRY,
-                    FINGERPRINT,
-                    0,
-                    notAfter
-                )
-            ).to.be.revertedWithCustomError(instance, "InvalidValidityWindow");
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: nationalId is required.");
+        });
+
+        it("reverts when full_name is missing", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            const args = professorIssueArgs({ full_name: "" });
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: full_name is required.");
         });
     });
 });

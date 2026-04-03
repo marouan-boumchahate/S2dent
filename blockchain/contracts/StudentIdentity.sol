@@ -3,114 +3,118 @@ pragma solidity ^0.8.0;
 
 import "./ProfessorIdentity.sol";
 
-contract StudentIdentity is ProfessorIdentity{
-
-    // Errors
-    error InvalidStudentId(string reason);
-    error InvalidNationality(string reason);
-
-    // Constants
+contract StudentIdentity is ProfessorIdentity {
     uint256 private constant MAX_STRING_LENGTH = 256;
     uint256 private constant MIN_STRING_LENGTH = 3;
-
-    uint256 private constant MAX_ID_LENGTH = 20;
-    uint256 private constant MIN_ID_LENGTH = 3;
+    uint256 private constant MIN_STUDENT_ID_LENGTH = 3;
+    uint256 private constant MAX_STUDENT_ID_LENGTH = 20;
 
     // Structs
-    struct Student {
-        bytes32 studentIdHash;
-        string name;
+    struct StudentIssueArgs {
+        string studentId;
+        string fullName;
         string nationality;
+        string department;
+        string country;
+    }
 
+    struct StudentIdentityData {
+        bytes32 studentIdHash;
+        string fullName;
+        string nationality;
         string academyName;
         string department;
         string country;
-
+    }
+    struct StudentStatusData {
         bool isNotRevoked;
-        uint256 issuedAt;
-        uint256 revokedAt;
-        address issuedBy;
-        address revokedBy;
+        uint64 issuedAt;
+        uint64 revokedAt;
+        address issuer;
+        address revoker;
+    }
+    struct Student {
+        StudentIdentityData identity;
+        StudentStatusData status;
     }
 
+    // Errors
+    error StudentIdentityAlreadyIssued();
+    error StudentIdAlreadyUsed();
+
     // Mappers
-    mapping ( address => Student) public students;
+    mapping(address => Student) public students;
+
+    // Uniqueness indexes
+    mapping(bytes32 => address) private studentByIdInAcademyHash;
 
     // Validations
-    // function _validateStudentIdentityArgs(
-    //     address _walletAddress,
-    //     address _academyAddress,
-    //     string  memory _studentId,
-    //     string  memory _name,
-    //     string  memory _nationality,
-    //     string  memory _department,
-    //     string  memory _country
-    // ) internal view {
+    function _validateStudentInfos(StudentIssueArgs calldata i) internal pure {
+        _validateStringIsNotShort(i.studentId, MIN_STUDENT_ID_LENGTH, "Invalid student: studentId is too short.");
+        _validateStringIsNotLong(i.studentId, MAX_STUDENT_ID_LENGTH, "Invalid student: studentId is too long.");
 
-    //     if (_walletAddress == address(0)) revert InvalidWalletAddress("Wallet address must not be zero.");
+        _validateStringIsNotEmpty(i.fullName, "Invalid student: fullName is required.");
+        _validateStringIsNotLong(i.fullName, MAX_STRING_LENGTH, "Invalid student: fullName is too long.");
 
-    //     if (_academyAddress == address(0)) revert InvalidWalletAddress("Academy address must not be zero.");
+        _validateStringIsNotShort(i.nationality, MIN_STRING_LENGTH, "Invalid student: nationality is too short.");
+        _validateStringIsNotLong(i.nationality, MAX_STRING_LENGTH, "Invalid student: nationality is too long.");
 
-    //     uint256 idLen = bytes(_studentId).length;
-    //     if (idLen == 0) revert InvalidStudentId("Student ID must not be empty.");
-    //     if (idLen < MIN_ID_LENGTH) revert InvalidStudentId("Student ID is too short.");
-    //     if (idLen > MAX_ID_LENGTH) revert InvalidStudentId("Student ID exceeds maximum length.");
+        _validateStringIsNotEmpty(i.department, "Invalid student: department is required.");
+        _validateStringIsNotLong(i.department, MAX_STRING_LENGTH, "Invalid student: department is too long.");
 
-    //     uint256 nameLen = bytes(_name).length;
-    //     if (nameLen == 0) revert InvalidName("Name must not be empty.");
-    //     if (nameLen > MAX_STRING_LENGTH) revert InvalidName("Name exceeds maximum length.");
-
-    //     uint256 nationalityLen = bytes(_nationality).length;
-    //     if (nationalityLen == 0) revert InvalidNationality("Nationality must not be empty.");
-    //     if (nationalityLen < MIN_STRING_LENGTH) revert InvalidNationality("Nationality is too short.");
-    //     if (nationalityLen > MAX_STRING_LENGTH) revert InvalidNationality("Nationality exceeds maximum length.");
-        
-    //     uint256 deptLen = bytes(_department).length;
-    //     if (deptLen == 0) revert InvalidDepartment("Department must not be empty.");
-    //     if (deptLen > MAX_STRING_LENGTH) revert InvalidDepartment("Department exceeds maximum length.");
-
-    //     uint256 countryLen = bytes(_country).length;
-    //     if (countryLen == 0) revert InvalidCountry("Country must not be empty.");
-    //     if (countryLen > MAX_STRING_LENGTH) revert InvalidCountry("Country exceeds maximum length.");
-    // }
-
-    // External / Public Functions
-    function issueStudentIdentity
-    (
+        _validateStringIsNotEmpty(i.country, "Invalid student: country is required.");
+        _validateStringIsNotLong(i.country, MAX_STRING_LENGTH, "Invalid student: country is too long.");
+    }
+    function _validateStudentIssue(
         address _walletAddress,
         address _academyAddress,
-        string  memory _studentId,
-        string  memory _name,
-        string  memory _nationality,
-        string  memory _department,
-        string  memory _country
+        StudentIssueArgs calldata args
+    ) internal pure {
+        _validateWalletAddressSet(_walletAddress);
+        _validateWalletAddressSet(_academyAddress);
+
+        _validateStudentInfos(args);
+    }
+
+    // External / Public Functions
+    function issueStudentIdentity(
+        address _walletAddress,
+        address _academyAddress,
+        StudentIssueArgs calldata args
     ) public onlyOwner onlyAcademy(_academyAddress) {
+        _validateStudentIssue(_walletAddress, _academyAddress, args);
 
-        // _validateStudentIdentityArgs(
-        //     _walletAddress,
-        //     _academyAddress,
-        //     _studentId,
-        //     _name,
-        //     _nationality,
-        //     _department,
-        //     _country
-        // );
+        if (students[_walletAddress].status.issuer != address(0)) {
+            revert StudentIdentityAlreadyIssued();
+        }
 
-        bytes32 studentIdHash = keccak256(abi.encodePacked(_studentId));
-        string memory academyName = academies[_academyAddress].name;
+        bytes32 studentIdHash = keccak256(abi.encodePacked(args.studentId));
+        bytes32 studentInAcademyHash = keccak256(abi.encodePacked(_academyAddress, studentIdHash));
 
-        students[_walletAddress] = Student(
-            studentIdHash,
-            _name,
-            _nationality,
-            academyName,
-            _department,
-            _country,
-            true,
-            block.timestamp,
-            0,
-            _academyAddress,
-            address(0)
-        );
+        if (studentByIdInAcademyHash[studentInAcademyHash] != address(0)) {
+            revert StudentIdAlreadyUsed();
+        }
+
+        string memory academyName = academies[_academyAddress].identity.name;
+
+        students[_walletAddress] = Student({
+            identity: StudentIdentityData({
+                studentIdHash: studentIdHash,
+                fullName: args.fullName,
+                nationality: args.nationality,
+                academyName: academyName,
+                department: args.department,
+                country: args.country
+            }),
+            status: StudentStatusData({
+                isNotRevoked: true,
+                issuedAt: uint64(block.timestamp),
+                revokedAt: 0,
+                issuer: _academyAddress,
+                revoker: address(0)
+            })
+        });
+
+        studentByIdInAcademyHash[studentInAcademyHash] = _walletAddress;
     }
 }

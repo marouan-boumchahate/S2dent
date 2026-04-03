@@ -66,38 +66,30 @@ const issueAcademyIdentity = async (payload) => {
 
         } = payload
 
+        const args = {
+            infos: {
+                academyId: academyNumber,
+                name,
+                shortName,
+                academyType,
+            },
+            proofs: {
+                legalName,
+                registrationNumber,
+                taxId,
+                billingEmail,
+            },
+            cert: {
+                fingerprint,
+                certificate: certificatePem,
+                chain: chainPem,
+                notBefore: BigInt(toUnixSeconds(notBefore)),
+                notAfter: BigInt(toUnixSeconds(notAfter)),
+            },
+        }
+
         // Prepare params as array for both estimateGas and actual call
-        const params = [
-            walletAddress,
-            academyNumber,
-            name,
-            shortName,
-            academyType,
-            description,
-            website,
-            logoUrl,
-            email,
-            phone,
-            legalName,
-            registrationNumber,
-            taxId,
-            billingEmail,
-            addressLine1,
-            addressLine2,
-            street,
-            district,
-            state,
-            postalCode,
-            city,
-            country,
-            latitude,
-            longitude,
-            fingerprint,
-            certificatePem,
-            chainPem,
-            toUnixSeconds(notBefore),
-            toUnixSeconds(notAfter)
-        ]
+        const params = [walletAddress, args]
 
         // Estimate gas (ethers v6: method-level estimateGas helper)
         const gasEstimate = await contract.issueAcademyIdentity.estimateGas(...params)
