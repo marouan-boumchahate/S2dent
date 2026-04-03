@@ -16,36 +16,50 @@ const seedAcademy = async () => {
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
-       SELECT academies.id
-       FROM academies
-       JOIN users ON academies.user_id = users.id
-       WHERE users.email = $1
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
      )`,
-    [SEED_EMAIL],
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   await db.query(
     `DELETE FROM academies
-     USING users
-     WHERE academies.user_id = users.id
-       AND users.email = $1`,
-    [SEED_EMAIL],
-  );
-
-  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
-
-  const { rows: [user] } = await db.query(
-    `INSERT INTO users (email, wallet_address, role)
-     VALUES ($1, $2, 'academy_admin')
-     RETURNING id`,
-    [SEED_EMAIL, SEED_WALLET],
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   const { rows: [academy] } = await db.query(
-    `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-     VALUES ($1, $2, 'Seed Department Academy', 'SDA', 'university', 'Turkey', 'Istanbul')
+    `INSERT INTO academies (
+        wallet_address,
+        email,
+        academy_number,
+        name,
+        short_name,
+        type,
+        legal_name,
+        registration_number,
+        tax_id
+     )
+     VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9
+     )
      RETURNING id`,
-    [user.id, SEED_ACADEMY_NUMBER],
+    [
+      SEED_WALLET,
+      SEED_EMAIL,
+      SEED_ACADEMY_NUMBER,
+      'Seed Department Academy',
+      'SDA',
+      'university',
+      'Seed Department Academy A.S.',
+      'REG-DEPT-001',
+      'TAX-DEPT-001',
+    ],
   );
 
   return academy.id;
@@ -62,23 +76,21 @@ const teardownSeed = async () => {
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
-       SELECT academies.id
-       FROM academies
-       JOIN users ON academies.user_id = users.id
-       WHERE users.email = $1
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
      )`,
-    [SEED_EMAIL],
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   await db.query(
     `DELETE FROM academies
-     USING users
-     WHERE academies.user_id = users.id
-       AND users.email = $1`,
-    [SEED_EMAIL],
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
-
-  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
 };
 
 const validBody = (overrides = {}) => ({
@@ -108,6 +120,7 @@ after(async () => {
   await cleanupDepartments();
   await teardownSeed();
 });
+
 
 describe('POST /api/departments', () => {
   it('returns 201 and the department DTO on valid input', async () => {

@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS addresses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     academy_id UUID NULL REFERENCES academies(id) ON DELETE RESTRICT,
-    user_id UUID NULL REFERENCES tusers(id) ON DELETE RESTRICT,
+    user_id UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
 
     address_line1 VARCHAR(255),
     address_line2 VARCHAR(255),

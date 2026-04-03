@@ -15,6 +15,34 @@ const ensureStudentUnique = async (
   }
 };
 
+const ensureUserExists = async (user_id) => {
+  const { rows } = await db.query(
+    'SELECT 1 FROM users WHERE id = $1 LIMIT 1',
+    [user_id],
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    err.code = 'USER_NOT_FOUND';
+    throw err;
+  }
+};
+
+const ensureAcademyExists = async (academy_id) => {
+  const { rows } = await db.query(
+    'SELECT 1 FROM academies WHERE id = $1 LIMIT 1',
+    [academy_id],
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Academy not found');
+    err.statusCode = 404;
+    err.code = 'ACADEMY_NOT_FOUND';
+    throw err;
+  }
+};
+
 const generateStudentNumber = async () => {
     const result = await db.query(`SELECT nextval('student_seq')`);
     const seq = result.rows[0].nextval;
@@ -42,12 +70,12 @@ const insertStudentToDB = async ({
   department_id,
   student_number,
   current_level,
+  enrollment_status,
+  enrollment_date,
   total_years_to_graduate,
   actual_graduation_date,
 }) => {
-  const {
-    rows: [student],
-  } = await db.query(
+  const { rows: [student] } = await db.query(
     `INSERT INTO students (
         user_id,
         academy_id,
@@ -61,10 +89,10 @@ const insertStudentToDB = async ({
       )
       VALUES (
         $1, $2, $3, $4, $5,
-        'active',
-        CURRENT_DATE,
-        CURRENT_DATE + make_interval(years => $6),
-        $7
+        COALESCE($6::enrollment_status, 'active'::enrollment_status),
+        COALESCE($7::date, CURRENT_DATE),
+        COALESCE($7::date, CURRENT_DATE) + make_interval(years => $8),
+        $9
       )
       RETURNING
         id,
@@ -83,6 +111,8 @@ const insertStudentToDB = async ({
       department_id,
       student_number,
       current_level,
+      enrollment_status ?? null,
+      enrollment_date ?? null,
       total_years_to_graduate,
       actual_graduation_date ?? null,
     ],
@@ -97,13 +127,18 @@ export const createStudentService = async (payload) => {
     academy_id,
     department_id,
     current_level,
+    enrollment_status,
+    enrollment_date,
     actual_graduation_date
   } = payload;
 
+  await ensureUserExists(user_id);
+  await ensureAcademyExists(academy_id);
+  const department = await getDepartmentGraduationYears(department_id);
+  
   const studentNumber = await generateStudentNumber();
   await ensureStudentUnique(studentNumber);
 
-  const department = await getDepartmentGraduationYears(department_id);
 
   const { rows: [student] } = await insertStudentToDB({
     ...payload,

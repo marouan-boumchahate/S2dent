@@ -8,7 +8,7 @@ const endpoint = '/api/addresses';
 
 const cleanupAddresses = async () => {
   await db.query('DELETE FROM addresses');
-  await db.query(`DELETE FROM tusers WHERE email LIKE '%@addresscases.test'`);
+  await db.query(`DELETE FROM users WHERE email LIKE '%@addresscases.test'`);
 };
 
 const validBody = (overrides = {}) => ({
@@ -27,7 +27,7 @@ const validBody = (overrides = {}) => ({
 
 const seedTUser = async () => {
   const { rows: [u] } = await db.query(
-    `INSERT INTO tusers (
+    `INSERT INTO users (
       first_name, middle_name, last_name, full_name,
       date_of_birth, gender, national_id, email, phone, photo_url, notes
     )

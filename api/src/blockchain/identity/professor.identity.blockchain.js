@@ -3,7 +3,7 @@ import { env } from '../../config/env.js'
 import { platformWallet } from '../../config/blockchain.js'
 import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
-const blockchain = env.blockchain;
+const blockchain = env.blockchain
 
 const getContract = () =>
     new ethers.Contract(
@@ -12,40 +12,23 @@ const getContract = () =>
         platformWallet
     )
 
-
-const issueProfessorIdentity = async (
-    walletAddress,
-    academyAddress,
-    professorId,
-    name,
-    title,
-    department,
-    country,
-    fingerprint,
-    notBefore,
-    notAfter
-) => {
+/**
+ * @param {string} walletAddress
+ * @param {string} academyAddress - Academy wallet (`academies.wallet_address`); stored as `issuer` on-chain.
+ * @param {object} issueArgs - Nested struct matching `ProfessorIssueArgs` in `ProfessorIdentity.sol`
+ *   (`ids`, `platform`, `person`, `addr`, `dept`, `job`).
+ */
+const issueProfessorIdentity = async (walletAddress, academyAddress, issueArgs) => {
     try {
         const contract = getContract()
-
         const tx = await contract.issueProfessorIdentity(
             walletAddress,
             academyAddress,
-            professorId,
-            name,
-            title,
-            department,
-            country,
-            fingerprint,
-            Math.floor(notBefore.getTime() / 1000),
-            Math.floor(notAfter.getTime() / 1000)
+            issueArgs
         )
-
-        return tx;
-        
+        return tx
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
-
         const wrapped = new Error(`issueProfessorIdentity failed: ${reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'

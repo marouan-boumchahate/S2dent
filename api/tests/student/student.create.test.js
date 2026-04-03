@@ -10,42 +10,53 @@ const SEED_ACADEMY_NUMBER = 'ACD_STU_0001';
 
 let ACADEMY_ID;
 let DEPARTMENT_ID;
-let TUSER_ID;
+let USER_ID;
 
 const seedAcademy = async () => {
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
-       SELECT academies.id
-       FROM academies
-       JOIN users ON academies.user_id = users.id
-       WHERE users.email = $1
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
      )`,
-    [SEED_EMAIL],
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   await db.query(
     `DELETE FROM academies
-     USING users
-     WHERE academies.user_id = users.id
-       AND users.email = $1`,
-    [SEED_EMAIL],
-  );
-
-  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
-
-  const { rows: [user] } = await db.query(
-    `INSERT INTO users (email, wallet_address, role)
-     VALUES ($1, $2, 'academy_admin')
-     RETURNING id`,
-    [SEED_EMAIL, SEED_WALLET],
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   const { rows: [academy] } = await db.query(
-    `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-     VALUES ($1, $2, 'Seed Student Academy', 'SSA', 'university', 'Turkey', 'Istanbul')
+    `INSERT INTO academies (
+      wallet_address,
+      email,
+      academy_number,
+      name,
+      short_name,
+      type,
+      legal_name,
+      registration_number,
+      tax_id
+    )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id`,
-    [user.id, SEED_ACADEMY_NUMBER],
+    [
+      SEED_WALLET,
+      SEED_EMAIL,
+      SEED_ACADEMY_NUMBER,
+      'Seed Student Academy',
+      'SSA',
+      'university',
+      'Seed Student Academy A.S.',
+      'REG-STU-001',
+      'TAX-STU-001',
+    ],
   );
 
   return academy.id;
@@ -62,9 +73,9 @@ const seedDepartment = async (academyId) => {
   return department.id;
 };
 
-const seedTUser = async () => {
+const seedUser = async () => {
   const { rows: [u] } = await db.query(
-    `INSERT INTO tusers (
+    `INSERT INTO users (
       first_name, middle_name, last_name, full_name,
       date_of_birth, gender, national_id, email, phone, photo_url, notes
     )
@@ -92,33 +103,32 @@ const cleanupStudents = async () => {
   await db.query(
     `DELETE FROM students
      WHERE user_id IN (
-       SELECT id FROM tusers WHERE email LIKE '%@studentcases.test'
+        SELECT id FROM users WHERE email LIKE '%@studentcases.test'
      )`,
   );
-  await db.query(`DELETE FROM tusers WHERE email LIKE '%@studentcases.test'`);
+  
+  await db.query(`DELETE FROM users WHERE email LIKE '%@studentcases.test'`);
 };
 
 const teardownSeed = async () => {
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
-       SELECT academies.id
-       FROM academies
-       JOIN users ON academies.user_id = users.id
-       WHERE users.email = $1
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
      )`,
-    [SEED_EMAIL],
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
 
   await db.query(
     `DELETE FROM academies
-     USING users
-     WHERE academies.user_id = users.id
-       AND users.email = $1`,
-    [SEED_EMAIL],
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
   );
-
-  await db.query(`DELETE FROM users WHERE email = $1`, [SEED_EMAIL]);
 };
 
 before(async () => {
@@ -128,7 +138,7 @@ before(async () => {
 
 beforeEach(async () => {
   await cleanupStudents();
-  TUSER_ID = await seedTUser();
+  USER_ID = await seedUser();
 });
 
 afterEach(async () => {
@@ -153,7 +163,7 @@ describe('POST /api/students', () => {
 
   it('returns 201 and the student DTO on valid input', async () => {
     const body = {
-      user_id: TUSER_ID,
+      user_id: USER_ID,
       academy_id: ACADEMY_ID,
       department_id: DEPARTMENT_ID,
       current_level: '4th Year',
@@ -184,9 +194,31 @@ describe('POST /api/students', () => {
     assert.equal(formatLocalDateOnly(student.actual_graduation_date), body.actual_graduation_date);
   });
 
+  it('accepts enrollment_status and enrollment_date when provided', async () => {
+    const body = {
+      user_id: USER_ID,
+      academy_id: ACADEMY_ID,
+      department_id: DEPARTMENT_ID,
+      current_level: '2nd Year',
+      enrollment_status: 'suspended',
+      enrollment_date: '2023-09-15',
+    };
+
+    const res = await request(app)
+      .post(endpoint)
+      .send(body);
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.student.enrollment_status, body.enrollment_status);
+    assert.equal(
+      formatLocalDateOnly(res.body.data.student.enrollment_date),
+      body.enrollment_date,
+    );
+  });
+
   it('stores actual_graduation_date as null when not provided', async () => {
     const body = {
-      user_id: TUSER_ID,
+      user_id: USER_ID,
       academy_id: ACADEMY_ID,
       department_id: DEPARTMENT_ID,
       current_level: '1st Year',
@@ -221,7 +253,7 @@ describe('POST /api/students', () => {
 
     for (const field of requiredFields) {
       const body = {
-        user_id: TUSER_ID,
+        user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
         current_level: '2nd Year',
@@ -263,7 +295,7 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .send({
-        user_id: TUSER_ID,
+        user_id: USER_ID,
         academy_id: 'not-a-uuid',
         department_id: DEPARTMENT_ID,
         current_level: '2nd Year',
@@ -279,7 +311,7 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .send({
-        user_id: TUSER_ID,
+        user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: 'not-a-uuid',
         current_level: '2nd Year',
@@ -295,7 +327,7 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .send({
-        user_id: TUSER_ID,
+        user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
         current_level: '2nd Year',
@@ -314,7 +346,7 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .send({
-        user_id: TUSER_ID,
+        user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
         current_level: '4th Year',

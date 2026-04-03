@@ -10,17 +10,17 @@ const cleanupUsers = async () => {
   await db.query(
     `DELETE FROM students
      WHERE user_id IN (
-       SELECT id FROM tusers WHERE email LIKE '%@usercases.edu'
+       SELECT id FROM users WHERE email LIKE '%@usercases.edu'
      )`,
   );
   await db.query(
     `DELETE FROM addresses
      WHERE user_id IN (
-       SELECT id FROM tusers WHERE email LIKE '%@usercases.edu'
+       SELECT id FROM users WHERE email LIKE '%@usercases.edu'
      )`,
   );
   await db.query(
-    `DELETE FROM tusers
+    `DELETE FROM users
      WHERE email LIKE '%@usercases.edu'`,
   );
 };
