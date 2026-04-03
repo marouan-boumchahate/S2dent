@@ -30,6 +30,11 @@ export default defineConfig({
     },
   },
   networks: {
+    /** Hardhat 3 simulated network name is `default` (not `hardhat`). */
+    default: {
+      type: "edr-simulated",
+      allowUnlimitedContractSize: true,
+    },
     sepolia: {
       type: "http",
       url: configVariable("SEPOLIA_RPC_URL"),

@@ -6,7 +6,6 @@ import "./S2dent.sol";
 contract AcademyIdentity is S2dent {
     // Constants
     uint256 private constant MAX_STRING_LENGTH = 256;
-    uint256 private constant MAX_POSTAL_CODE_LENGTH = 20;
 
     // Enums
     enum AcademyType {
@@ -17,30 +16,11 @@ contract AcademyIdentity is S2dent {
         online_platform,
         other
     }
-    
+
     // Structs
-    struct Academy {
-        // Academy Infos
-        string academyId;
-        string name;
-        string shortName;
-        AcademyType academyType;
-
-        string description;
-        string website;
-        string logoUrl;
-
-        // Contact Infos
-        string email;
-        string phone;
-
-        // Legal Infos
-        string legalName;
-        string registrationNumber;
-        string taxId;
-        string billingEmail;
-
-        // Address Infos
+    // NOTE: `Address` is kept as-is because other identity contracts reuse it.
+    // AcademyIdentity itself no longer stores address fields on-chain; it stores only an `addressHash` proof.
+    struct Address {
         string addressLine1;
         string addressLine2;
         string street;
@@ -51,192 +31,208 @@ contract AcademyIdentity is S2dent {
         string country;
         string latitude;
         string longitude;
+    }
 
-        // Certificate Infos
+    // Request Args
+    struct AcademyInfosArgs {
+        string academyId;
+        string name;
+        string shortName;
+        uint8 academyType;
+    }
+    struct AcademyProofsArgs {
+        string legalName;
+        string registrationNumber;
+        string taxId;
+        string billingEmail;
+    }
+    struct AcademyCertArgs {
         bytes32 fingerprint;
-        string certificatePem;
-        string chainPem;
-        uint256 notBefore;
-        uint256 notAfter;
+        string certificate;
+        string chain;
+        uint64 notBefore;
+        uint64 notAfter;
+    }
+    
+    struct AcademyIssueArgs {
+        AcademyInfosArgs infos;
+        AcademyProofsArgs proofs;
+        AcademyCertArgs cert;
+    }
 
-        // Revocation Infos
+    // Stored Data Structs
+    struct AcademyIdentityData {
+        bytes32 academyIdHash;
+        string name;
+        string shortName;
+        AcademyType academyType;
+    }
+    struct AcademyProofData {
+        string legalName;
+        string registrationNumber;
+        string taxId;
+        string billingEmail;
+    }
+    struct AcademyCertificateData {
+        bytes32 fingerprint;
+        string certificate;
+        string chain;
+        uint64 notBefore;
+        uint64 notAfter;
+    }
+    struct AcademyStatusData {
         bool isNotRevoked;
-        uint256 issuedAt;
-        uint256 revokedAt;
+        uint64 issuedAt;
+        uint64 revokedAt;
         address issuer;
         address revoker;
     }
 
+    struct Academy {
+        AcademyIdentityData identity;
+        AcademyProofData proofs;
+        AcademyCertificateData cert;
+        AcademyStatusData status;
+    }
+
+    // Errors
+    error AcademyIdentityAlreadyIssued();
+    error AcademyIdAlreadyUsed();
+    error AcademyNameShortNameAlreadyUsed();
+    error AcademyLegalBundleAlreadyUsed();
+
     // Mappers
     mapping(address => Academy) public academies;
 
+    // Uniqueness indexes (no loops)
+    mapping(bytes32 => address) private academyByIdHash;
+    mapping(bytes32 => address) private academyByNameShortHash;
+    mapping(bytes32 => address) private academyByLegalBundleHash;
+
     // Modifiers
     modifier onlyAcademy(address _caller) {
+        AcademyStatusData memory s = academies[_caller].status;
         require(
-            academies[_caller].isNotRevoked,
+            s.issuer != address(0) && s.isNotRevoked, 
             "Not authorized: Only a registered academy can perform this operation."
         );
         _;
     }
 
     // Validations
-    function _validateCertificate(
-        bytes32 fingerprint,
-        string memory _certificatePem,
-        string memory _chainPem,
-        uint256 notBefore,
-        uint256 notAfter
-    ) internal pure {
-        require(fingerprint != bytes32(0), "Invalid certificate: fingerprint is required.");
+    function _validateHashIsSet(bytes32 _value, string memory _msg) internal pure {
+        require(_value != bytes32(0), _msg);
+    }
+    function _validateCertificate(AcademyCertArgs calldata c) internal pure {
+        _validateHashIsSet(c.fingerprint, "Invalid certificate: fingerprint is required.");
+        
+        _validateStringIsNotEmpty(c.certificate, "Invalid certificate: certificate is empty.");
+        _validateStringIsNotEmpty(c.chain, "Invalid certificate: chain is empty.");
 
-        _validateStringIsNotEmpty(_certificatePem, "Invalid certificate: certificatePem is empty.");
-        _validateStringIsNotEmpty(_chainPem, "Invalid certificate: chainPem is empty."); 
-        _validateTimeSet(notBefore, "Invalid certificate: notBefore must be set."); 
-        _validateTime1BeforeTime2(notBefore, notAfter, "Invalid certificate: notAfter must be greater than notBefore.");
+        _validateTimeSet(uint256(c.notBefore), "Invalid certificate: notBefore must be set.");
+        _validateTime1BeforeTime2(uint256(c.notBefore), uint256(c.notAfter), "Invalid certificate: notAfter must be greater than notBefore.");
+    }
+    function _validateAddress(Address calldata a) internal pure {
+        _validateStringIsNotEmpty(a.city, "Invalid address: city is empty");
+        _validateStringIsNotLong(a.city, MAX_STRING_LENGTH, "Invalid address: city too length.");
+
+        _validateStringIsNotEmpty(a.country, "Invalid address: country is empty");
+        _validateStringIsNotLong(a.country, MAX_STRING_LENGTH, "Invalid address: country too length.");
+
+        _validateStringIsNotLong(a.postalCode, 20, "Invalid address: postal code too length.");
+        _validateStringIsNotLong(a.street, MAX_STRING_LENGTH, "Invalid address: street too long.");
+        _validateStringIsNotLong(a.district, MAX_STRING_LENGTH, "Invalid address: district too long.");
+        _validateStringIsNotLong(a.state, MAX_STRING_LENGTH, "Invalid address: state too long.");
+    }
+    function _validateAcademyInfos(AcademyInfosArgs calldata i) internal pure {
+        _validateStringIsNotEmpty(i.academyId, "Invalid: academyId is required.");
+
+        _validateStringIsNotEmpty(i.name, "Invalid: name is empty.");
+        _validateStringIsNotLong(i.name, MAX_STRING_LENGTH, "Invalid: name too long.");
+
+        _validateStringIsNotEmpty(i.shortName, "Invalid: shortName is empty.");
+        _validateStringIsNotLong(i.shortName, MAX_STRING_LENGTH, "Invalid: shortName too long.");
+
+        require(i.academyType <= uint8(AcademyType.other), "Invalid: unknown academyType.");
+    }
+    function _validateAcademyProofs(AcademyProofsArgs calldata p) internal pure {
+        _validateStringIsNotEmpty(p.legalName, "Invalid proofs: legalName is required.");
+        _validateStringIsNotEmpty(p.registrationNumber, "Invalid proofs: registrationNumber is required.");
+        _validateStringIsNotEmpty(p.taxId, "Invalid proofs: taxId is required.");
+        _validateStringIsNotEmpty(p.billingEmail, "Invalid proofs: billingEmail is required.");
     }
 
-    function _validateAddress(
-        string memory _street,
-        string memory _district,
-        string memory _state,
-        string memory _postalCode,
-        string memory _city,
-        string memory _country
-    ) internal pure {
-        _validateStringIsNotLong(_city, MAX_STRING_LENGTH, "Invalid address: city too length.");
-        _validateStringIsNotLong(_country, MAX_STRING_LENGTH, "Invalid address: country too length.");
-        _validateStringIsNotLong(_postalCode, MAX_POSTAL_CODE_LENGTH, "Invalid address: postal code too length."); 
-        _validateStringIsNotLong(_street, MAX_STRING_LENGTH, "Invalid address: street too long.");
-        _validateStringIsNotLong(_district, MAX_STRING_LENGTH, "Invalid address: district too long.");
-        _validateStringIsNotLong(_state, MAX_STRING_LENGTH, "Invalid address: state too long.");
-    }
-
-    function _validateAcademyInfos(
-        address _walletAddress,
-        string memory _academyId,
-        string memory _name,
-        string memory _shortName,
-        AcademyType academyType,
-        string memory _description,
-        string memory _website,
-        string memory _logoUrl,
-        string memory _email,
-        string memory _phone,
-        string memory _legalName,
-        string memory _registrationNumber,
-        string memory _taxId,
-        string memory _billingEmail
-    ) internal pure {
+    function _validateAcademyIssue(address _walletAddress, AcademyIssueArgs calldata a) internal pure {
         _validateWalletAddressSet(_walletAddress);
 
-        _validateStringIsNotShort(_academyId, 11, "Invalid: academyId too short.");
-        _validateStringIsNotLong(_academyId, 20, "Invalid: academyId too long.");
-        
-        _validateStringIsNotEmpty(_name, "Invalid: name is empty.");
-        _validateStringIsNotLong(_name, MAX_STRING_LENGTH, "Invalid: name too long.");
-
-        _validateStringIsNotEmpty(_shortName, "Invalid: shortName is empty.");
-        
-        require(uint8(academyType) <= uint8(AcademyType.other), "Invalid: unknown academyType.");
-
-        _validateStringIsNotLong(_description, MAX_STRING_LENGTH, "Invalid: description too long.");
-        _validateStringIsNotLong(_website, MAX_STRING_LENGTH, "Invalid: website too long.");
-        _validateStringIsNotLong(_logoUrl, MAX_STRING_LENGTH, "Invalid: logoUrl too long.");
-
-        _validateStringIsNotEmpty(_email, "Invalid: email is empty.");
-        _validateStringIsNotLong(_email, MAX_STRING_LENGTH, "Invalid: email too long.");
-
-        _validateStringIsNotLong(_billingEmail, MAX_STRING_LENGTH, "Invalid: billingEmail too long.");
-        
-        _validateStringIsNotLong(_phone, MAX_STRING_LENGTH, "Invalid: phone too long.");
-
-        _validateStringIsNotEmpty(_legalName, "Invalid: legalName is empty.");
-        _validateStringIsNotLong(_legalName, MAX_STRING_LENGTH, "Invalid: legalName too long.");
-
-        _validateStringIsNotEmpty(_registrationNumber, "Invalid: registrationNumber is empty.");
-        _validateStringIsNotLong(_registrationNumber, MAX_STRING_LENGTH, "Invalid: registrationNumber too long.");
-
-        _validateStringIsNotEmpty(_taxId, "Invalid: taxId is empty.");
-        _validateStringIsNotLong(_taxId, MAX_STRING_LENGTH, "Invalid: taxId too long.");
+        _validateAcademyInfos(a.infos);
+        _validateAcademyProofs(a.proofs);
+        _validateCertificate(a.cert);
     }
 
+    // Internal Functions
+    function _hashString(string memory _value) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_value));
+    }
 
     // External Functions
     function issueAcademyIdentity(
         address _walletAddress,
-
-        string  memory _academyNumber,
-        string  memory _name,
-        string  memory _shortName,
-        uint8 _academyType,
-
-        string  memory _description,
-        string  memory _website,
-        string  memory _logoUrl,
-
-        string  memory _email,
-        string  memory _phone,
-
-        string  memory _legalName,
-        string  memory _registrationNumber,
-        string  memory _taxId,
-        string  memory _billingEmail,
-        
-        string  memory _addressLine1,
-        string  memory _addressLine2,
-        string  memory _street,
-        string  memory _district,
-        string  memory _state,
-        string  memory _postalCode,
-        string  memory _city,
-        string  memory _country,
-        string  memory _latitude,
-        string  memory _longitude,
-
-
-        bytes32 _fingerprint,
-        string memory _certificatePem,
-        string memory _chainPem,
-        uint256 _notBefore,
-        uint256 _notAfter
+        AcademyIssueArgs calldata args
     ) public onlyOwner {
-        // Field-by-field assignment avoids "Stack too deep" without relying only on viaIR.
-        Academy memory a;
+        _validateAcademyIssue(_walletAddress, args);
+        if (academies[_walletAddress].status.issuer != address(0)) {
+            revert AcademyIdentityAlreadyIssued();
+        }
 
-        a.academyId = _academyNumber;
-        a.name = _name;
-        a.shortName = _shortName;
-        a.academyType = AcademyType(_academyType);
-        a.description = _description;
-        a.website = _website;
-        a.logoUrl = _logoUrl;
-        a.email = _email;
-        a.phone = _phone;
-        a.legalName = _legalName;
-        a.registrationNumber = _registrationNumber;
-        a.taxId = _taxId;
-        a.billingEmail = _billingEmail;
-        a.addressLine1 = _addressLine1;
-        a.addressLine2 = _addressLine2;
-        a.street = _street;
-        a.district = _district;
-        a.state = _state;
-        a.postalCode = _postalCode;
-        a.city = _city;
-        a.country = _country;
-        a.latitude = _latitude;
-        a.longitude = _longitude;
-        a.fingerprint = _fingerprint;
-        a.certificatePem = _certificatePem;
-        a.chainPem = _chainPem;
-        a.notBefore = _notBefore;
-        a.notAfter = _notAfter;
-        a.isNotRevoked = true;
-        a.issuedAt = block.timestamp;
-        a.revokedAt = 0;
-        a.issuer = msg.sender;
-        a.revoker = address(0);
+        // Create indexes for uniqueness checks
+        bytes32 academyIdHash = _hashString(args.infos.academyId);
+        bytes32 nameShortHash = keccak256(abi.encodePacked(args.infos.name, args.infos.shortName));
+        bytes32 legalBundleHash = keccak256(
+            abi.encodePacked(
+                args.proofs.legalName,
+                args.proofs.registrationNumber,
+                args.proofs.taxId,
+                args.proofs.billingEmail
+            )
+        );
 
-        academies[_walletAddress] = a;
+        if (academyByIdHash[academyIdHash] != address(0)) revert AcademyIdAlreadyUsed();
+        if (academyByNameShortHash[nameShortHash] != address(0)) revert AcademyNameShortNameAlreadyUsed();
+        if (academyByLegalBundleHash[legalBundleHash] != address(0)) revert AcademyLegalBundleAlreadyUsed();
+
+        academies[_walletAddress] = Academy({
+            identity: AcademyIdentityData({
+                academyIdHash: academyIdHash,
+                name: args.infos.name,
+                shortName: args.infos.shortName,
+                academyType: AcademyType(args.infos.academyType)
+            }),
+            proofs: AcademyProofData({
+                legalName: args.proofs.legalName,
+                registrationNumber: args.proofs.registrationNumber,
+                taxId: args.proofs.taxId,
+                billingEmail: args.proofs.billingEmail
+            }),
+            cert: AcademyCertificateData({
+                fingerprint: args.cert.fingerprint,
+                certificate: args.cert.certificate,
+                chain: args.cert.chain,
+                notBefore: args.cert.notBefore,
+                notAfter: args.cert.notAfter
+            }),
+            status: AcademyStatusData({
+                isNotRevoked: true,
+                issuedAt: uint64(block.timestamp),
+                revokedAt: 0,
+                issuer: msg.sender,
+                revoker: address(0)
+            })
+        });
+
+        // set indexes for checks
+        academyByIdHash[academyIdHash] = _walletAddress;
+        academyByNameShortHash[nameShortHash] = _walletAddress;
+        academyByLegalBundleHash[legalBundleHash] = _walletAddress;
     }
 }

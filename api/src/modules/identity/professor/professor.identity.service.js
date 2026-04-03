@@ -301,6 +301,14 @@ export const issueProfessorIdentityService = async ({ wallet_address, email }) =
         (profile.addr_country || 'TR').slice(0, 2).toUpperCase(),
     )
 
+    issueArgs.cert = {
+        fingerprint,
+        certificatePem,
+        chainPem,
+        notBefore,
+        notAfter,
+    }
+
     const academyWallet = profile.academy_wallet_address?.toLowerCase?.() ?? profile.academy_wallet_address
     const tx = await issueProfessorIdentity(normalizedWallet, academyWallet, issueArgs)
 
