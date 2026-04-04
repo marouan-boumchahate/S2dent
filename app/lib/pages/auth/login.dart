@@ -4,6 +4,7 @@ import 'package:app/components/layouts/auth_layout.dart';
 
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/auth/verify_email.dart';
+import 'package:app/pages/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,11 +27,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
+  void onTapSignIn() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => ProfilePage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final icon = Theme.brightnessOf(context) == Brightness.dark
-        ? "assets/password.png"
-        : "assets/password_light.png";
+        ? "assets/s2dent_dark.png"
+        : "assets/s2dent_light.png";
     return AuthLayout(
       children: [
         _headerSection(context, icon),
@@ -43,7 +53,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Column(
       children: [
         PrimaryButton(
-          onTap: () {},
+          onTap: onTapSignIn,
           label: "SIGN IN WITH A WALLET",
         ),
         _dividerSection(context),

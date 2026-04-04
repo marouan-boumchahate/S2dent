@@ -1,6 +1,6 @@
 import 'package:app/components/activity_item.dart';
-import 'package:app/components/custom_horizontal_container.dart';
-import 'package:app/components/custom_vertical_container.dart';
+import 'package:app/components/containers/custom_horizontal_container.dart';
+import 'package:app/components/containers/custom_vertical_container.dart';
 import 'package:app/components/custom_vertical_divider.dart';
 import 'package:app/components/layouts/main_layout.dart';
 import 'package:app/components/buttons/quick_action.dart';
