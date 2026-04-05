@@ -5,6 +5,27 @@ import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
 const blockchain = env.blockchain
 
+const GAS_MARGIN_NUM = 120n; // +20%
+const GAS_MARGIN_DEN = 100n;
+
+const EMPLOYMENT_TYPE_TO_UINT8 = {
+    full_time: 0,
+    part_time: 1,
+    adjunct: 2,
+    visiting: 3,
+    contract: 4,
+    other: 5,
+}
+
+const PROFESSOR_RANK_TO_UINT8 = {
+    'assist. prof': 0,
+    'assoc. prof': 1,
+    prof: 2,
+    lecturer: 3,
+    instructor: 4,
+    other: 5,
+}
+
 const getContract = () =>
     new ethers.Contract(
         blockchain.deployedContractAddress,
@@ -12,136 +33,58 @@ const getContract = () =>
         platformWallet
     )
 
+const getGasLimit = async (contract, methodName, params) => {
+    const gasEstimate = 
+        await contract[methodName].estimateGas(...params)
+
+    return (typeof gasEstimate === 'bigint')
+        ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
+        : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
+}
+
 const toUnixSeconds = (value) => {
-    if (value instanceof Date)
+    if (value instanceof Date) 
         return Math.floor(value.getTime() / 1000)
 
     return Math.floor(new Date(value).getTime() / 1000)
 }
 
-// Ethers v6 returns gas estimates as bigint. Keep this margin as integers.
-const GAS_MARGIN_NUM = 120n; // +20%
-const GAS_MARGIN_DEN = 100n;
-
-/**
- * @param {string} walletAddress
- * @param {string} academyAddress - Academy wallet (`academies.wallet_address`); stored as `issuer` on-chain.
- * @param {object} issueArgs - Professor profile payload coming from DB. Expected keys:
- *   (`person`, `addr`, `dept`, `job`, `cert`). Extra keys are ignored.
- */
-const issueProfessorIdentity = async (walletAddress, academyAddress, issueArgs) => {
+const issueProfessorIdentity = async (payload) => {
     try {
         const contract = getContract()
 
-        const person = issueArgs?.person ?? {}
-        const addr = issueArgs?.addr ?? {}
-        const dept = issueArgs?.dept ?? {}
-        const job = issueArgs?.job ?? {}
-        const cert = issueArgs?.cert ?? {}
-
-        // Compute proof hashes off-chain to keep the on-chain state compact.
-        // These must match Solidity: keccak256(abi.encodePacked(...)).
-        const nationalIdHash = ethers.solidityPackedKeccak256(
-            ['string'],
-            [person.nationalId ?? '']
-        )
-
-        const personHash = ethers.solidityPackedKeccak256(
-            ['string', 'string', 'string', 'string', 'string', 'uint8', 'string', 'string', 'string', 'string', 'string'],
-            [
-                person.firstName ?? '',
-                person.middleName ?? '',
-                person.lastName ?? '',
-                person.fullName ?? '',
-                person.dateOfBirth ?? '',
-                Number(person.gender ?? 0),
-                person.nationalId ?? '',
-                person.email ?? '',
-                person.phone ?? '',
-                person.photoUrl ?? '',
-                person.notes ?? '',
-            ]
-        )
-
-        const addressHash = ethers.solidityPackedKeccak256(
-            ['string', 'string', 'string', 'string', 'string', 'string', 'string', 'string', 'string', 'string'],
-            [
-                addr.addressLine1 ?? '',
-                addr.addressLine2 ?? '',
-                addr.street ?? '',
-                addr.district ?? '',
-                addr.state ?? '',
-                addr.postalCode ?? '',
-                addr.city ?? '',
-                addr.country ?? '',
-                addr.latitude ?? '',
-                addr.longitude ?? '',
-            ]
-        )
-
-        const deptHash = ethers.solidityPackedKeccak256(
-            ['string', 'string', 'string', 'uint256', 'bool', 'string'],
-            [
-                dept.code ?? '',
-                dept.name ?? '',
-                dept.faculty ?? '',
-                BigInt(Number(dept.totalYears ?? 0)),
-                Boolean(dept.isActive ?? true),
-                dept.description ?? '',
-            ]
-        )
-
-        const jobHash = ethers.solidityPackedKeccak256(
-            ['string', 'string', 'uint8', 'string', 'string', 'string', 'string', 'uint8', 'string'],
-            [
-                job.employeeNumber ?? '',
-                job.title ?? '',
-                Number(job.rank ?? 0),
-                job.specialization ?? '',
-                job.hireDate ?? '',
-                job.officeLocation ?? '',
-                job.officeHours ?? '',
-                Number(job.employmentType ?? 0),
-                job.bio ?? '',
-            ]
-        )
-
-        const certificateHash = ethers.solidityPackedKeccak256(['string'], [cert.certificatePem ?? ''])
-        const chainHash = ethers.solidityPackedKeccak256(['string'], [cert.chainPem ?? ''])
+        const {
+            professorWallet,
+            academyWallet,
+            
+            employeeId,
+            nationalId,
+            fullName,
+            
+            hireDate,
+            rank,
+            employmentType
+        } = payload
 
         const args = {
-            infos: {
-                employeeNumber: job.employeeNumber,
-                nationalIdHash,
-                rank: job.rank,
-                employmentType: job.employmentType,
-            },
-            proofs: {
-                personHash,
-                deptHash,
-                jobHash,
-                addressHash,
-            },
-            cert: {
-                fingerprint: cert.fingerprint,
-                certificateHash,
-                chainHash,
-                notBefore: BigInt(toUnixSeconds(cert.notBefore)),
-                notAfter: BigInt(toUnixSeconds(cert.notAfter)),
-            }
+            employeeId,
+            nationalId,
+            fullName,
+            hireDate: toUnixSeconds(hireDate),
+            rank: PROFESSOR_RANK_TO_UINT8[rank.toLowerCase()] ?? PROFESSOR_RANK_TO_UINT8.other,
+            employmentType: EMPLOYMENT_TYPE_TO_UINT8[employmentType.toLowerCase()] ?? EMPLOYMENT_TYPE_TO_UINT8.other
         }
 
-        const params = [walletAddress, academyAddress, args]
+        const params = [professorWallet, academyWallet, args]
 
-        const gasEstimate = await contract.issueProfessorIdentity.estimateGas(...params)
-        const gasLimit = (typeof gasEstimate === 'bigint')
-            ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
-            : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
+        const gasLimit = await getGasLimit(contract, 'issueProfessorIdentity', params)
 
         const tx = await contract.issueProfessorIdentity(...params, { gasLimit })
         return tx
+
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
         const wrapped = new Error(`issueProfessorIdentity failed: ${reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'

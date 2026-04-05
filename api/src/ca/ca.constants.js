@@ -1,4 +1,8 @@
+import path from 'path'
+
 export const ISRG_ROOT_X1_DER_URL = 'https://letsencrypt.org/certs/isrgrootx1.der'
+export const ISRG_ROOT_X1_DER_PATH = process.env.ISRG_ROOT_X1_DER_PATH
+	|| path.join(process.cwd(), 'certs', 'isrgrootx1.der')
 
 export const CERT_VALIDITY_DAYS = 365
 

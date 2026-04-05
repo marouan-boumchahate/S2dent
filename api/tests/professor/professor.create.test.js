@@ -12,6 +12,21 @@ let ACADEMY_ID;
 let DEPARTMENT_ID;
 let TUSER_ID;
 
+let userColumnCache = null;
+
+const getUserColumns = async () => {
+  if (userColumnCache) return userColumnCache;
+
+  const { rows } = await db.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_name = 'users'`
+  );
+
+  userColumnCache = new Set(rows.map((row) => row.column_name));
+  return userColumnCache;
+};
+
 const seedAcademy = async () => {
     await db.query(
       `DELETE FROM professors
@@ -65,26 +80,48 @@ const seedDepartment = async (academyId) => {
 };
 
 const seedTUser = async () => {
+  const columns = await getUserColumns();
+  const now = Date.now();
+
+  const insertCols = [
+    'first_name',
+    'middle_name',
+    'last_name',
+    'full_name',
+    'date_of_birth',
+    'gender',
+    'national_id',
+    'email',
+    'phone',
+    'photo_url',
+    'notes',
+  ];
+  const insertVals = [
+    'Professor',
+    'Cases',
+    'Test',
+    `Professor Cases Test ${now}`,
+    '1980-03-20',
+    'male',
+    `PROF-NID-${now}`,
+    `prof.${now}@profcases.test`,
+    '+905551234567',
+    null,
+    null,
+  ];
+
+  if (columns.has('nationality')) {
+    insertCols.push('nationality');
+    insertVals.push('Turkish');
+  }
+
+  const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
+
   const { rows: [u] } = await db.query(
-    `INSERT INTO users (
-      first_name, middle_name, last_name, full_name,
-      date_of_birth, gender, national_id, email, phone, photo_url, notes
-    )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-    RETURNING id`,
-    [
-      'Professor',
-      'Cases',
-      'Test',
-      `Professor Cases Test ${Date.now()}`,
-      '1980-03-20',
-      'male',
-      `PROF-NID-${Date.now()}`,
-      `prof.${Date.now()}@profcases.test`,
-      '+905551234567',
-      null,
-      null,
-    ],
+    `INSERT INTO users (${insertCols.join(', ')})
+     VALUES (${placeholders})
+     RETURNING id`,
+    insertVals,
   );
 
   return u.id;

@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS pending_transactions (
     
     tx_hash TEXT NOT NULL UNIQUE,
     payload JSONB NOT NULL,
-    records_to_delete JSONB,
     status transaction_status DEFAULT transaction_status('pending'),
 
     created_at TIMESTAMPTZ DEFAULT NOW(),

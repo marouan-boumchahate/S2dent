@@ -28,21 +28,109 @@ const DEFAULT_CA_ATTRS = {
 };
 const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
 
+let userColumnCache = null;
+
+const getUserColumns = async () => {
+    if (userColumnCache) return userColumnCache;
+
+    const { rows } = await db.query(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_name = 'users'`
+    );
+
+    userColumnCache = new Set(rows.map((row) => row.column_name));
+    return userColumnCache;
+};
+
+const seedUser = async ({
+    email,
+    wallet_address = WALLET_ADDRESS,
+    role = 'academy',
+    is_identity_issued = false,
+    first_name = 'Seed',
+    middle_name = null,
+    last_name = 'User',
+    full_name = 'Seed User',
+    date_of_birth = '1980-01-01',
+    gender = 'male',
+    national_id = `NID-${Math.random().toString(16).slice(2, 10)}`,
+    nationality = 'Turkish',
+} = {}) => {
+    const columns = await getUserColumns();
+
+    const insertCols = [
+        'first_name',
+        'middle_name',
+        'last_name',
+        'full_name',
+        'date_of_birth',
+        'gender',
+        'national_id',
+        'email',
+        'phone',
+        'photo_url',
+        'notes',
+    ];
+    const insertVals = [
+        first_name,
+        middle_name,
+        last_name,
+        full_name,
+        date_of_birth,
+        gender,
+        national_id,
+        email,
+        null,
+        null,
+        null,
+    ];
+
+    if (columns.has('nationality')) {
+        insertCols.push('nationality');
+        insertVals.push(nationality);
+    }
+
+    if (columns.has('wallet_address')) {
+        insertCols.push('wallet_address');
+        insertVals.push(wallet_address);
+    }
+    if (columns.has('role')) {
+        insertCols.push('role');
+        insertVals.push(role);
+    }
+    if (columns.has('is_identity_issued')) {
+        insertCols.push('is_identity_issued');
+        insertVals.push(is_identity_issued);
+    }
+
+    const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
+
+    const { rows: [user] } = await db.query(
+        `INSERT INTO users (${insertCols.join(', ')})
+         VALUES (${placeholders})
+         RETURNING id, email`,
+        insertVals,
+    );
+
+    return user;
+};
+
 const seedAcademyUser = async ({
     email = 'seed@fenerbahce.edu.tr',
     wallet_address = WALLET_ADDRESS,
-    role = 'academy_admin',
+    role = 'academy',
     is_identity_issued = false,
     academy_name = 'Fenerbahce University',
     short_name = 'FBU',
     country = 'Turkey'
 } = {}) => {
-    const { rows: [user] } = await db.query(
-        `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-             VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [email, wallet_address, role, is_identity_issued],
-    );
+    const user = await seedUser({
+        email,
+        wallet_address,
+        role,
+        is_identity_issued,
+    });
 
     const { rows: [{ nextval }] } = await db.query(
         `SELECT nextval('academy_seq')`
@@ -84,6 +172,11 @@ const seedAcademyUser = async ({
 
 const cleanupDB = async () => {
     await db.query(`
+        DELETE FROM identities
+        WHERE wallet_address = $1
+    `, [WALLET_ADDRESS]);
+
+    await db.query(`
         DELETE FROM identity_certificates
         WHERE wallet_address = $1
     `, [WALLET_ADDRESS]);
@@ -96,14 +189,57 @@ const cleanupDB = async () => {
     await db.query(`
         DELETE FROM addresses
         WHERE academy_id IN (
-            SELECT id FROM academies WHERE wallet_address = $1
+            SELECT id FROM academies
+            WHERE wallet_address = $1
+               OR email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )
+    `, [WALLET_ADDRESS]);
+
+    await db.query(`
+        DELETE FROM addresses
+        WHERE user_id IN (
+            SELECT id FROM users
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )
+    `);
+
+    await db.query(`
+        DELETE FROM professors
+        WHERE user_id IN (
+            SELECT id FROM users
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )
+    `);
+
+    await db.query(`
+        DELETE FROM students
+        WHERE user_id IN (
+            SELECT id FROM users
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )
+    `);
+
+    await db.query(`
+        DELETE FROM departments
+        WHERE academy_id IN (
+            SELECT id FROM academies
+            WHERE wallet_address = $1
+               OR email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
         )
     `, [WALLET_ADDRESS]);
 
     await db.query(`
         DELETE FROM academies
         WHERE wallet_address = $1
+           OR email LIKE '%@fenerbahce%'
+           OR email LIKE '%@test-identity%'
     `, [WALLET_ADDRESS]);
+    
     await db.query(`
         DELETE FROM users
         WHERE email LIKE '%@fenerbahce%'
@@ -132,13 +268,14 @@ const makeApp = async (
     return app;
 };
 
-beforeEach(async () => { await cleanupDB(); });
-afterEach(async ()  => { await cleanupDB(); });
-
 const endpoint = '/api/identity/academies/issue';
 
 
-describe('POST /api/identity/academies/issue', () => {
+describe('POST /api/identity/academies/issue', function () {
+    this.timeout(15000);
+
+    beforeEach(async () => { await cleanupDB(); });
+    afterEach(async ()  => { await cleanupDB(); });
 
     it('returns 200 with blockchain_transaction and certificate_metadata on valid input', async () => {
         await seedAcademyUser();
@@ -206,8 +343,11 @@ describe('POST /api/identity/academies/issue', () => {
         assert.match(call.academyNumber, /^ACD_[0-9]{7}$/, 'academyNumber must match ACD_ format');
         assert.equal(call.name, 'Fenerbahce University', 'academy name must match');
         assert.equal(call.shortName, 'FBU', 'short name must match');
-        assert.equal(call.country, 'Turkey', 'country must be passed');
-        assert.equal(call.academyType, 0, 'university maps to uint8 0');
+        assert.equal(call.academyType, 'university', 'academyType must be passed as string');
+        assert.match(call.legalName, /^Fenerbahce University Legal [0-9]+$/);
+        assert.match(call.registrationNumber, /^REG-[0-9]+$/);
+        assert.match(call.taxId, /^TAX-[0-9]+$/);
+        assert.equal(call.billingEmail, '', 'missing billingEmail should be mapped to empty string');
         assert.equal(call.certificatePem, FAKE_CERT.certificatePem);
         assert.equal(call.chainPem, FAKE_CERT.chainPem);
         assert.equal(call.fingerprint, FAKE_CERT.fingerprint, 'fingerprint must come from the certificate');
@@ -285,8 +425,8 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(cert.fingerprint, FAKE_CERT.fingerprint);
     });
 
-    it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {
-        const { user } = await seedAcademyUser();
+    it('does NOT insert into identities immediately after submission (listener not yet triggered)', async () => {
+        await seedAcademyUser();
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 
@@ -294,13 +434,12 @@ describe('POST /api/identity/academies/issue', () => {
             .post(endpoint)
             .send({ wallet_address: WALLET_ADDRESS });
 
-        const { rows: [unchanged] } = await db.query(
-            'SELECT is_identity_issued, identity_tx_hash FROM users WHERE id = $1',
-            [user.id],
+        const { rows } = await db.query(
+            'SELECT id FROM identities WHERE wallet_address = $1',
+            [WALLET_ADDRESS],
         );
 
-        assert.equal(unchanged.is_identity_issued, false);
-        assert.equal(unchanged.identity_tx_hash, null);
+        assert.equal(rows.length, 0);
     });
 
 
@@ -333,6 +472,26 @@ describe('POST /api/identity/academies/issue', () => {
         assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
     });
 
+    it('returns 409 ACADEMY_ADDRESS_REQUIRED when academy has no address row', async () => {
+        await seedAcademyUser();
+        await db.query(
+            `DELETE FROM addresses
+             WHERE academy_id IN (
+                SELECT id FROM academies WHERE wallet_address = $1
+             )`,
+            [WALLET_ADDRESS],
+        );
+
+        const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
+
+        const res = await request(app)
+            .post(endpoint)
+            .send({ wallet_address: WALLET_ADDRESS });
+
+        assert.equal(res.status, 409);
+        assert.equal(res.body.code, 'ACADEMY_ADDRESS_REQUIRED');
+    });
+
     it('returns 200 when user role is not academy_admin (route does not enforce role)', async () => {
         await seedAcademyUser({ role: 'professor' });
 
@@ -358,11 +517,15 @@ describe('POST /api/identity/academies/issue', () => {
     });
 
     it('returns 404 ACADEMY_NOT_FOUND when user exists but has no academy row', async () => {
-        await db.query(
-            `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-                 VALUES ('orphan@test-identity.edu', $1, 'academy_admin', false)`,
-            [WALLET_ADDRESS],
-        );
+        await seedUser({
+            email: 'orphan@test-identity.edu',
+            wallet_address: WALLET_ADDRESS,
+            role: 'academy',
+            is_identity_issued: false,
+            first_name: 'Orphan',
+            last_name: 'User',
+            full_name: 'Orphan User',
+        });
 
         const app = await makeApp({ issueAcademyIdentity: async () => FAKE_TX });
 

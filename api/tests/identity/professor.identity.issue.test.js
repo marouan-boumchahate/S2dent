@@ -4,19 +4,11 @@ import { strict as assert } from 'assert';
 import db from '../../src/config/db.js';
 
 
-const FAKE_TX_HASH    = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
-const WALLET_ADDRESS  = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
-const WALLET_UPPER    = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
+const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
+const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
+const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 const PROFESSOR_EMAIL = 'prof.smith@fenerbahce.edu.tr';
-const ACADEMY_WALLET  = '0x1111111111111111111111111111111111111111';
-
-const FAKE_CERT = {
-    fingerprint:    'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD',
-    certificatePem: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-    chainPem:       '-----BEGIN CERTIFICATE-----\nFAKECHAIN\n-----END CERTIFICATE-----',
-    notBefore:      '2024-01-01T00:00:00.000Z',
-    notAfter:       '2025-01-01T00:00:00.000Z',
-};
+const ACADEMY_WALLET = '0x1111111111111111111111111111111111111111';
 
 const FAKE_TX = {
     hash: FAKE_TX_HASH,
@@ -24,65 +16,160 @@ const FAKE_TX = {
 };
 
 
-const DEFAULT_CA_ATTRS = {
-    getAcademyCertificateAttrs:  () => ({ fake: 'attrs' }),
-    getProfessorCertificateAttrs: () => ({ fake: 'attrs' }),
-};
-const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
-
-
 const seedAcademy = async ({
     email = 'academy@fenerbahce.edu.tr',
     wallet_address = ACADEMY_WALLET,
     academy_name = 'Fenerbahce University',
     short_name = 'FBU',
+    department_is_active = true,
 } = {}) => {
-    const { rows: [academyUser] } = await db.query(
-        `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-             VALUES ($1, $2, 'academy_admin', true)
-         RETURNING id`,
-        [email, wallet_address],
-    );
-
     const { rows: [{ nextval }] } = await db.query(
         `SELECT nextval('academy_seq')`
     );
-    const SEED_ACADEMY_NUMBER = `ACD_${String(nextval).padStart(7, '0')}`;
+    const academyNumber = `ACD_${String(nextval).padStart(7, '0')}`;
+
+    const legalName = `${academy_name} Legal ${nextval}`;
+    const registrationNumber = `REG-${nextval}`;
+    const taxId = `TAX-${nextval}`;
+    const billingEmail = `billing-${nextval}@fenerbahce.edu.tr`;
 
     const { rows: [academy] } = await db.query(
-        `INSERT INTO academies (user_id, academy_number, name, short_name, type, country, city)
-             VALUES ($1, $2, $3, $4, 'university', 'Turkey', 'Istanbul')
-         RETURNING id`,
-        [academyUser.id, SEED_ACADEMY_NUMBER, academy_name, short_name],
+        `INSERT INTO academies (
+            wallet_address, academy_number, name, short_name, type,
+            email, legal_name, registration_number, tax_id, billing_email
+        )
+         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8, $9)
+         RETURNING id, wallet_address, name`,
+        [
+            wallet_address,
+            academyNumber,
+            academy_name,
+            short_name.toUpperCase(),
+            email,
+            legalName,
+            registrationNumber,
+            taxId,
+            billingEmail,
+        ],
     );
 
-    return { academyUser, academy };
+    const { rows: [department] } = await db.query(
+        `INSERT INTO departments (academy_id, code, name, faculty, total_years, is_active)
+         VALUES ($1, 'CS', 'Computer Science', 'Engineering', 4, $2)
+         RETURNING id, name, faculty, is_active`,
+        [academy.id, department_is_active],
+    );
+
+    return { academy, department };
+};
+
+let userColumnCache = null;
+
+const getUserColumns = async () => {
+    if (userColumnCache) return userColumnCache;
+    const { rows } = await db.query(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_name = 'users'`
+    );
+    userColumnCache = new Set(rows.map((r) => r.column_name));
+    return userColumnCache;
 };
 
 const seedProfessorUser = async ({
     email = PROFESSOR_EMAIL,
-    wallet_address = null,
-    role = 'professor',
-    is_identity_issued = false,
+    first_name = 'John',
+    middle_name = null,
+    last_name = 'Smith',
     full_name = 'John Smith',
+    date_of_birth = '1980-01-01',
+    gender = 'male',
+    national_id = `NID-${Math.random().toString(16).slice(2, 10)}`,
+    nationality = 'Turkish',
     employee_number = 'EMP-001',
-    department = 'Computer Science',
     title = 'Dr.',
-    faculty = 'Engineering',
+    rank = 'Prof',
+    hire_date = '2010-01-01',
+    employment_type = 'full_time',
+    department_id = null,
     academy_id = null,
+    address_city = 'Istanbul',
+    address_country = 'Turkey',
+    create_address = true,
 } = {}) => {
+    const columns = await getUserColumns();
+
+    const insertCols = [
+        'first_name',
+        'middle_name',
+        'last_name',
+        'full_name',
+        'date_of_birth',
+        'gender',
+        'national_id',
+        'email',
+        'phone',
+        'photo_url',
+        'notes',
+    ];
+    const insertVals = [
+        first_name,
+        middle_name,
+        last_name,
+        full_name,
+        date_of_birth,
+        gender,
+        national_id,
+        email,
+        null,
+        null,
+        null,
+    ];
+
+    if (columns.has('nationality')) {
+        insertCols.push('nationality');
+        insertVals.push(nationality);
+    }
+
+    if (columns.has('is_active')) {
+        insertCols.push('is_active');
+        insertVals.push(true);
+    }
+
+    const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
+
     const { rows: [user] } = await db.query(
-        `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-             VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [email, wallet_address, role, is_identity_issued],
+        `INSERT INTO users (${insertCols.join(', ')})
+         VALUES (${placeholders})
+         RETURNING id, email`,
+        insertVals,
     );
 
-    if (academy_id) {
+    if (academy_id && department_id) {
         await db.query(
-            `INSERT INTO professors (user_id, full_name, employee_number, department, title, faculty, academy_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [user.id, full_name, employee_number, department, title, faculty, academy_id],
+            `INSERT INTO professors (
+                user_id, academy_id, department_id,
+                employee_number, title, rank, hire_date, employment_type
+            )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+                user.id,
+                academy_id,
+                department_id,
+                employee_number,
+                title,
+                rank,
+                hire_date,
+                employment_type,
+            ],
+        );
+    }
+
+    if (create_address) {
+        await db.query(
+            `INSERT INTO addresses (user_id, city, country)
+             VALUES ($1, $2, $3)`,
+            [user.id, address_city, address_country],
         );
     }
 
@@ -90,47 +177,83 @@ const seedProfessorUser = async ({
 };
 
 const cleanupDB = async () => {
-    await db.query(`
-        DELETE FROM identity_certificates
-        WHERE wallet_address = $1
-    `, [WALLET_ADDRESS]);
+    await db.query(
+        `DELETE FROM identities
+         WHERE wallet_address = $1`,
+        [WALLET_ADDRESS],
+    );
 
-    await db.query(`
-        DELETE FROM pending_transactions
-        WHERE payload->>'wallet_address' = $1
-    `, [WALLET_ADDRESS]);
+    await db.query(
+        `DELETE FROM identity_certificates
+         WHERE wallet_address = $1`,
+        [WALLET_ADDRESS],
+    );
 
-    await db.query(`
-        DELETE FROM professors
-        USING users
-        WHERE professors.user_id = users.id
-            AND (
-                users.email LIKE '%@fenerbahce%'
-                OR users.email LIKE '%@test-identity%'
-            )
-    `);
-    await db.query(`
-        DELETE FROM academies
-        USING users
-        WHERE academies.user_id = users.id
-            AND (
-                users.email LIKE '%@fenerbahce%'
-                OR users.email LIKE '%@test-identity%'
-            )
-    `);
-    await db.query(`
-        DELETE FROM users
-        WHERE email LIKE '%@fenerbahce%'
-            OR email LIKE '%@test-identity%'
-    `);
+    await db.query(
+        `DELETE FROM pending_transactions
+         WHERE payload->>'wallet_address' = $1`,
+        [WALLET_ADDRESS],
+    );
+
+    await db.query(
+        `DELETE FROM addresses
+         WHERE academy_id IN (
+            SELECT id FROM academies
+            WHERE wallet_address = $1
+               OR email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )`,
+        [ACADEMY_WALLET],
+    );
+
+    await db.query(
+        `DELETE FROM addresses
+         WHERE user_id IN (
+            SELECT id FROM users
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )`,
+    );
+
+    await db.query(
+        `DELETE FROM professors
+         WHERE user_id IN (
+            SELECT id FROM users
+            WHERE email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )`,
+    );
+
+    await db.query(
+        `DELETE FROM departments
+         WHERE academy_id IN (
+            SELECT id FROM academies
+            WHERE wallet_address = $1
+               OR email LIKE '%@fenerbahce%'
+               OR email LIKE '%@test-identity%'
+        )`,
+        [ACADEMY_WALLET],
+    );
+
+    await db.query(
+        `DELETE FROM academies
+         WHERE wallet_address = $1
+            OR email LIKE '%@fenerbahce%'
+            OR email LIKE '%@test-identity%'`,
+        [ACADEMY_WALLET],
+    );
+
+    await db.query(
+        `DELETE FROM users
+         WHERE email LIKE '%@fenerbahce%'
+            OR email LIKE '%@test-identity%'`,
+    );
 };
 
 
 const makeApp = async (
-    blockchainImpl  = { issueProfessorIdentity: async () => FAKE_TX },
-    listenerImpl    = { listenOnTransaction: () => {} },
-    caAttrsImpl     = {},
-    caIdentityImpl  = DEFAULT_CA_IDENTITY,
+    blockchainImpl = { issueProfessorIdentity: async () => FAKE_TX },
+    listenerImpl = { listenOnTransaction: () => {} },
 ) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
@@ -139,25 +262,23 @@ const makeApp = async (
         {
             '../../src/blockchain/identity/professor.identity.blockchain.js': blockchainImpl,
             '../../src/blockchain/listener.js': listenerImpl,
-            '../../src/ca/ca.attrs.js': { ...DEFAULT_CA_ATTRS, ...caAttrsImpl },
-            '../../src/ca/ca.identity.js': caIdentityImpl,
         },
     );
     return app;
 };
 
 
-beforeEach(async () => { await cleanupDB(); });
-afterEach(async ()  => { await cleanupDB(); });
-
 const endpoint = '/api/identity/professors/issue';
 
 
 describe('POST /api/identity/professors/issue', () => {
 
-    it('returns 200 with blockchain_transaction and certificate_metadata on valid input', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
+    beforeEach(async () => { await cleanupDB(); });
+    afterEach(async () => { await cleanupDB(); });
+
+    it('returns 200 with professor_wallet and blockchain_transaction on valid input', async () => {
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
@@ -165,31 +286,29 @@ describe('POST /api/identity/professors/issue', () => {
             .post(endpoint)
             .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
 
-        assert.equal(res.status,         200);
-        assert.equal(res.body.success,   true);
-        assert.equal(res.body.message,   'Professor identity issuance request submitted successfully');
+        assert.equal(res.status, 200);
+        assert.equal(res.body.success, true);
+        assert.equal(res.body.message, 'Professor identity issuance request submitted successfully');
 
-        const { blockchain_transaction, certificate_metadata } = res.body.data;
+        const { professor_wallet, blockchain_transaction } = res.body.data;
 
-        // blockchain_transaction block
+        assert.equal(professor_wallet, WALLET_ADDRESS);
         assert.equal(blockchain_transaction.tx_hash, FAKE_TX_HASH);
-        assert.equal(blockchain_transaction.status,  'pending');
-
-        // certificate_metadata block
-        assert.ok(certificate_metadata, 'certificate_metadata should be present');
-        assert.equal(certificate_metadata.certificate_hash, FAKE_CERT.fingerprint);
-        assert.equal(certificate_metadata.issued_at, FAKE_CERT.notBefore);
-        assert.equal(certificate_metadata.expires_at, FAKE_CERT.notAfter);
+        assert.equal(blockchain_transaction.status, 'pending');
+        assert.equal(
+            Object.prototype.hasOwnProperty.call(res.body.data, 'certificate_metadata'),
+            false,
+        );
     });
 
     it('normalizes wallet_address and email to lowercase before processing', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const calls = [];
         const app = await makeApp({
-            issueProfessorIdentity: async (wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter) => {
-                calls.push({ wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter });
+            issueProfessorIdentity: async (payload) => {
+                calls.push(payload);
                 return FAKE_TX;
             },
         });
@@ -199,24 +318,29 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: PROFESSOR_EMAIL.toUpperCase(), wallet_address: WALLET_UPPER });
 
         assert.equal(res.status, 200);
-        assert.equal(calls[0].wallet, WALLET_ADDRESS, 'wallet must be lowercased');
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].professorWallet, WALLET_ADDRESS, 'wallet must be lowercased');
+        assert.equal(calls[0].academyWallet, ACADEMY_WALLET, 'academy wallet must be lowercased');
     });
 
-    it('passes the correct 10 arguments to issueProfessorIdentity', async () => {
-        const { academy } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
+    it('passes the correct payload to issueProfessorIdentity', async () => {
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         await seedProfessorUser({
             academy_id: academy.id,
+            department_id: department.id,
             full_name: 'John Smith',
             employee_number: 'EMP-001',
-            department: 'Computer Science',
             title: 'Dr.',
-            faculty: 'Engineering',
+            rank: 'Prof',
+            hire_date: '2010-01-01',
+            employment_type: 'full_time',
+            national_id: 'NID-12345678',
         });
 
         const calls = [];
         const app = await makeApp({
-            issueProfessorIdentity: async (wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter) => {
-                calls.push({ wallet, academyWallet, employeeNumber, fullName, title, department, country, fingerprint, notBefore, notAfter });
+            issueProfessorIdentity: async (payload) => {
+                calls.push(payload);
                 return FAKE_TX;
             },
         });
@@ -228,54 +352,19 @@ describe('POST /api/identity/professors/issue', () => {
         assert.equal(calls.length, 1);
 
         const call = calls[0];
-        assert.equal(call.wallet, WALLET_ADDRESS, 'wallet must be normalised');
+        assert.equal(call.professorWallet, WALLET_ADDRESS, 'wallet must be normalised');
         assert.equal(call.academyWallet, ACADEMY_WALLET, 'academy wallet must be passed');
-        assert.equal(call.employeeNumber, 'EMP-001', 'employee number must match');
-        assert.equal(call.fullName, 'John Smith', 'full name must match');
-        assert.equal(call.title, 'Dr.', 'title must match');
-        assert.equal(call.department, 'Computer Science', 'department must match');
-        assert.equal(call.country, 'Turkey', 'country must be passed from academy');
-        assert.equal(call.fingerprint, FAKE_CERT.fingerprint, 'fingerprint must come from the certificate');
-        assert.equal(call.notBefore, FAKE_CERT.notBefore, 'notBefore must come from the certificate');
-        assert.equal(call.notAfter, FAKE_CERT.notAfter, 'notAfter must come from the certificate');
-    });
-
-    it('passes the correct arguments to getProfessorCertificateAttrs', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({
-            academy_id: academy.id,
-            full_name: 'John Smith',
-            employee_number: 'EMP-001',
-            department: 'Computer Science',
-        });
-
-        const attrCalls = [];
-        const app = await makeApp(
-            { issueProfessorIdentity: async () => FAKE_TX },
-            { listenOnTransaction: () => {} },
-            {
-                getProfessorCertificateAttrs: (wallet, employeeNumber, fullName, department, academyName) => {
-                    attrCalls.push({ wallet, employeeNumber, fullName, department, academyName });
-                    return { fake: 'attrs' };
-                },
-            },
-        );
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        assert.equal(attrCalls.length, 1);
-        assert.equal(attrCalls[0].wallet, WALLET_ADDRESS);
-        assert.equal(attrCalls[0].employeeNumber, 'EMP-001');
-        assert.equal(attrCalls[0].fullName, 'John Smith');
-        assert.equal(attrCalls[0].department, 'Computer Science');
-        assert.equal(attrCalls[0].academyName, 'Fenerbahce University');
+        assert.equal(call.employeeId, 'EMP-001', 'employeeId must match');
+        assert.equal(call.fullName, 'John Smith', 'fullName must match');
+        assert.equal(call.nationalId, 'NID-12345678', 'nationalId must match');
+        assert.match(call.hireDate, /^\d{4}-\d{2}-\d{2}$/, 'hireDate must be formatted as YYYY-MM-DD');
+        assert.equal(call.rank, 'Prof', 'rank must match');
+        assert.equal(call.employmentType, 'full_time', 'employmentType must match');
     });
 
     it('inserts a pending_transaction row after successful submission', async () => {
-        const { academy } = await seedAcademy();
-        const user = await seedProfessorUser({ academy_id: academy.id });
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
@@ -290,55 +379,18 @@ describe('POST /api/identity/professors/issue', () => {
 
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
-        assert.equal(pending.payload.wallet_address,  WALLET_ADDRESS);
-        assert.equal(pending.payload.id, user.id);
-        assert.ok(pending.payload.email, 'payload must contain email');
-    });
-
-    it('inserts an identity_certificate row after successful submission', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        const { rows: [cert] } = await db.query(
-            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
-            [WALLET_ADDRESS],
-        );
-
-        assert.ok(cert, 'identity_certificates row should exist');
-        assert.equal(cert.certificate_pem, FAKE_CERT.certificatePem);
-        assert.equal(cert.chain_pem, FAKE_CERT.chainPem);
-        assert.equal(cert.fingerprint, FAKE_CERT.fingerprint);
-    });
-
-    it('does NOT update users table immediately after submission (listener not yet triggered)', async () => {
-        const { academy } = await seedAcademy();
-        const user = await seedProfessorUser({ academy_id: academy.id });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        const { rows: [unchanged] } = await db.query(
-            'SELECT is_identity_issued, identity_tx_hash, wallet_address FROM users WHERE id = $1',
-            [user.id],
-        );
-
-        assert.equal(unchanged.is_identity_issued, false);
-        assert.equal(unchanged.identity_tx_hash, null);
-        assert.equal(unchanged.wallet_address, null);
+        assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
+        assert.equal(pending.payload.professor_number, 'EMP-001');
+        assert.equal(pending.payload.name, 'John Smith');
+        assert.equal(pending.payload.role, 'professor');
+        assert.equal(pending.payload.email, PROFESSOR_EMAIL);
+        assert.equal(pending.payload.onSuccess.subject, 'Identity Issuance Confirmed');
+        assert.equal(pending.payload.onFailure.subject, 'Identity Issuance Pending Resolution');
     });
 
     it('fires listenOnTransaction in the background after submission', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const listenerCalls = [];
         const app = await makeApp(
@@ -354,7 +406,7 @@ describe('POST /api/identity/professors/issue', () => {
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
     });
 
-    it('returns 404 USER_NOT_FOUND when email does not exist in DB', async () => {
+    it('returns 404 PROFESSOR_NOT_FOUND when email does not exist in DB', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
@@ -362,56 +414,11 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: 'ghost@test-identity.edu', wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 404);
-        assert.equal(res.body.code, 'USER_NOT_FOUND');
-    });
-
-    it('returns 403 FORBIDDEN when user role is not professor', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id, role: 'academy_admin' });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
-
-        const res = await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        assert.equal(res.status, 403);
-        assert.equal(res.body.code, 'FORBIDDEN');
-    });
-
-    it('returns 409 IDENTITY_ALREADY_ISSUED when identity was already issued', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id, is_identity_issued: true });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
-
-        const res = await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        assert.equal(res.status, 409);
-        assert.equal(res.body.code, 'IDENTITY_ALREADY_ISSUED');
-    });
-
-    it('returns 409 WALLET_ADDRESS_ALREADY_ASSOCIATED when user already has a wallet address', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id, wallet_address: WALLET_ADDRESS });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
-
-        const res = await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        assert.equal(res.status, 409);
-        assert.equal(res.body.code, 'WALLET_ADDRESS_ALREADY_ASSOCIATED');
+        assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
     });
 
     it('returns 404 PROFESSOR_NOT_FOUND when user exists but has no professor row', async () => {
-        await db.query(
-            `INSERT INTO users (email, wallet_address, role, is_identity_issued)
-                 VALUES ('orphan@test-identity.edu', NULL, 'professor', false)`,
-        );
+        await seedProfessorUser({ email: 'orphan@test-identity.edu' });
 
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
@@ -423,9 +430,42 @@ describe('POST /api/identity/professors/issue', () => {
         assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
     });
 
+    it('returns 403 DEPARTMENT_INACTIVE when linked department is inactive', async () => {
+        const { academy, department } = await seedAcademy({ department_is_active: false });
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
+
+        const res = await request(app)
+            .post(endpoint)
+            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
+
+        assert.equal(res.status, 403);
+        assert.equal(res.body.code, 'DEPARTMENT_INACTIVE');
+    });
+
+    it('returns 404 PROFESSOR_NOT_FOUND when professor has no address row', async () => {
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({
+            academy_id: academy.id,
+            department_id: department.id,
+            create_address: false,
+            email: 'no-address@test-identity.edu',
+        });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
+
+        const res = await request(app)
+            .post(endpoint)
+            .send({ email: 'no-address@test-identity.edu', wallet_address: WALLET_ADDRESS });
+
+        assert.equal(res.status, 404);
+        assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
+    });
+
     it('returns 502 BLOCKCHAIN_ERROR when the blockchain call fails', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({
             issueProfessorIdentity: async () => {
@@ -445,8 +485,8 @@ describe('POST /api/identity/professors/issue', () => {
     });
 
     it('does not insert a pending_transaction when blockchain submission fails', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
+        const { academy, department } = await seedAcademy();
+        await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({
             issueProfessorIdentity: async () => {
@@ -468,31 +508,6 @@ describe('POST /api/identity/professors/issue', () => {
         assert.equal(rows.length, 0);
     });
 
-    it('does not insert an identity_certificate when blockchain submission fails', async () => {
-        const { academy } = await seedAcademy();
-        await seedProfessorUser({ academy_id: academy.id });
-
-        const app = await makeApp({
-            issueProfessorIdentity: async () => {
-                const err = new Error('issueProfessorIdentity failed: execution reverted');
-                err.statusCode = 502;
-                err.code = 'BLOCKCHAIN_ERROR';
-                throw err;
-            },
-        });
-
-        await request(app)
-            .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, wallet_address: WALLET_ADDRESS });
-
-        const { rows } = await db.query(
-            `SELECT * FROM identity_certificates WHERE wallet_address = $1`,
-            [WALLET_ADDRESS],
-        );
-        assert.equal(rows.length, 0,
-            'No certificate row should be written when the blockchain call reverts');
-    });
-
     it('returns 422 VALIDATION_ERROR when wallet_address is missing', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
@@ -502,7 +517,7 @@ describe('POST /api/identity/professors/issue', () => {
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find(e => e.field === 'wallet_address');
+        const field = res.body.errors.find((e) => e.field === 'wallet_address');
         assert.ok(field, 'errors should contain a wallet_address entry');
     });
 
@@ -515,7 +530,7 @@ describe('POST /api/identity/professors/issue', () => {
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find(e => e.field === 'email');
+        const field = res.body.errors.find((e) => e.field === 'email');
         assert.ok(field, 'errors should contain an email entry');
     });
 
@@ -527,7 +542,7 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: PROFESSOR_EMAIL, wallet_address: 'not-a-wallet' });
 
         assert.equal(res.status, 422);
-        const field = res.body.errors.find(e => e.field === 'wallet_address');
+        const field = res.body.errors.find((e) => e.field === 'wallet_address');
         assert.ok(field, 'errors should contain a wallet_address entry');
     });
 
@@ -539,7 +554,7 @@ describe('POST /api/identity/professors/issue', () => {
             .send({ email: 'not-an-email', wallet_address: WALLET_ADDRESS });
 
         assert.equal(res.status, 422);
-        const field = res.body.errors.find(e => e.field === 'email');
+        const field = res.body.errors.find((e) => e.field === 'email');
         assert.ok(field, 'errors should contain an email entry');
     });
 });

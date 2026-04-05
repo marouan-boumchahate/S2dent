@@ -27,6 +27,7 @@ const insertUserToDB = async ({
   last_name,
   date_of_birth,
   gender,
+  nationality,
   national_id,
   email,
   phone,
@@ -47,9 +48,10 @@ const insertUserToDB = async ({
           email,
           phone,
           photo_url,
-          notes
+          notes,
+          nationality
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING
           id,
           first_name,
@@ -62,7 +64,8 @@ const insertUserToDB = async ({
           email,
           phone,
           photo_url,
-          notes`,
+          notes,
+          nationality`,
       [
         first_name,
         middle_name ?? null,
@@ -75,6 +78,7 @@ const insertUserToDB = async ({
         phone ?? null,
         photo_url ?? null,
         notes ?? null,
+        nationality
       ],
   );
 
@@ -88,6 +92,7 @@ export const createUserService = async (payload) => {
     last_name,
     date_of_birth,
     gender,
+    nationality,
     national_id,
     email,
     phone,
@@ -105,7 +110,7 @@ export const createUserService = async (payload) => {
       full_name: user.full_name,
       national_id: user.national_id,
       email: user.email,
-      phone: user.phone
+      phone: user.phone,
     }
   }
 };
