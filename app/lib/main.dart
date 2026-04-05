@@ -1,4 +1,6 @@
-import 'package:app/pages/home.dart';
+import 'package:app/pages/role_selection.dart';
+import 'package:app/pages/settings.dart';
+import 'package:app/providers/theme_provider.dart';
 import 'package:app/theme/flex_color_scheme.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
@@ -18,16 +20,17 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ref.watch(themeProvider);
     return MaterialApp(
-      themeMode: ThemeMode.system,
+      themeMode: theme,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      home: HomePage(),
+      home: RoleSelectionPage(),
     );
   }
 }

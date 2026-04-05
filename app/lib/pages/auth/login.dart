@@ -4,7 +4,7 @@ import 'package:app/components/layouts/auth_layout.dart';
 
 import 'package:app/extensions/context_extensions.dart';
 import 'package:app/pages/auth/verify_email.dart';
-import 'package:app/pages/profile.dart';
+import 'package:app/pages/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,7 +31,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (ctx) => ProfilePage(),
+        builder: (ctx) => HomePage(),
       ),
     );
   }

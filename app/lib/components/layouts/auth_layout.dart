@@ -24,7 +24,11 @@ class AuthLayout extends StatelessWidget {
               ),
             ),
           ),
-          CustomBackButton(),
+          Positioned(
+            top: 20,
+            left: 0,
+            child: CustomBackButton(),
+          ),
         ],
       ),
     );
