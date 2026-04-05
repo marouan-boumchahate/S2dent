@@ -1,8 +1,8 @@
-import 'package:app/components/profile/profile_tile.dart';
+import 'package:app/components/info_tile.dart';
 import 'package:flutter/material.dart';
 
-class PressableProfileTile extends StatelessWidget {
-  const PressableProfileTile({
+class PressableInfoTile extends StatelessWidget {
+  const PressableInfoTile({
     super.key,
     required this.label,
     required this.onTap,
@@ -17,8 +17,8 @@ class PressableProfileTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: ProfileTile(
-        title: label,
+      child: InfoTile(
+        label: label,
         trailing: Icon(
           Icons.arrow_forward_ios_rounded,
           size: 16,

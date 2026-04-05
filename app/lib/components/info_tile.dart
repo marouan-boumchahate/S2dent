@@ -1,14 +1,14 @@
 import 'package:app/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
-class ProfileTile extends StatelessWidget {
-  const ProfileTile({
+class InfoTile extends StatelessWidget {
+  const InfoTile({
     super.key,
-    required this.title,
+    required this.label,
     required this.trailing,
     required this.icon,
   });
-  final String title;
+  final String label;
   final Widget trailing;
   final IconData icon;
   @override
@@ -26,7 +26,7 @@ class ProfileTile extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                title,
+                label,
                 style: TextStyle(fontSize: 16),
               ),
             ],

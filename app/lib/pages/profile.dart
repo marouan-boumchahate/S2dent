@@ -1,10 +1,12 @@
+import 'package:app/components/buttons/custom_backbutton.dart';
 import 'package:app/components/buttons/custom_text_button.dart';
-import 'package:app/components/buttons/pressable_profile_tile.dart';
+import 'package:app/components/buttons/pressable_info_tile.dart';
 import 'package:app/components/info_badge.dart';
-import 'package:app/components/profile/profile_tile.dart';
+import 'package:app/components/info_tile.dart';
 import 'package:app/components/layouts/main_layout.dart';
-import 'package:app/components/profile/profile_section.dart';
+import 'package:app/components/info_section.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/settings.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -30,7 +32,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void onTapSettings() {
-    debugPrint("navigating to account settings");
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => SettingsPage(),
+      ),
+    );
   }
 
   void onTapContactUs() {
@@ -42,6 +49,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: context.colors.onPrimary,
       appBar: AppBar(
+        leading: CustomBackButton(),
+        leadingWidth: 80,
         backgroundColor: context.colors.onPrimary,
       ),
       body: MainLayout(
@@ -73,7 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Padding _personalInfo() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ProfileSection(
+      child: InfoSection(
         title: "Personal Info",
         editButton: CustomTextButton(
           label: "EDIT",
@@ -81,13 +90,13 @@ class _ProfilePageState extends State<ProfilePage> {
           onTap: onTapEdit,
         ),
         widgets: [
-          ProfileTile(
-            title: "Phone Number",
+          InfoTile(
+            label: "Phone Number",
             trailing: Text("+905551957963"),
             icon: Icons.phone,
           ),
-          ProfileTile(
-            title: "Date of Birth",
+          InfoTile(
+            label: "Date of Birth",
             trailing: Text("04/06/2002"),
             icon: Icons.date_range_outlined,
           ),
@@ -99,21 +108,21 @@ class _ProfilePageState extends State<ProfilePage> {
   Padding _academicInfo() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ProfileSection(
+      child: InfoSection(
         title: "Academic Info",
         widgets: [
-          ProfileTile(
-            title: "University",
+          InfoTile(
+            label: "University",
             trailing: Text("Fenerbahce"),
             icon: Icons.apartment,
           ),
-          ProfileTile(
-            title: "Department",
+          InfoTile(
+            label: "Department",
             trailing: Text("Computer Engineering"),
             icon: Icons.trip_origin,
           ),
-          ProfileTile(
-            title: "Student ID",
+          InfoTile(
+            label: "Student ID",
             trailing: Text("220304110"),
             icon: Icons.crop_landscape_outlined,
           ),
@@ -125,15 +134,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Padding _settings() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ProfileSection(
+      child: InfoSection(
         title: "Settings",
         widgets: [
-          PressableProfileTile(
+          PressableInfoTile(
             label: "Account Settings",
             onTap: onTapSettings,
             icon: Icons.settings,
           ),
-          PressableProfileTile(
+          PressableInfoTile(
             label: "Contact Us",
             onTap: onTapContactUs,
             icon: Icons.contact_support_outlined,

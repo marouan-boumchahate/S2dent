@@ -6,6 +6,7 @@ import 'package:app/components/layouts/main_layout.dart';
 import 'package:app/components/buttons/quick_action.dart';
 import 'package:app/components/stat_item.dart';
 import 'package:app/extensions/context_extensions.dart';
+import 'package:app/pages/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,8 +58,23 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void onTapSeeAll() {
-    //navigate to new screen to show all activities
+    debugPrint("navigate to {see all} page");
   }
+
+  void onTapCredentials() {
+    debugPrint("navigate to {credentials} page");
+    //dummy navigation
+    Navigator.push(context, MaterialPageRoute(builder: (ctx) => ProfilePage()));
+  }
+
+  void onTapScan() {
+    debugPrint("navigate to {scan} page");
+  }
+
+  void onTapGenerate() {
+    debugPrint("navigate to {generate qr} page");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,7 +136,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: "Credentials",
                 icon: Icons.description_outlined,
                 color: context.colors.tertiary,
-                onTap: () {},
+                onTap: onTapCredentials,
               ),
             ),
             Expanded(
@@ -128,7 +144,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: "Scan",
                 icon: Icons.document_scanner_outlined,
                 color: context.colors.secondary,
-                onTap: () {},
+                onTap: onTapScan,
               ),
             ),
             Expanded(
@@ -136,7 +152,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: "Generate",
                 icon: Icons.qr_code_2_outlined,
                 color: context.colors.primary,
-                onTap: () {},
+                onTap: onTapGenerate,
               ),
             ),
           ],

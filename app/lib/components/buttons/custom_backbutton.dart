@@ -6,24 +6,20 @@ class CustomBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 20,
-      left: 0,
-      child: Container(
-        width: 55,
-        height: 55,
-        decoration: BoxDecoration(
-          color: context.colors.surfaceContainer,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.blueGrey.withAlpha(160),
-            width: 2,
-          ),
+    return Container(
+      width: 55,
+      height: 55,
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainer,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.blueGrey.withAlpha(160),
+          width: 2,
         ),
-        child: BackButton(
-          onPressed: () => Navigator.pop(context),
-          color: context.colors.primary,
-        ),
+      ),
+      child: BackButton(
+        onPressed: () => Navigator.pop(context),
+        color: context.colors.primary,
       ),
     );
   }

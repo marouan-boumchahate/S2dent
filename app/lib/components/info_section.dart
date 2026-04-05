@@ -1,8 +1,8 @@
 import 'package:app/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
-class ProfileSection extends StatelessWidget {
-  const ProfileSection({
+class InfoSection extends StatelessWidget {
+  const InfoSection({
     super.key,
     required this.title,
     required this.widgets,
