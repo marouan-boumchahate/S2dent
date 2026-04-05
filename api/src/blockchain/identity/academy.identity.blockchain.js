@@ -5,6 +5,10 @@ import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
 const blockchain = env.blockchain
 
+const GAS_MARGIN_NUM = 120n; // +20%
+const GAS_MARGIN_DEN = 100n;
+
+
 const getContract = () =>
     new ethers.Contract(
         blockchain.deployedContractAddress,
@@ -19,9 +23,24 @@ const toUnixSeconds = (value) => {
     return Math.floor(new Date(value).getTime() / 1000)
 }
 
-// Ethers v6 returns gas estimates as bigint. Keep this margin as integers.
-const GAS_MARGIN_NUM = 120n; // +20%
-const GAS_MARGIN_DEN = 100n;
+const getGasLimit = async (contract, methodName, params) => {
+    const gasEstimate = 
+        await contract[methodName].estimateGas(...params)
+
+    return (typeof gasEstimate === 'bigint')
+        ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
+        : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
+}
+
+const ACADEMY_TYPE_TO_UINT8 = {
+    university: 0,
+    college: 1,
+    school: 2,
+    institute: 3,
+    online_platform: 4,
+    other: 5,
+}
+
 
 const issueAcademyIdentity = async (payload) => {
     try {
@@ -35,28 +54,10 @@ const issueAcademyIdentity = async (payload) => {
             shortName,
             academyType,
 
-            description,
-            website,
-            logoUrl,
-
-            email,
-            phone,
-
             legalName,
             registrationNumber,
             taxId,
             billingEmail,
-
-            addressLine1,
-            addressLine2,
-            street,
-            district,
-            state,
-            postalCode,
-            city,
-            country,
-            latitude,
-            longitude,
 
             fingerprint,
             certificatePem,
@@ -71,7 +72,7 @@ const issueAcademyIdentity = async (payload) => {
                 academyId: academyNumber,
                 name,
                 shortName,
-                academyType,
+                academyType: ACADEMY_TYPE_TO_UINT8[academyType.toLowerCase()] ?? ACADEMY_TYPE_TO_UINT8.other,
             },
             proofs: {
                 legalName,
@@ -88,20 +89,12 @@ const issueAcademyIdentity = async (payload) => {
             },
         }
 
-        // Prepare params as array for both estimateGas and actual call
-        const params = [walletAddress, args]
+        const params = [walletAddress, args] // Conrtract Parameters
 
-        // Estimate gas (ethers v6: method-level estimateGas helper)
-        const gasEstimate = await contract.issueAcademyIdentity.estimateGas(...params)
-        // Add a margin for revert safety
-        const gasLimit = (typeof gasEstimate === 'bigint')
-            ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
-            // Fallback for older return types (should be bigint in ethers v6)
-            : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
+        const gasLimit = await getGasLimit(contract, 'issueAcademyIdentity', params)
+        // console.log('Estimated gas limit (with margin):', gasLimit.toString())
 
-        // Call the function with explicit gasLimit
         const tx = await contract.issueAcademyIdentity(...params, { gasLimit })
-
         return tx
 
     } catch (err) {

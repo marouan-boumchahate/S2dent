@@ -59,9 +59,10 @@ export const buildIdentityCertificate = async (payload) => {
     const [isrgRoot, appCa] = await Promise.all([getIsrgRootX1(), getAppCa()])
     const subjectKeys = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 })
     const cert = forge.pki.createCertificate()
+
     
     initializeCertMetadata(cert, subjectKeys.publicKey, walletAddress, uniqueId)
-
+    
     cert.setSubject(certAttrs)
     cert.setIssuer(appCa.certificate.subject.attributes)
     cert.setExtensions(getExtensions(issuerAddress, uniqueId, appCa))

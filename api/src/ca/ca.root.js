@@ -1,9 +1,9 @@
 import forge from 'node-forge'
 import { fetchBuffer } from './ca.fetch.js'
-import { ISRG_ROOT_X1_DER_URL, getIsrgRootX1Pem, setIsrgRootX1Pem } from './ca.constants.js'
+import { ISRG_ROOT_X1_DER_PATH, ISRG_ROOT_X1_DER_URL, getIsrgRootX1Pem, setIsrgRootX1Pem } from './ca.constants.js'
 
 const createIsrgRootX1Pem = async () => {
-  const derBuf = await fetchBuffer(ISRG_ROOT_X1_DER_URL)
+  const derBuf = await fetchBuffer(ISRG_ROOT_X1_DER_URL, { localPath: ISRG_ROOT_X1_DER_PATH })
   const asn1 = forge.asn1.fromDer(forge.util.createBuffer(derBuf))
   const cert = forge.pki.certificateFromAsn1(asn1)
 

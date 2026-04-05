@@ -31,6 +31,7 @@ const validBody = (overrides = {}) => ({
   last_name: 'Test',
   date_of_birth: '2000-01-15',
   gender: 'male',
+  nationality: 'Turkish',
   national_id: 'USER-TEST-001',
   email: 'user.001@usercases.edu',
   phone: '+905551234567',

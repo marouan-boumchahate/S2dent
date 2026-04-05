@@ -4,21 +4,19 @@ import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
 import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
 
-// academy_type enum order must match AcademyIdentity.AcademyType (uint8).
-const ACADEMY_TYPE_TO_UINT8 = {
-    university: 0,
-    college: 1,
-    school: 2,
-    institute: 3,
-    online_platform: 4,
-    other: 5,
+const ON_SUCCESS = {
+    subject: 'Identity Issuance Confirmed',
+    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
+}
+const ON_FAILURE = {
+    subject: 'Identity Issuance Pending Resolution',
+    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
 }
 
 const getAcademyByWallet = async (wallet_address) => {
     const { rows: [academy] } = await db.query(
         `SELECT id, wallet_address, academy_number, name, short_name, type,
-                description, website, logo_url, email, phone,
-                legal_name, registration_number, tax_id, billing_email
+                legal_name, registration_number, tax_id, billing_email, email
          FROM academies
          WHERE wallet_address = $1
          LIMIT 1`,
@@ -35,45 +33,40 @@ const getAcademyByWallet = async (wallet_address) => {
     return academy
 }
 
-const getAcademyAddress = async (academyId) => {
-    const { rows: [address] } = await db.query(
-        `SELECT *
+const ensureAcademyHasAddress = async (academyId) => {
+    const { rows } = await db.query(
+        `SELECT 1
          FROM addresses
          WHERE academy_id = $1
          LIMIT 1`,
         [academyId],
     )
 
-    if (!address) {
+    if (rows.length === 0) {
         const err = new Error('Academy address not found')
         err.statusCode = 409
         err.code = 'ACADEMY_ADDRESS_REQUIRED'
         throw err
     }
-
-    return address
 }
 
-const saveTransaction = async (txHash, payloadObj, recordsToDeleteObj) => {
+const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
 
     await db.query(
-        `INSERT INTO pending_transactions (tx_hash, payload, records_to_delete)
-         VALUES ($1, $2, $3)`,
-        [txHash, payload, recordsToDeleteObj]
+        `INSERT INTO pending_transactions (tx_hash, payload)
+         VALUES ($1, $2)`,
+        [txHash, payload]
     )
 }
 
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
-    const { rows: [{ id }] } = await db.query(
+    await db.query(
         `INSERT INTO identity_certificates
             (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
-        VALUES ($1, $2, $3, $4, NOW())
-        RETURNING id;`,
+        VALUES ($1, $2, $3, $4, NOW())`,
         [walletAddress, certPem, chainPem, fingerprintHex]
     )
-
-    return id
 }
 
 const getCertificate = async (
@@ -99,11 +92,13 @@ const getCertificate = async (
     return certificate
 }
 
+
 export const issueAcademyIdentity = async ({ wallet_address }) => {
     const normalizedWallet = wallet_address.toLowerCase()
 
     const academy = await getAcademyByWallet(normalizedWallet)
-    const address = await getAcademyAddress(academy.id)
+    await ensureAcademyHasAddress(academy.id)
+
 
     const {
         fingerprint,
@@ -117,61 +112,48 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         academy.name,
         academy.short_name
     )
-
+    
     const tx = await issueAcademy({
         walletAddress: normalizedWallet,
+        
         academyNumber: academy.academy_number,
         name: academy.name,
         shortName: academy.short_name,
-        academyType: ACADEMY_TYPE_TO_UINT8[academy.type],
-        description: academy.description ?? '',
-        website: academy.website ?? '',
-        logoUrl: academy.logo_url ?? '',
-        email: academy.email,
-        phone: academy.phone ?? '',
+        academyType: academy.type,
+        
         legalName: academy.legal_name,
         registrationNumber: academy.registration_number,
         taxId: academy.tax_id,
         billingEmail: academy.billing_email ?? '',
-        addressLine1: address.address_line1 ?? '',
-        addressLine2: address.address_line2 ?? '',
-        street: address.street ?? '',
-        district: address.district ?? '',
-        state: address.state ?? '',
-        postalCode: address.postal_code ?? '',
-        city: address.city,
-        country: address.country,
-        latitude: address.latitude != null ? String(address.latitude) : '',
-        longitude: address.longitude != null ? String(address.longitude) : '',
+
         fingerprint,
         certificatePem,
         chainPem,
         notBefore,
-        notAfter,
+        notAfter
     })
-
-    const certificate_id = await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
-
-    // Saving Transaction Information
+    
+    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
+    
+    // Saving Transaction Off-Chain
     const payload = {
         wallet_address: normalizedWallet,
         academy_number: academy.academy_number,
+        certificate_fingerprint: fingerprint,
+
         name: academy.name,
         short_name: academy.short_name,
+
+        role: 'academy',
+        
         email: academy.email,
-        certificate_fingerprint: fingerprint,
+        onSuccess: ON_SUCCESS,
+        onFailure: ON_FAILURE
     }
-    const recordsToDelete = {
-        records: [
-            {table: "addresses", id: address.id},
-            {table: "academies", id: academy.id},
-            {table: "identity_certificates", id: certificate_id}
-        ]
-    }
-    await saveTransaction(tx.hash, payload, recordsToDelete)
-
+    await saveTransaction(tx.hash, payload)
+    
     listenOnTransaction(tx)
-
+    
     return {
         blockchain_transaction: {
             tx_hash: tx.hash,

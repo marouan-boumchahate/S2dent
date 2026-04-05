@@ -17,6 +17,7 @@ const createUserSchema = Joi.object({
     .messages({
       'any.only': `gender must be one of: ${GENDER_TYPES.join(', ')}`,
     }),
+  nationality: Joi.string().trim().max(100).required(),
 
   national_id: Joi.string().trim().max(100).required(),
   email: Joi.string().email().lowercase().trim().required(),

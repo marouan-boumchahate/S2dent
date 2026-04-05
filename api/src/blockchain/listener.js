@@ -3,54 +3,54 @@ import { sendEmail } from '../utils/email.js'
 import { emitToUser } from '../config/socket.js'
 
 const setTransactionStatus = async (txHash, status) => {
-    const { rows: [{ payload, records_to_delete }] } = await db.query(
+    const { rows: [{ payload }] } = await db.query(
         `UPDATE pending_transactions
             SET status = $1, updated_at = NOW()
             WHERE tx_hash = $2
-            RETURNING payload, records_to_delete`,
+            RETURNING payload`,
         [status, txHash]
     )
 
-    return { payload, records_to_delete }
+    return { payload }
 }
 
-const deleteRecords = async (recordsToDelete) => {
-    for (const record of recordsToDelete) {
-        console.log("=> I'm deleting: ", record)
-        await db.query(`DELETE FROM ${record.table} WHERE id = $1`, [record.id])
-    }
+const saveIdentityOffChain = async ({ wallet_address, role, identity_tx_hash }) => {
+    await db.query(
+        `INSERT INTO identities 
+            (wallet_address, role, identity_tx_hash, created_at)
+         VALUES ($1, $2, $3, NOW())`,
+        [wallet_address, role, identity_tx_hash]
+    )
 }
 
-const successMessage = (email) => {
-    return {
-        to: email,
-        subject: 'Identity Issuance Successful',
-        message: 'You are receiving this email because your identity issuance transaction has been confirmed on the blockchain. Your identity is now active and ready to use. Thank you for using S2dent!'
-    }
-}
-const failedMessage = (email) => {
-    return {
-        to: email,
-        subject: 'Identity Issuance Failed',
-        message: 'You are receiving this email because your identity issuance transaction has failed. Please try again later.'
-    }
-}
-
-const notifyUser = async (payload, func) => {
-    await sendEmail(func(payload.email))
+const notifyUser = async ({
+    email,
+    subject,
+    message
+}) => {
+    await sendEmail({ to: email, subject, message })
 }
 
 export const listenOnTransaction = (tx) => {
-    tx.wait(1) // I'll wait for 3 confirmations in the production environment
+    tx.wait(1) // Wait for a block confirmation
         .then(async (receipt) => {
-            const { payload, records_to_delete } = await setTransactionStatus(tx.hash, 'confirmed')
-            await deleteRecords(records_to_delete.records)
+            const { payload } = await setTransactionStatus(tx.hash, 'confirmed')
+            
+            saveIdentityOffChain({
+                wallet_address: payload.wallet_address,
+                role: payload.role,
+                identity_tx_hash: tx.hash
+            })
 
             emitToUser(payload.wallet_address, 'identity:confirmed', {
                 tx_hash: tx.hash,
                 status: 'confirmed'
             })
-            await notifyUser(payload, successMessage)
+            await notifyUser({
+                email: payload.email,
+                subject: payload.onSuccess.subject,
+                message: payload.onSuccess.message
+            })
         })
         .catch(async (err) => {
             const { payload } = await setTransactionStatus(tx.hash, 'failed')
@@ -60,8 +60,10 @@ export const listenOnTransaction = (tx) => {
                 status: 'failed',
                 reason: err.message
             })
-            await notifyUser(payload, failedMessage)
-
-            console.log(`\n\n=> ${err.message} <=`)
+            await notifyUser({
+                email: payload.email,
+                subject: payload.onFailure.subject,
+                message: payload.onFailure.message
+            })
         })
 }

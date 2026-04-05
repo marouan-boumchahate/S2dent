@@ -10,6 +10,7 @@ import departmentRouter from './modules/department/department.routes.js'
 
 import academyIdentityRouter from './modules/identity/academy/academy.identity.routes.js'
 import professorIdentityRouter from './modules/identity/professor/professor.identity.routes.js'
+import studentIdentityRouter from './modules/identity/student/student.identity.routes.js'
 
 
 const app = express()
@@ -24,7 +25,7 @@ app.use('/api/departments', departmentRouter)
 
 app.use('/api/identity/academies', academyIdentityRouter)
 app.use('/api/identity/professors', professorIdentityRouter)
-
+app.use('/api/identity/students', studentIdentityRouter)
 app.use(errorMiddleware)
 
 export default app;

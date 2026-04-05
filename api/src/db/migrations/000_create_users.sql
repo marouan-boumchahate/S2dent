@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     date_of_birth DATE NOT NULL,
     gender gender_enum NOT NULL,
     national_id VARCHAR(100) UNIQUE NOT NULL,
+    nationality VARCHAR(100) NOT NULL,
 
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20),
