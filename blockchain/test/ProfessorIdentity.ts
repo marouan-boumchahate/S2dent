@@ -25,9 +25,10 @@ describe("ProfessorIdentity", () => {
         const base = {
             employeeId: "EMP_20240315001",
             nationalId: "TR-12345678901",
-            full_name: "Ada Lovelace",
+            fullName: "Ada Lovelace",
             rank: 1,
             employmentType: 0,
+            hireDate: Math.floor(Date.now() / 1000) - ONE_DAY_SECS, // Hired 1 day ago
         };
 
         return { ...base, ...overrides };
@@ -116,10 +117,10 @@ describe("ProfessorIdentity", () => {
             expect(record.identity.nationalIdHash).to.equal(
                 ethers.keccak256(ethers.toUtf8Bytes(args.nationalId)),
             );
-            expect(record.identity.fullName).to.equal(args.full_name);
+            expect(record.identity.fullName).to.equal(args.fullName);
             expect(record.identity.rank).to.equal(BigInt(args.rank));
             expect(record.identity.employmentType).to.equal(BigInt(args.employmentType));
-
+            expect(record.identity.hireDate).to.equal(BigInt(args.hireDate));
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.revokedAt).to.equal(0);
             expect(record.status.issuer).to.equal(academy.address);
@@ -279,16 +280,29 @@ describe("ProfessorIdentity", () => {
             ).to.be.revertedWith("Invalid professor: nationalId is required.");
         });
 
-        it("reverts when full_name is missing", async () => {
+        it("reverts when fullName is missing", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const args = professorIssueArgs({ full_name: "" });
+            const args = professorIssueArgs({ fullName: "" });
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
-            ).to.be.revertedWith("Invalid professor: full_name is required.");
+            ).to.be.revertedWith("Invalid professor: fullName is required.");
+        });
+
+        it("reverts when hireDate is in the future", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            const futureHireDate = Math.floor(Date.now() / 1000) + ONE_DAY_SECS;
+            const args = professorIssueArgs({ hireDate: futureHireDate });
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            ).to.be.revertedWith("Invalid professor: hireDate is in the future.");
         });
     });
 });

@@ -13,18 +13,25 @@ contract StudentIdentity is ProfessorIdentity {
     struct StudentIssueArgs {
         string studentId;
         string fullName;
+        string nationalId;
         string nationality;
+
         string department;
         string country;
+
+        uint256 enrollmentDate;
     }
 
     struct StudentIdentityData {
         bytes32 studentIdHash;
+        bytes32 nationalIdHash;
         string fullName;
+
         string nationality;
         string academyName;
         string department;
         string country;
+        uint256 enrollmentDate;
     }
     struct StudentStatusData {
         bool isNotRevoked;
@@ -41,15 +48,17 @@ contract StudentIdentity is ProfessorIdentity {
     // Errors
     error StudentIdentityAlreadyIssued();
     error StudentIdAlreadyUsed();
+    error StudentNationalIdAlreadyUsed();
 
     // Mappers
     mapping(address => Student) public students;
 
     // Uniqueness indexes
     mapping(bytes32 => address) private studentByIdInAcademyHash;
-
+    mapping(bytes32 => address) private studentByNationalIdHash;
+    
     // Validations
-    function _validateStudentInfos(StudentIssueArgs calldata i) internal pure {
+    function _validateStudentInfos(StudentIssueArgs calldata i, uint256 _currentTime) internal pure {
         _validateStringIsNotShort(i.studentId, MIN_STUDENT_ID_LENGTH, "Invalid student: studentId is too short.");
         _validateStringIsNotLong(i.studentId, MAX_STUDENT_ID_LENGTH, "Invalid student: studentId is too long.");
 
@@ -64,16 +73,19 @@ contract StudentIdentity is ProfessorIdentity {
 
         _validateStringIsNotEmpty(i.country, "Invalid student: country is required.");
         _validateStringIsNotLong(i.country, MAX_STRING_LENGTH, "Invalid student: country is too long.");
+
+        _validateTime1BeforeTime2(i.enrollmentDate, _currentTime, "Invalid student: enrollmentDate cannot be in the future.");
     }
     function _validateStudentIssue(
         address _walletAddress,
         address _academyAddress,
-        StudentIssueArgs calldata args
+        StudentIssueArgs calldata args,
+        uint256 _currentTime
     ) internal pure {
         _validateWalletAddressSet(_walletAddress);
         _validateWalletAddressSet(_academyAddress);
 
-        _validateStudentInfos(args);
+        _validateStudentInfos(args, _currentTime);
     }
 
     // External / Public Functions
@@ -82,17 +94,22 @@ contract StudentIdentity is ProfessorIdentity {
         address _academyAddress,
         StudentIssueArgs calldata args
     ) public onlyOwner onlyAcademy(_academyAddress) {
-        _validateStudentIssue(_walletAddress, _academyAddress, args);
+        _validateStudentIssue(_walletAddress, _academyAddress, args, block.timestamp);
 
+        // Student Uniqueness checks
         if (students[_walletAddress].status.issuer != address(0)) {
             revert StudentIdentityAlreadyIssued();
         }
 
         bytes32 studentIdHash = keccak256(abi.encodePacked(args.studentId));
+        bytes32 nationalIdHash = keccak256(abi.encodePacked(args.nationalId));
         bytes32 studentInAcademyHash = keccak256(abi.encodePacked(_academyAddress, studentIdHash));
 
         if (studentByIdInAcademyHash[studentInAcademyHash] != address(0)) {
             revert StudentIdAlreadyUsed();
+        }
+        if (studentByNationalIdHash[nationalIdHash] != address(0)) {
+            revert StudentNationalIdAlreadyUsed();
         }
 
         string memory academyName = academies[_academyAddress].identity.name;
@@ -100,11 +117,13 @@ contract StudentIdentity is ProfessorIdentity {
         students[_walletAddress] = Student({
             identity: StudentIdentityData({
                 studentIdHash: studentIdHash,
+                nationalIdHash: nationalIdHash,
                 fullName: args.fullName,
                 nationality: args.nationality,
                 academyName: academyName,
                 department: args.department,
-                country: args.country
+                country: args.country,
+                enrollmentDate: args.enrollmentDate
             }),
             status: StudentStatusData({
                 isNotRevoked: true,
@@ -116,5 +135,6 @@ contract StudentIdentity is ProfessorIdentity {
         });
 
         studentByIdInAcademyHash[studentInAcademyHash] = _walletAddress;
+        studentByNationalIdHash[nationalIdHash] = _walletAddress;
     }
 }

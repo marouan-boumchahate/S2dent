@@ -17,22 +17,6 @@ contract AcademyIdentity is S2dent {
         other
     }
 
-    // Structs
-    // NOTE: `Address` is kept as-is because other identity contracts reuse it.
-    // AcademyIdentity itself no longer stores address fields on-chain; it stores only an `addressHash` proof.
-    struct Address {
-        string addressLine1;
-        string addressLine2;
-        string street;
-        string district;
-        string state;
-        string postalCode;
-        string city;
-        string country;
-        string latitude;
-        string longitude;
-    }
-
     // Request Args
     struct AcademyInfosArgs {
         string academyId;
@@ -131,18 +115,6 @@ contract AcademyIdentity is S2dent {
 
         _validateTimeSet(uint256(c.notBefore), "Invalid certificate: notBefore must be set.");
         _validateTime1BeforeTime2(uint256(c.notBefore), uint256(c.notAfter), "Invalid certificate: notAfter must be greater than notBefore.");
-    }
-    function _validateAddress(Address calldata a) internal pure {
-        _validateStringIsNotEmpty(a.city, "Invalid address: city is empty");
-        _validateStringIsNotLong(a.city, MAX_STRING_LENGTH, "Invalid address: city too length.");
-
-        _validateStringIsNotEmpty(a.country, "Invalid address: country is empty");
-        _validateStringIsNotLong(a.country, MAX_STRING_LENGTH, "Invalid address: country too length.");
-
-        _validateStringIsNotLong(a.postalCode, 20, "Invalid address: postal code too length.");
-        _validateStringIsNotLong(a.street, MAX_STRING_LENGTH, "Invalid address: street too long.");
-        _validateStringIsNotLong(a.district, MAX_STRING_LENGTH, "Invalid address: district too long.");
-        _validateStringIsNotLong(a.state, MAX_STRING_LENGTH, "Invalid address: state too long.");
     }
     function _validateAcademyInfos(AcademyInfosArgs calldata i) internal pure {
         _validateStringIsNotEmpty(i.academyId, "Invalid: academyId is required.");

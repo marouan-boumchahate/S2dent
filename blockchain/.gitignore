@@ -24,3 +24,6 @@
 
 # ignition deployments
 ignition/deployments/
+
+# about blockchain development
+blockchain.md

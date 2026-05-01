@@ -9,10 +9,6 @@ contract ProfessorIdentity is AcademyIdentity {
     uint256 private constant MAX_EMPLOYEE_ID_LENGTH = 50;
 
     // Enums
-    enum Gender {
-        male,
-        female
-    }
     enum ProfessorRank {
         AssistProf,
         AssocProf,
@@ -32,9 +28,10 @@ contract ProfessorIdentity is AcademyIdentity {
     struct ProfessorIssueArgs {
         string employeeId;
         string nationalId;
-        string full_name;
+        string fullName;
         uint8 rank;
         uint8 employmentType;
+        uint256 hireDate;
     }
 
     // Stored Data Structs
@@ -44,6 +41,7 @@ contract ProfessorIdentity is AcademyIdentity {
         string fullName;
         ProfessorRank rank;
         EmploymentType employmentType;
+        uint256 hireDate;
     }
     struct ProfessorStatusData {
         bool isNotRevoked;
@@ -70,29 +68,32 @@ contract ProfessorIdentity is AcademyIdentity {
     mapping(bytes32 => address) private professorByNationalIdHash;
 
     // Validations
-    function _validateProfessorInfos(ProfessorIssueArgs calldata i) internal pure {
+    function _validateProfessorInfos(ProfessorIssueArgs calldata i, uint256 currentTime) internal pure {
         _validateStringIsNotShort(i.employeeId, MIN_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too short.");
         _validateStringIsNotLong(i.employeeId, MAX_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too long.");
 
         _validateStringIsNotEmpty(i.nationalId, "Invalid professor: nationalId is required.");
 
-        _validateStringIsNotEmpty(i.full_name, "Invalid professor: full_name is required.");
+        _validateStringIsNotEmpty(i.fullName, "Invalid professor: fullName is required.");
 
         require(i.rank <= uint8(ProfessorRank.Instructor), "Invalid professor: rank out of range.");
         require(
             i.employmentType <= uint8(EmploymentType.employment_contract),
             "Invalid professor: employmentType out of range."
         );
+
+        _validateTime1BeforeTime2(i.hireDate, currentTime, "Invalid professor: hireDate is in the future.");
     }
     function _validateProfessorIssue(
         address _walletAddress,
         address _academyAddress,
-        ProfessorIssueArgs calldata args
+        ProfessorIssueArgs calldata args,
+        uint256 currentTime
     ) internal pure {
         _validateWalletAddressSet(_walletAddress);
         _validateWalletAddressSet(_academyAddress);
 
-        _validateProfessorInfos(args);
+        _validateProfessorInfos(args, currentTime);
     }
 
     // External Functions
@@ -101,7 +102,7 @@ contract ProfessorIdentity is AcademyIdentity {
         address _academyAddress,
         ProfessorIssueArgs calldata args
     ) public onlyOwner onlyAcademy(_academyAddress) {
-        _validateProfessorIssue(_walletAddress, _academyAddress, args);
+        _validateProfessorIssue(_walletAddress, _academyAddress, args, block.timestamp);
 
         if (professors[_walletAddress].status.issuer != address(0)) {
             revert ProfessorIdentityAlreadyIssued();
@@ -122,9 +123,10 @@ contract ProfessorIdentity is AcademyIdentity {
             identity: ProfessorIdentityData({
                 employeeIdHash: employeeIdHash,
                 nationalIdHash: nationalIdHash,
-                fullName: args.full_name,
+                fullName: args.fullName,
                 rank: ProfessorRank(args.rank),
-                employmentType: EmploymentType(args.employmentType)
+                employmentType: EmploymentType(args.employmentType),
+                hireDate: args.hireDate
             }),
             status: ProfessorStatusData({
                 isNotRevoked: true,

@@ -12,10 +12,12 @@ describe("StudentIdentity", () => {
 
     // ─── Student details ──────────────────────────────────────────────────────
     const STUDENT_ID          = "STD-2067612";
+    const STUDENT_NATIONAL_ID = "NAT-2067612";
     const STUDENT_NAME        = "Marouan Boumchahate";
     const STUDENT_NATIONALITY = "Moroccan";
     const STUDENT_DEPARTMENT  = "Computer Science";
     const STUDENT_COUNTRY     = "Turkey";
+    const STUDENT_ENROLLMENT_DATE = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60); // 30 days ago
 
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
@@ -82,6 +84,8 @@ describe("StudentIdentity", () => {
                 nationality: STUDENT_NATIONALITY,
                 department: STUDENT_DEPARTMENT,
                 country: STUDENT_COUNTRY,
+                nationalId: STUDENT_NATIONAL_ID,
+                enrollmentDate: STUDENT_ENROLLMENT_DATE,
             }
         );
 
@@ -105,6 +109,8 @@ describe("StudentIdentity", () => {
                     nationality: STUDENT_NATIONALITY,
                     department: STUDENT_DEPARTMENT,
                     country: STUDENT_COUNTRY,
+                    nationalId: STUDENT_NATIONAL_ID,
+                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
                 }
             );
 
@@ -137,6 +143,8 @@ describe("StudentIdentity", () => {
                     nationality: STUDENT_NATIONALITY,
                     department: STUDENT_DEPARTMENT,
                     country: STUDENT_COUNTRY,
+                    nationalId: STUDENT_NATIONAL_ID,
+                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
                 }
             );
 
@@ -160,6 +168,8 @@ describe("StudentIdentity", () => {
                     nationality: STUDENT_NATIONALITY,
                     department: STUDENT_DEPARTMENT,
                     country: STUDENT_COUNTRY,
+                    nationalId: STUDENT_NATIONAL_ID,
+                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
                 }
             );
 
@@ -182,6 +192,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith(
@@ -204,6 +216,9 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
+
                     }
                 )
             ).to.be.revertedWith(
@@ -226,6 +241,8 @@ describe("StudentIdentity", () => {
                         nationality: "German",
                         department: "Mathematics",
                         country: "Germany",
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWithCustomError(instance, "StudentIdentityAlreadyIssued");
@@ -246,9 +263,33 @@ describe("StudentIdentity", () => {
                         nationality: "Canadian",
                         department: "Physics",
                         country: "Canada",
+                        nationalId: "NAT-2067612",
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWithCustomError(instance, "StudentIdAlreadyUsed");
+        });
+
+        it("Should revert when nationalId is already used", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, student, secondStudent } =
+                await networkHelpers.loadFixture(deployWithStudentFixture);
+
+            await expect(
+                instance.connect(owner).issueStudentIdentity(
+                    secondStudent.address,
+                    academy.address,
+                    {
+                        studentId: "STD-2067613",
+                        fullName: "Second Student",
+                        nationality: "Canadian",
+                        department: "Physics",
+                        country: "Canada",
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
+                    }
+                )
+            ).to.be.revertedWithCustomError(instance, "StudentNationalIdAlreadyUsed");
         });
     });
 
@@ -269,6 +310,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWithCustomError(instance, "InvalidAddress").withArgs("Address must not be zero.");
@@ -289,6 +332,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: studentId is too short.");
@@ -309,6 +354,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: studentId is too short.");
@@ -329,6 +376,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: studentId is too long.");
@@ -349,6 +398,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: fullName is required.");
@@ -371,6 +422,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: fullName is too long.");
@@ -391,6 +444,8 @@ describe("StudentIdentity", () => {
                         nationality: "",
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: nationality is too short.");
@@ -411,6 +466,8 @@ describe("StudentIdentity", () => {
                         nationality: "US",
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: nationality is too short.");
@@ -433,6 +490,8 @@ describe("StudentIdentity", () => {
                         nationality: tooLongNationality,
                         department: STUDENT_DEPARTMENT,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: nationality is too long.");
@@ -453,6 +512,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: "",
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: department is required.");
@@ -475,6 +536,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: tooLongDept,
                         country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: department is too long.");
@@ -495,6 +558,8 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: "",
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: country is required.");
@@ -517,9 +582,36 @@ describe("StudentIdentity", () => {
                         nationality: STUDENT_NATIONALITY,
                         department: STUDENT_DEPARTMENT,
                         country: tooLongCountry,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
             ).to.be.revertedWith("Invalid student: country is too long.");
         });
+
+        it("Should revert on enrollment date in the future", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, student, now } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            const futureEnrollmentDate = now + ONE_DAY_SECS;
+
+            await expect(
+                instance.connect(owner).issueStudentIdentity(
+                    student.address,
+                    academy.address,
+                    {
+                        studentId: STUDENT_ID,
+                        fullName: STUDENT_NAME,
+                        nationality: STUDENT_NATIONALITY,
+                        department: STUDENT_DEPARTMENT,
+                        country: STUDENT_COUNTRY,
+                        nationalId: STUDENT_NATIONAL_ID,
+                        enrollmentDate: futureEnrollmentDate,
+                    }
+                )
+            ).to.be.revertedWith("Invalid student: enrollmentDate cannot be in the future.");
+        });
+
     });
 });
