@@ -10,3 +10,6 @@ structure.litcoffee
 
 # private shells
 reset_db.sh
+
+# about api development
+api.md
