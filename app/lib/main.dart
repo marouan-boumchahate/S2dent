@@ -1,7 +1,6 @@
-import 'package:app/pages/role_selection.dart';
-import 'package:app/pages/settings.dart';
-import 'package:app/providers/theme_provider.dart';
-import 'package:app/theme/flex_color_scheme.dart';
+import 'package:app/feature/role_selection/presentation/pages/role_selection.dart';
+import 'package:app/core/theme/theme_provider.dart';
+import 'package:app/core/theme/flex_color_scheme.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
