@@ -1,6 +1,6 @@
 import 'package:app/core/widgets/buttons/primary_button.dart';
-import 'package:app/core/widgets/buttons/secondary_button.dart';
-import 'package:app/core/widgets/layouts/auth_layout.dart';
+import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
+import 'package:app/feature/auth/presentation/widgets/secondary_button.dart';
 
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';

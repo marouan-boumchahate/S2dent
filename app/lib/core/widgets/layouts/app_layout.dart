@@ -13,6 +13,7 @@ class AppLayout extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.colors.onPrimary,
       body: SafeArea(
+        top: true,
         bottom: true,
         child: SizedBox(
           width: screenWidth(context),

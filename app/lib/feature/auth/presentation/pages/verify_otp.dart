@@ -1,7 +1,7 @@
 import 'package:app/core/widgets/buttons/primary_button.dart';
-import 'package:app/core/widgets/layouts/auth_layout.dart';
+import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/utils/verify_otp/show_custom_dialog.dart';
+import 'package:app/core/utils/show_custom_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pinput/pinput.dart';

@@ -1,6 +1,6 @@
-import 'package:app/core/widgets/auth_textfield.dart';
 import 'package:app/core/widgets/buttons/primary_button.dart';
-import 'package:app/core/widgets/layouts/auth_layout.dart';
+import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
+import 'package:app/feature/auth/presentation/widgets/auth_textfield.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/verify_otp.dart';
 import 'package:flutter/material.dart';

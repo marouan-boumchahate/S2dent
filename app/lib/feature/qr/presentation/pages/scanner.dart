@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/decorations/scanner_corners.dart';
+import 'package:app/feature/qr/presentation/widgets/scanner_corners.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/qr/presentation/pages/scan_result.dart';
 import 'package:flutter/material.dart';

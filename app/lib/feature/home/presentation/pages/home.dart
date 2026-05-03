@@ -1,10 +1,10 @@
-import 'package:app/core/widgets/activity_item.dart';
-import 'package:app/core/widgets/containers/custom_horizontal_container.dart';
-import 'package:app/core/widgets/containers/custom_vertical_container.dart';
-import 'package:app/core/widgets/custom_vertical_divider.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
-import 'package:app/core/widgets/buttons/quick_action.dart';
-import 'package:app/core/widgets/stat_item.dart';
+import 'package:app/feature/home/presentation/widgets/activity_item.dart';
+import 'package:app/feature/home/presentation/widgets/custom_horizontal_container.dart';
+import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
+import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.dart';
+import 'package:app/feature/home/presentation/widgets/quick_action.dart';
+import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/profile/presentation/pages/profile.dart';
 import 'package:flutter/material.dart';

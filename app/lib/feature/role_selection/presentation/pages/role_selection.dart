@@ -1,6 +1,6 @@
 import 'package:app/core/widgets/layouts/app_layout.dart';
-import 'package:app/core/widgets/decorations/document_container.dart';
-import 'package:app/core/widgets/buttons/identity_button.dart';
+import 'package:app/feature/role_selection/presentation/widgets/document_container.dart';
+import 'package:app/feature/role_selection/presentation/widgets/identity_button.dart';
 import 'package:app/core/widgets/buttons/primary_button.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/login.dart';
@@ -75,7 +75,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
           padding: const EdgeInsets.all(8.0),
           child: IdentityButton(
             title: "I'm Student",
-            subtitle: "Access your blockchain identity",
+            subtitle: "Access your student wallet",
             icon: Icons.person,
             isSelected: identity == Identity.student,
             onTap: () {
