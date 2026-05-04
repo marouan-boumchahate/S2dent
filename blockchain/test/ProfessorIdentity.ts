@@ -305,4 +305,125 @@ describe("ProfessorIdentity", () => {
             ).to.be.revertedWith("Invalid professor: hireDate is in the future.");
         });
     });
+
+    describe("revokeProfessorIdentity", () => {
+        async function issueSecondAcademy(instance: any, owner: any, wallet: string, notBefore: number, notAfter: number) {
+            const a = academyIssueArgs();
+            await instance.connect(owner).issueAcademyIdentity(wallet, {
+                infos: {
+                    academyId: "ACD_PROF_TST02",
+                    name: "Second University",
+                    shortName: "SU",
+                    academyType: 0,
+                },
+                proofs: {
+                    legalName: "Second University A.Ş.",
+                    registrationNumber: "REG-SU-001",
+                    taxId: "TAX-SU-001",
+                    billingEmail: "billing@su.edu.tr",
+                },
+                cert: {
+                    fingerprint: ACADEMY_FP,
+                    certificate: a.certificatePem,
+                    chain: a.chainPem,
+                    notBefore: BigInt(notBefore),
+                    notAfter: BigInt(notAfter),
+                },
+            });
+        }
+
+        it("flips status fields and sets revoker to the issuing academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address);
+
+            const record = await instance.professors(professor.address);
+            expect(record.status.isNotRevoked).to.equal(false);
+            expect(record.status.revokedAt).to.be.gt(0);
+            expect(record.status.revoker).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.issuedAt).to.be.gt(0);
+        });
+
+        it("reverts when called by a non-owner", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, academy, professor } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await expect(
+                instance.connect(academy).revokeProfessorIdentity(professor.address, academy.address),
+            ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
+        });
+
+        it("reverts when _revokerAddress is not a registered academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, fakeAcademy, professor } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(professor.address, fakeAcademy.address),
+            ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
+        });
+
+        it("reverts when _revokerAddress is a different registered academy", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, professor, notBefore, notAfter } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            const [, , , , , secondAcademy] = await ethers.getSigners();
+            await issueSecondAcademy(instance, owner, secondAcademy.address, notBefore, notAfter);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(professor.address, secondAcademy.address),
+            ).to.be.revertedWith("Invalid revoker: must be the issuing academy.");
+        });
+
+        it("reverts when the issuing academy has itself been revoked", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await instance.connect(owner).revokeAcademyIdentity(academy.address);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+            ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
+        });
+
+        it("reverts on zero professor wallet address", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, academy } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(ethers.ZeroAddress, academy.address),
+            )
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be zero.");
+        });
+
+        it("reverts when the professor was never issued", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+            ).to.be.revertedWithCustomError(instance, "ProfessorIdentityNotIssued");
+        });
+
+        it("reverts when called twice on the same professor", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployWithProfessorFixture);
+
+            await instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address);
+
+            await expect(
+                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+            ).to.be.revertedWithCustomError(instance, "ProfessorIdentityAlreadyRevoked");
+        });
+    });
 });

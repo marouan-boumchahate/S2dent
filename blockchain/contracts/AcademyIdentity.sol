@@ -84,6 +84,21 @@ contract AcademyIdentity is S2dent {
     error AcademyIdAlreadyUsed();
     error AcademyNameShortNameAlreadyUsed();
     error AcademyLegalBundleAlreadyUsed();
+    error AcademyIdentityNotIssued();
+    error AcademyIdentityAlreadyRevoked();
+
+    // Events
+    event AcademyIssued(
+        address indexed wallet,
+        address indexed issuer,
+        bytes32 academyIdHash,
+        uint64 issuedAt
+    );
+    event AcademyRevoked(
+        address indexed wallet,
+        address indexed revoker,
+        uint64 revokedAt
+    );
 
     // Mappers
     mapping(address => Academy) public academies;
@@ -206,5 +221,23 @@ contract AcademyIdentity is S2dent {
         academyByIdHash[academyIdHash] = _walletAddress;
         academyByNameShortHash[nameShortHash] = _walletAddress;
         academyByLegalBundleHash[legalBundleHash] = _walletAddress;
+
+        emit AcademyIssued(_walletAddress, msg.sender, academyIdHash, uint64(block.timestamp));
+    }
+
+    function revokeAcademyIdentity(
+        address _walletAddress
+    ) public onlyOwner {
+        _validateWalletAddressSet(_walletAddress);
+
+        AcademyStatusData storage s = academies[_walletAddress].status;
+        if (s.issuer == address(0)) revert AcademyIdentityNotIssued();
+        if (!s.isNotRevoked) revert AcademyIdentityAlreadyRevoked();
+
+        s.isNotRevoked = false;
+        s.revokedAt = uint64(block.timestamp);
+        s.revoker = msg.sender;
+
+        emit AcademyRevoked(_walletAddress, msg.sender, s.revokedAt);
     }
 }

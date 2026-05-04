@@ -49,6 +49,21 @@ contract StudentIdentity is ProfessorIdentity {
     error StudentIdentityAlreadyIssued();
     error StudentIdAlreadyUsed();
     error StudentNationalIdAlreadyUsed();
+    error StudentIdentityNotIssued();
+    error StudentIdentityAlreadyRevoked();
+
+    // Events
+    event StudentIssued(
+        address indexed wallet,
+        address indexed academy,
+        bytes32 studentIdHash,
+        uint64 issuedAt
+    );
+    event StudentRevoked(
+        address indexed wallet,
+        address indexed revoker,
+        uint64 revokedAt
+    );
 
     // Mappers
     mapping(address => Student) public students;
@@ -136,5 +151,29 @@ contract StudentIdentity is ProfessorIdentity {
 
         studentByIdInAcademyHash[studentInAcademyHash] = _walletAddress;
         studentByNationalIdHash[nationalIdHash] = _walletAddress;
+
+        emit StudentIssued(_walletAddress, _academyAddress, studentIdHash, uint64(block.timestamp));
+    }
+
+    function revokeStudentIdentity(
+        address _walletAddress,
+        address _revokerAddress
+    ) public onlyOwner onlyAcademy(_revokerAddress) {
+        _validateWalletAddressSet(_walletAddress);
+
+        StudentStatusData storage s = students[_walletAddress].status;
+        if (s.issuer == address(0)) revert StudentIdentityNotIssued();
+        if (!s.isNotRevoked) revert StudentIdentityAlreadyRevoked();
+
+        require(
+            _revokerAddress == s.issuer,
+            "Invalid revoker: must be the issuing academy."
+        );
+
+        s.isNotRevoked = false;
+        s.revokedAt = uint64(block.timestamp);
+        s.revoker = _revokerAddress;
+
+        emit StudentRevoked(_walletAddress, _revokerAddress, s.revokedAt);
     }
 }
