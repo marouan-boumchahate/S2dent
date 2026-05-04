@@ -1,47 +1,43 @@
 import db from '../../../config/db.js'
-import { issueAcademyIdentity as issueAcademy } from '../../../blockchain/identity/academy.identity.blockchain.js'
+import {
+    issueAcademyIdentity as issueAcademy,
+    revokeAcademyIdentity as revokeAcademy
+} from '../../../blockchain/identity/academy.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
 import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
 
-const ON_SUCCESS = {
-    subject: 'Identity Issuance Confirmed',
-    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
-}
-const ON_FAILURE = {
-    subject: 'Identity Issuance Pending Resolution',
-    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
-}
-
+// Helpers
+// -------
 const getAcademyByWallet = async (wallet_address) => {
     const { rows: [academy] } = await db.query(
         `SELECT id, wallet_address, academy_number, name, short_name, type,
-                legal_name, registration_number, tax_id, billing_email, email
-         FROM academies
-         WHERE wallet_address = $1
-         LIMIT 1`,
+        legal_name, registration_number, tax_id, billing_email, email
+        FROM academies
+        WHERE wallet_address = $1
+        LIMIT 1`,
         [wallet_address],
     )
-
+    
     if (!academy) {
         const err = new Error('Academy not found for wallet address')
         err.statusCode = 404
         err.code = 'ACADEMY_NOT_FOUND'
         throw err
     }
-
+    
     return academy
 }
 
 const ensureAcademyHasAddress = async (academyId) => {
     const { rows } = await db.query(
         `SELECT 1
-         FROM addresses
-         WHERE academy_id = $1
-         LIMIT 1`,
+        FROM addresses
+        WHERE academy_id = $1
+        LIMIT 1`,
         [academyId],
     )
-
+    
     if (rows.length === 0) {
         const err = new Error('Academy address not found')
         err.statusCode = 409
@@ -52,10 +48,10 @@ const ensureAcademyHasAddress = async (academyId) => {
 
 const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
-
+    
     await db.query(
         `INSERT INTO pending_transactions (tx_hash, payload)
-         VALUES ($1, $2)`,
+        VALUES ($1, $2)`,
         [txHash, payload]
     )
 }
@@ -63,7 +59,7 @@ const saveTransaction = async (txHash, payloadObj) => {
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
     await db.query(
         `INSERT INTO identity_certificates
-            (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
+        (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
         VALUES ($1, $2, $3, $4, NOW())`,
         [walletAddress, certPem, chainPem, fingerprintHex]
     )
@@ -81,25 +77,36 @@ const getCertificate = async (
         academy_name,
         academy_short_name
     )
-
+    
     const certificate = await buildIdentityCertificate({ 
         walletAddress, 
         issuerAddress: null, // because the issuer is the app CA (DOES NOT HAVE A WALLET))
         uniqueId: academy_number,
         certAttrs
     })
-
+    
     return certificate
 }
 
 
+// Issuance
+// --------
+const ON_SUCCESS = {
+    subject: 'Identity Issuance Confirmed',
+    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
+}
+const ON_FAILURE = {
+    subject: 'Identity Issuance Pending Resolution',
+    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
+}
+
 export const issueAcademyIdentity = async ({ wallet_address }) => {
     const normalizedWallet = wallet_address.toLowerCase()
-
+    
     const academy = await getAcademyByWallet(normalizedWallet)
     await ensureAcademyHasAddress(academy.id)
-
-
+    
+    
     const {
         fingerprint,
         certificatePem,
@@ -137,6 +144,8 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
     
     // Saving Transaction Off-Chain
     const payload = {
+        action: 'issue',
+        
         wallet_address: normalizedWallet,
         academy_number: academy.academy_number,
         certificate_fingerprint: fingerprint,
@@ -163,6 +172,54 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
             certificate_hash: fingerprint,
             issued_at: notBefore,
             expires_at: notAfter
+        }
+    }
+}
+
+// Revocation
+// ----------
+const REVOKE_ON_SUCCESS = {
+    subject: 'Identity Revocation Confirmed',
+    message: 'Your academy identity has been revoked from the system and is no longer active. If this action was unexpected, please reach out to support immediately.'
+}
+const REVOKE_ON_FAILURE = {
+    subject: 'Identity Revocation Pending Resolution',
+    message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
+}
+
+export const revokeAcademyIdentity = async ({ wallet_address }) => {
+    const normalizedWallet = wallet_address.toLowerCase()
+
+    const academy = await getAcademyByWallet(normalizedWallet)
+
+    const tx = await revokeAcademy({
+        walletAddress: normalizedWallet
+    })
+
+    // Saving Transaction Off-Chain
+    const payload = {
+        action: 'revoke',
+
+        wallet_address: normalizedWallet,
+        academy_number: academy.academy_number,
+
+        name: academy.name,
+        short_name: academy.short_name,
+
+        role: 'academy',
+
+        email: academy.email,
+        onSuccess: REVOKE_ON_SUCCESS,
+        onFailure: REVOKE_ON_FAILURE
+    }
+    await saveTransaction(tx.hash, payload)
+
+    listenOnTransaction(tx)
+
+    return {
+        blockchain_transaction: {
+            tx_hash: tx.hash,
+            status: 'pending',
         }
     }
 }

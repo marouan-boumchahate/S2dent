@@ -8,3 +8,10 @@ export const issueIdentitySchema = Joi.object({
       'string.pattern.base': 'wallet_address must be a valid Ethereum address (0x…)',
     }),
 })
+
+export const revokeIdentitySchema = Joi.object({
+  wallet_address: Joi.string().pattern(ETH_ADDRESS).required()
+    .messages({
+      'string.pattern.base': 'wallet_address must be a valid Ethereum address (0x…)',
+    }),
+})

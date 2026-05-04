@@ -248,8 +248,13 @@ const cleanupDB = async () => {
 };
 
 
+const DEFAULT_BLOCKCHAIN_IMPL = {
+    issueAcademyIdentity: async () => FAKE_TX,
+    revokeAcademyIdentity: async () => FAKE_TX,
+};
+
 const makeApp = async (
-    blockchainImpl  = { issueAcademyIdentity: async () => FAKE_TX },
+    blockchainImpl  = {},
     listenerImpl    = { listenOnTransaction: () => {} },
     caAttrsImpl     = {},
     caIdentityImpl  = DEFAULT_CA_IDENTITY,
@@ -259,7 +264,7 @@ const makeApp = async (
         import.meta.url,
         {},
         {
-            '../../src/blockchain/identity/academy.identity.blockchain.js': blockchainImpl,
+            '../../src/blockchain/identity/academy.identity.blockchain.js': { ...DEFAULT_BLOCKCHAIN_IMPL, ...blockchainImpl },
             '../../src/blockchain/listener.js': listenerImpl,
             '../../src/ca/ca.attrs.js': { ...DEFAULT_CA_ATTRS, ...caAttrsImpl },
             '../../src/ca/ca.identity.js': caIdentityImpl,

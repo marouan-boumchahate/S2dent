@@ -108,4 +108,29 @@ const issueAcademyIdentity = async (payload) => {
     }
 }
 
-export { issueAcademyIdentity }
+const revokeAcademyIdentity = async (payload) => {
+    try {
+        const contract = getContract()
+
+        const { walletAddress } = payload
+
+        const params = [walletAddress] // Conrtract Parameters
+
+        const gasLimit = await getGasLimit(contract, 'revokeAcademyIdentity', params)
+        // console.log('Estimated gas limit (with margin):', gasLimit.toString())
+
+        const tx = await contract.revokeAcademyIdentity(...params, { gasLimit })
+        return tx
+
+    } catch (err) {
+        const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        const wrapped = new Error(`revokeAcademyIdentity failed: ${reason}`)
+        wrapped.statusCode = 502
+        wrapped.code = 'BLOCKCHAIN_ERROR'
+        wrapped.cause = err
+        throw wrapped
+    }
+}
+
+export { issueAcademyIdentity, revokeAcademyIdentity }

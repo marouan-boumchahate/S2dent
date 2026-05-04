@@ -93,4 +93,31 @@ const issueProfessorIdentity = async (payload) => {
     }
 }
 
-export { issueProfessorIdentity }
+const revokeProfessorIdentity = async (payload) => {
+    try {
+        const contract = getContract()
+
+        const {
+            professorWallet,
+            academyWallet
+        } = payload
+
+        const params = [professorWallet, academyWallet]
+
+        const gasLimit = await getGasLimit(contract, 'revokeProfessorIdentity', params)
+
+        const tx = await contract.revokeProfessorIdentity(...params, { gasLimit })
+        return tx
+
+    } catch (err) {
+        const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        const wrapped = new Error(`revokeProfessorIdentity failed: ${reason}`)
+        wrapped.statusCode = 502
+        wrapped.code = 'BLOCKCHAIN_ERROR'
+        wrapped.cause = err
+        throw wrapped
+    }
+}
+
+export { issueProfessorIdentity, revokeProfessorIdentity }
