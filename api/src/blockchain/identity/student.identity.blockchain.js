@@ -80,4 +80,33 @@ const issueStudentIdentity = async (payload) => {
     }
 }
 
-export { issueStudentIdentity }
+const revokeStudentIdentity = async (payload) => {
+    try {
+        const contract = getContract()
+
+        const {
+            studentWallet,
+            academyWallet
+        } = payload
+
+        const params = [studentWallet, academyWallet]
+
+        const gasLimit = await getGasLimit(contract, 'revokeStudentIdentity', params)
+
+        const tx = await contract.revokeStudentIdentity(...params, { gasLimit })
+        return tx
+
+    } catch (err) {
+        console.error('Blockchain error in revokeStudentIdentity:', err)
+
+        const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        const wrapped = new Error(`revokeStudentIdentity failed: ${reason}`)
+        wrapped.statusCode = 502
+        wrapped.code = 'BLOCKCHAIN_ERROR'
+        wrapped.cause = err
+        throw wrapped
+    }
+}
+
+export { issueStudentIdentity, revokeStudentIdentity }

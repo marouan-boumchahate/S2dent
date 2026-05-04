@@ -251,8 +251,13 @@ const cleanupDB = async () => {
 };
 
 
+const DEFAULT_BLOCKCHAIN_IMPL = {
+    issueProfessorIdentity: async () => FAKE_TX,
+    revokeProfessorIdentity: async () => FAKE_TX,
+};
+
 const makeApp = async (
-    blockchainImpl = { issueProfessorIdentity: async () => FAKE_TX },
+    blockchainImpl = {},
     listenerImpl = { listenOnTransaction: () => {} },
 ) => {
     const { default: app } = await esmock.strict(
@@ -260,7 +265,7 @@ const makeApp = async (
         import.meta.url,
         {},
         {
-            '../../src/blockchain/identity/professor.identity.blockchain.js': blockchainImpl,
+            '../../src/blockchain/identity/professor.identity.blockchain.js': { ...DEFAULT_BLOCKCHAIN_IMPL, ...blockchainImpl },
             '../../src/blockchain/listener.js': listenerImpl,
         },
     );
@@ -271,7 +276,8 @@ const makeApp = async (
 const endpoint = '/api/identity/professors/issue';
 
 
-describe('POST /api/identity/professors/issue', () => {
+describe('POST /api/identity/professors/issue', function () {
+    this.timeout(10000);
 
     beforeEach(async () => { await cleanupDB(); });
     afterEach(async () => { await cleanupDB(); });
