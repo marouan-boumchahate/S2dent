@@ -59,6 +59,21 @@ contract ProfessorIdentity is AcademyIdentity {
     error ProfessorIdentityAlreadyIssued();
     error ProfessorEmployeeIdAlreadyUsed();
     error ProfessorNationalIdAlreadyUsed();
+    error ProfessorIdentityNotIssued();
+    error ProfessorIdentityAlreadyRevoked();
+
+    // Events
+    event ProfessorIssued(
+        address indexed wallet,
+        address indexed academy,
+        bytes32 employeeIdHash,
+        uint64 issuedAt
+    );
+    event ProfessorRevoked(
+        address indexed wallet,
+        address indexed revoker,
+        uint64 revokedAt
+    );
 
     // Mappers
     mapping(address => Professor) public professors;
@@ -139,5 +154,29 @@ contract ProfessorIdentity is AcademyIdentity {
 
         professorByEmployeeInAcademyHash[employeeInAcademyHash] = _walletAddress;
         professorByNationalIdHash[nationalIdHash] = _walletAddress;
+
+        emit ProfessorIssued(_walletAddress, _academyAddress, employeeIdHash, uint64(block.timestamp));
+    }
+
+    function revokeProfessorIdentity(
+        address _walletAddress,
+        address _revokerAddress
+    ) public onlyOwner onlyAcademy(_revokerAddress) {
+        _validateWalletAddressSet(_walletAddress);
+
+        ProfessorStatusData storage s = professors[_walletAddress].status;
+        if (s.issuer == address(0)) revert ProfessorIdentityNotIssued();
+        if (!s.isNotRevoked) revert ProfessorIdentityAlreadyRevoked();
+
+        require(
+            _revokerAddress == s.issuer,
+            "Invalid revoker: must be the issuing academy."
+        );
+
+        s.isNotRevoked = false;
+        s.revokedAt = uint64(block.timestamp);
+        s.revoker = _revokerAddress;
+
+        emit ProfessorRevoked(_walletAddress, _revokerAddress, s.revokedAt);
     }
 }

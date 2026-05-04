@@ -459,4 +459,75 @@ describe("AcademyIdentity", () => {
             );
         });
     });
+
+    describe("revokeAcademyIdentity", () => {
+        it("Should flip status fields and set revoker to owner after a valid revoke", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy } =
+                await networkHelpers.loadFixture(deployWithAcademyFixture);
+
+            await instance.connect(owner).revokeAcademyIdentity(academy.address);
+
+            const record = await instance.academies(academy.address);
+            expect(record.status.isNotRevoked).to.equal(false);
+            expect(record.status.revokedAt).to.be.gt(0);
+            expect(record.status.revoker).to.equal(owner.address);
+            expect(record.status.issuer).to.equal(owner.address);
+            expect(record.status.issuedAt).to.be.gt(0);
+        });
+
+        it("Should revert when called by a non-owner", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, fakeOwner, academy } =
+                await networkHelpers.loadFixture(deployWithAcademyFixture);
+
+            await expect(
+                instance.connect(fakeOwner).revokeAcademyIdentity(academy.address)
+            ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
+        });
+
+        it("Should revert on zero academy wallet address", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance } = await networkHelpers.loadFixture(deployWithAcademyFixture);
+
+            await expect(
+                instance.revokeAcademyIdentity(ethers.ZeroAddress)
+            ).to.be.revertedWithCustomError(instance, "InvalidAddress");
+        });
+
+        it("Should revert when the academy was never issued", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, secondAcademy } = await networkHelpers.loadFixture(deployFixture);
+
+            await expect(
+                instance.revokeAcademyIdentity(secondAcademy.address)
+            ).to.be.revertedWithCustomError(instance, "AcademyIdentityNotIssued");
+        });
+
+        it("Should revert when called twice on the same academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, academy } =
+                await networkHelpers.loadFixture(deployWithAcademyFixture);
+
+            await instance.revokeAcademyIdentity(academy.address);
+
+            await expect(
+                instance.revokeAcademyIdentity(academy.address)
+            ).to.be.revertedWithCustomError(instance, "AcademyIdentityAlreadyRevoked");
+        });
+
+        it("Should keep the academyId locked after revoke (no reissue with a new wallet)", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, academy, secondAcademy, notBefore, notAfter } =
+                await networkHelpers.loadFixture(deployWithAcademyFixture);
+
+            await instance.revokeAcademyIdentity(academy.address);
+
+            await expect(
+                instance.issueAcademyIdentity(
+                    ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, { academyId: ACADEMY_ID }))
+                )
+            ).to.be.revertedWithCustomError(instance, "AcademyIdAlreadyUsed");
+        });
+    });
 });
