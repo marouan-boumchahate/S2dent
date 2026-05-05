@@ -80,6 +80,13 @@ const getStudentRevokePayload = async (academyAddress, studentAddress) => {
         throw err
     }
 
+    if(!student.academy_wallet_address) {
+        const err = new Error('Academy not found for the student')
+        err.statusCode = 404
+        err.code = 'ACADEMY_NOT_FOUND'
+        throw err
+    }
+
     return student;
 }
 

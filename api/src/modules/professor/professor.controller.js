@@ -1,5 +1,5 @@
-import { createProfessorService } from './professor.service.js';
-import { created } from '../../utils/response.js';
+import { createProfessorService, updateProfessorService } from './professor.service.js';
+import { created, ok } from '../../utils/response.js';
 
 const createProfessorController = async (req, res) => {
     const payload = {
@@ -21,4 +21,18 @@ const createProfessorController = async (req, res) => {
     return created(res, result, 'Professor registered successfully');
 };
 
-export { createProfessorController };
+const updateProfessorController = async (req, res) => {
+    const { id } = req.params;
+    const { rank, employment_type, office_location, office_hours, bio } = req.body;
+    const result = await updateProfessorService({
+        professor_id: id,
+        rank,
+        employment_type,
+        office_location,
+        office_hours,
+        bio
+    });
+    return ok(res, result, 'Professor updated successfully');
+};
+
+export { createProfessorController, updateProfessorController };

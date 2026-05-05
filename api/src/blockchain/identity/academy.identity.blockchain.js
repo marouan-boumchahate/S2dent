@@ -100,6 +100,8 @@ const issueAcademyIdentity = async (payload) => {
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
+        console.log('Blockchain error in issueAcademyIdentity:', err)
+
         const wrapped = new Error(`issueAcademyIdentity failed: ${reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
@@ -125,7 +127,7 @@ const revokeAcademyIdentity = async (payload) => {
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
-        const wrapped = new Error(`revokeAcademyIdentity failed: ${reason}`)
+        const wrapped = new Error(`revokeAcademyIdentity failed: ${reason.includes('revert') ? "Already revoked or does not exist" : reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
         wrapped.cause = err

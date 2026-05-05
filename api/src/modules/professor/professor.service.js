@@ -1,5 +1,27 @@
 import db from '../../config/db.js';
 
+
+// DTO
+function toProfessorDto(p) {
+  return {
+    id: p.id,
+    user_id: p.user_id,
+    academy_id: p.academy_id,
+    department_id: p.department_id,
+    employee_number: p.employee_number,
+    title: p.title,
+    rank: p.rank,
+    specialization: p.specialization,
+    hire_date: p.hire_date,
+    employment_type: p.employment_type,
+    office_location: p.office_location,
+    office_hours: p.office_hours,
+    bio: p.bio
+  };
+}
+
+
+// Helpers
 const ensureProfessorUnique = async (
   employeeNumber,
 ) => {
@@ -14,7 +36,6 @@ const ensureProfessorUnique = async (
     throw err;
   }
 };
-
 const ensureDepartmentExistsForAcademy = async (academy_id, department_id) => {
   const { rows } = await db.query(
     `SELECT 1 FROM departments WHERE id = $1 AND academy_id = $2 LIMIT 1`,
@@ -28,7 +49,6 @@ const ensureDepartmentExistsForAcademy = async (academy_id, department_id) => {
     throw err;
   }
 };
-
 const ensureUserExists = async (user_id) => {
   const { rows } = await db.query(
     `SELECT 1 FROM users WHERE id = $1 LIMIT 1`,
@@ -42,7 +62,16 @@ const ensureUserExists = async (user_id) => {
     throw err;
   }
 };
+const ensureProfessorExists = async (professor_id) => {
+  const { rows } = await db.query('SELECT id FROM professors WHERE id = $1', [professor_id]);
 
+  if (!rows.length) {
+    const e = new Error('Professor not found');
+    e.statusCode = 404;
+    e.code = 'PROFESSOR_NOT_FOUND';
+    throw e;
+  }
+};
 const ensureAcademyExists = async (academy_id) => {
   const { rows } = await db.query(
     `SELECT 1 FROM academies WHERE id = $1 LIMIT 1`,
@@ -55,7 +84,6 @@ const ensureAcademyExists = async (academy_id) => {
     throw err;
   }
 };
-
 const insertProfessorToDB = async ({
   user_id,
   academy_id,
@@ -121,7 +149,33 @@ const insertProfessorToDB = async ({
 
   return { rows: [professor] };
 };
-
+const updateProfessorInDB = async ({
+  professor_id,
+  rank,
+  employment_type,
+  office_location,
+  office_hours,
+  bio
+}) => db.query(
+  `UPDATE professors SET
+     rank = COALESCE($1, rank),
+     employment_type = COALESCE($2, employment_type),
+     office_location = COALESCE($3, office_location),
+     office_hours = COALESCE($4, office_hours),
+     bio = COALESCE($5, bio)
+   WHERE id = $6
+   RETURNING id, user_id, academy_id, department_id, employee_number,
+             title, rank, specialization, hire_date, employment_type,
+             office_location, office_hours, bio`,
+  [
+    rank ?? null,
+    employment_type ?? null,
+    office_location ?? null,
+    office_hours ?? null,
+    bio ?? null,
+    professor_id
+  ]
+);
 const generateRandomEmployeeId = async () => {
   const result = await db.query(`SELECT nextval('employee_seq')`);
   const seq = result.rows[0].nextval;
@@ -134,6 +188,8 @@ const generateRandomEmployeeId = async () => {
   return employeeId;
 }
 
+
+// Service functions
 const createProfessorService = async (payload) => {
   const {
     user_id,
@@ -167,5 +223,15 @@ const createProfessorService = async (payload) => {
     },
   };
 };
+const updateProfessorService = async (payload) => {
+  const { professor_id } = payload;
 
-export { createProfessorService };
+  await ensureProfessorExists(professor_id);
+
+  const { rows: [professor] } = await updateProfessorInDB(payload);
+
+  return { professor: toProfessorDto(professor) };
+};
+
+
+export { createProfessorService, updateProfessorService };
