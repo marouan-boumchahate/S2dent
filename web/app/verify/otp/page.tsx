@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -21,8 +22,20 @@ export default function OtpPage() {
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center">
       <div className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
-        <h2 className="text-2xl font-bold text-textLight mb-2">A code have been sent to your email</h2>
-        <p className="text-textMuted mb-8">Enter the 6-digit code</p>
+
+        {/* OTP image centered at top */}
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/otp_light.png"
+            alt="OTP"
+            width={100}
+            height={100}
+            className="object-contain"
+          />
+        </div>
+
+        <h2 className="text-2xl font-bold text-textLight mb-2 text-center">A code have been sent to your email</h2>
+        <p className="text-textMuted mb-8 text-center">Enter the 6-digit code</p>
 
         <div className="flex gap-3 justify-center mb-8">
           {otp.map((digit, index) => (
