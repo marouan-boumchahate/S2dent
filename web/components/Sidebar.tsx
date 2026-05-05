@@ -27,8 +27,10 @@ export default function Sidebar() {
           />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-textLight">S2dent</h2>
-          <p className="text-xs text-textMuted mt-0.5">Admin Page</p>
+          <h2 className="text-lg font-bold text-textLight">S2dent</h2> 
+          {/* here the title : there should be the name of the professor or the admin  */}
+          <p className="text-xs text-textMuted mt-0.5">Admin Page</p> 
+          {/* and here the subtitle : and here hould be somting like the admin of the fenebrbahce university or any name for university ,EX as marouan said for later*/}
         </div>
       </div>
 
