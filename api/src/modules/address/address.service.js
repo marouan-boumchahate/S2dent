@@ -1,5 +1,23 @@
 import db from '../../config/db.js';
 
+
+// DTO
+const toAddressDto = (address) => ({
+  id: address.id,
+  address_line1: address.address_line1,
+  address_line2: address.address_line2,
+  street: address.street,
+  district: address.district,
+  state: address.state,
+  postal_code: address.postal_code,
+  city: address.city,
+  country: address.country,
+  latitude: address.latitude,
+  longitude: address.longitude
+});
+
+
+// Helpers
 const insertAddressToDB = async ({
   user_id,
   academy_id,
@@ -64,7 +82,77 @@ const insertAddressToDB = async ({
 
   return { rows: [address] };
 };
+const updateAddressInDB = async (payload) => {
+  const { 
+    address_id,
+    address_line1,
+    address_line2,
+    street,
+    district,
+    state,
+    postal_code,
+    city,
+    country,
+    latitude,
+    longitude
+  } = payload;
 
+  const query = `
+    UPDATE addresses
+    SET address_line1 = COALESCE($1, address_line1),
+        address_line2 = COALESCE($2, address_line2),
+        street = COALESCE($3, street),
+        district = COALESCE($4, district),
+        state = COALESCE($5, state),
+        postal_code = COALESCE($6, postal_code),
+        city = COALESCE($7, city),
+        country = COALESCE($8, country),
+        latitude = COALESCE($9, latitude),
+        longitude = COALESCE($10, longitude)
+    WHERE id = $11
+    RETURNING
+      id,
+      address_line1,
+      address_line2,
+      street,
+      district,
+      state,
+      postal_code,
+      city,
+      country,
+      latitude,
+      longitude
+  `;
+
+  const { rows: [address] } = await db.query(query, [
+    address_line1 ?? null,
+    address_line2 ?? null,
+    street ?? null,
+    district ?? null,
+    state ?? null,
+    postal_code ?? null,
+    city ?? null,
+    country ?? null,
+    latitude ?? null,
+    longitude ?? null,
+    address_id
+  ]);
+
+  return { rows: [address] };
+};
+const isAddressExists = async (id) => {
+  const { rows } = await db.query('SELECT id FROM addresses WHERE id = $1', [id]);
+  
+  if (rows.length === 0) {
+    const err = new Error('Address not found');
+    err.statusCode = 404;
+    err.code = 'ADDRESS_NOT_FOUND';
+    throw err;
+  }
+}
+
+
+// Services
 const createAddressService = async (payload) => {
   const { rows: [address] } = await insertAddressToDB({ ...payload });
 
@@ -72,20 +160,20 @@ const createAddressService = async (payload) => {
   if (address.academy_id) payload.academy_id = address.academy_id;
 
   return {
-    address: {
-      id: address.id,
-      address_line1: address.address_line1,
-      address_line2: address.address_line2,
-      street: address.street,
-      district: address.district,
-      state: address.state,
-      postal_code: address.postal_code,
-      city: address.city,
-      country: address.country,
-      latitude: address.latitude,
-      longitude: address.longitude
-    }
+    address: toAddressDto(address)
+  };
+};
+const updateAddressService = async (payload) => {
+  const { address_id } = payload;
+
+  await isAddressExists(address_id);
+
+  const { rows: [address] } = await updateAddressInDB({ ...payload });
+
+  return {
+    address: toAddressDto(address)
   };
 };
 
-export { createAddressService };
+
+export { createAddressService, updateAddressService };
