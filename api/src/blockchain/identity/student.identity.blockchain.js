@@ -101,7 +101,7 @@ const revokeStudentIdentity = async (payload) => {
 
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
-        const wrapped = new Error(`revokeStudentIdentity failed: ${reason}`)
+        const wrapped = new Error(`revokeStudentIdentity failed: ${reason.includes('revert') ? "Already revoked or does not exist" : reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
         wrapped.cause = err
