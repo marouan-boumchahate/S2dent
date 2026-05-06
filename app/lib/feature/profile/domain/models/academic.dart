@@ -1,0 +1,55 @@
+enum EnrollmentStatus {
+  active,
+  inactive,
+  suspended,
+  withdrawn,
+  graduated,
+}
+
+EnrollmentStatus enrollmentStatusFromJson(Object? value) {
+  if (value is EnrollmentStatus) return value;
+  return EnrollmentStatus.values.firstWhere(
+    (status) => status.name == value,
+    orElse: () => EnrollmentStatus.active,
+  );
+}
+
+class Academic {
+  const Academic({
+    required this.studentNumber,
+    required this.currentLevel,
+    required this.enrollmentsStatus,
+    required this.enrollmentDate,
+    required this.expectedGraduationDate,
+    required this.actualGraduationDate,
+  });
+
+  final String studentNumber;
+  final String currentLevel;
+  final EnrollmentStatus enrollmentsStatus;
+  final DateTime enrollmentDate;
+  final DateTime expectedGraduationDate;
+  final DateTime actualGraduationDate;
+
+  factory Academic.fromJson(Map<String, dynamic> json) {
+    return Academic(
+      studentNumber: json["student_number"] ?? "",
+      currentLevel: json["current_level"] ?? "",
+      enrollmentsStatus: enrollmentStatusFromJson(json["enrollment_status"]),
+      enrollmentDate: DateTime.parse(json["enrollment_date"]),
+      expectedGraduationDate: DateTime.parse(json["expected_graduation_date"]),
+      actualGraduationDate: DateTime.parse(json["actual_graduation_date"]),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "student_number": studentNumber,
+      "current_level": currentLevel,
+      "enrollment_status": enrollmentsStatus.name,
+      "enrollment_date": enrollmentDate.toIso8601String(),
+      "expected_graduation_date": expectedGraduationDate.toIso8601String(),
+      "actual_graduation_date": actualGraduationDate.toIso8601String(),
+    };
+  }
+}

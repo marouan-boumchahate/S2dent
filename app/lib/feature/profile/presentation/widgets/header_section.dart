@@ -1,0 +1,70 @@
+import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/feature/profile/domain/models/student.dart';
+import 'package:app/feature/profile/presentation/widgets/info_badge.dart';
+import 'package:flutter/material.dart';
+
+class HeaderSection extends StatelessWidget {
+  const HeaderSection({
+    super.key,
+    required this.student,
+  });
+
+  final Student student;
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _userAvatar(context, student),
+        Text(
+          student.user?.fullName() ?? "",
+          style: TextStyle(fontSize: 24),
+          textAlign: TextAlign.center,
+        ),
+        _infoBadges(context, student),
+      ],
+    );
+  }
+
+  Padding _infoBadges(BuildContext context, Student student) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          InfoBadge(
+            info: (student.identity?.isRevoked ?? true) ? "Inactive" : "Active",
+            color: (student.identity?.isRevoked ?? true)
+                ? context.colors.error
+                : context.colors.primary,
+          ),
+          InfoBadge(
+              info: student.academic?.currentLevel ?? "",
+              color: context.colors.secondary),
+          InfoBadge(
+              info: student.department?.code ?? "",
+              color: context.colors.tertiary),
+        ],
+      ),
+    );
+  }
+
+  Card _userAvatar(BuildContext context, Student student) {
+    return Card(
+      shape: CircleBorder(
+        side: BorderSide(color: context.colors.primary, width: 4),
+      ),
+      elevation: 4,
+      child: CircleAvatar(
+        radius: 60,
+        backgroundColor: context.colors.surfaceContainer,
+        child: Text(
+          "${student.user?.firstName[0] ?? ''}${student.user?.lastName[0] ?? ''}",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
