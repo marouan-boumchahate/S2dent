@@ -1,5 +1,5 @@
-import { created } from '../../utils/response.js';
-import { createUserService } from './user.service.js';
+import { created, ok } from '../../utils/response.js';
+import { createUserService, updateUserService } from './user.service.js';
 
 const createUserController = async (req, res) => {
   const {
@@ -33,4 +33,19 @@ const createUserController = async (req, res) => {
   return created(res, result, 'User registered successfully');
 };
 
-export { createUserController };
+const updateUserController = async (req, res) => {
+  const { id } = req.params;
+
+  const payload = {
+    user_id: id,
+    phone: req.body.phone,
+    photo_url: req.body.photo_url,
+    notes: req.body.notes,
+  };
+
+  const result = await updateUserService({ ...payload });
+
+  return ok(res, result, 'User updated successfully');
+};
+
+export { createUserController, updateUserController };
