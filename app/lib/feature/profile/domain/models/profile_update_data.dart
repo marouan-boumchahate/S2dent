@@ -46,10 +46,10 @@ class ProfileUpdateData {
     return null;
   }
 
-  bool get userChanges =>
+  bool get userChanged =>
       phone != null || email != null || photoUrl != null || notes != null;
 
-  bool get addressChanges =>
+  bool get addressChanged =>
       addressLine1 != null ||
       addressLine2 != null ||
       street != null ||
@@ -60,7 +60,7 @@ class ProfileUpdateData {
       country != null;
 
   //did the user change  any info at all ?
-  bool get hasChanged => userChanges || addressChanges;
+  bool get hasChanged => userChanged || addressChanged;
 
   //USED IN DATA LAYER
   String? validate() {

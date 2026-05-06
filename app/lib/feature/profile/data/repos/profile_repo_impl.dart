@@ -64,10 +64,10 @@ class ProfileRepoImpl implements ProfileRepository {
   Future<Student> updateStudentProfile(ProfileUpdateData data) async {
     final updateFutures = <Future<Student>>[];
 
-    if (data.hasUserChanges) {
+    if (data.userChanged) {
       updateFutures.add(userDataSource.updateUserInfo(data));
     }
-    if (data.hasAddressChanges) {
+    if (data.addressChanged) {
       updateFutures.add(addressDataSource.updateAddressInfo(data));
     }
 
