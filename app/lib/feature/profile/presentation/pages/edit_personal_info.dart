@@ -56,7 +56,7 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
     //close keyboard and remove focus from fields
     FocusManager.instance.primaryFocus?.unfocus();
     final data = _buildUpdateData();
-    if (!data.hasChanges) {
+    if (!data.hasChanged) {
       Navigator.pop(context);
       return;
     }
@@ -150,6 +150,7 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
           const SizedBox(height: 16),
           PhotoPicker(
             pickedImage: _pickedImage,
+            photoUrl: widget.student.user?.photoUrl ?? "",
             initials: _initials(),
             onTap: _pickImage,
           ),

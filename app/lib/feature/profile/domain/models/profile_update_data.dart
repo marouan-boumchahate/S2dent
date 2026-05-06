@@ -38,16 +38,18 @@ class ProfileUpdateData {
   }
 
   static String? validatePhone(String? value) {
-    if (!phoneRegExp.hasMatch(value?.trim() ?? "")) {
-      return "Phone number must start with a country code.";
+    final text = value?.trim() ?? "";
+    if (text.isEmpty) return null;
+    if (!phoneRegExp.hasMatch(text)) {
+      return "Please enter a valid phone number.";
     }
     return null;
   }
 
-  bool get hasUserChanges =>
+  bool get userChanges =>
       phone != null || email != null || photoUrl != null || notes != null;
 
-  bool get hasAddressChanges =>
+  bool get addressChanges =>
       addressLine1 != null ||
       addressLine2 != null ||
       street != null ||
@@ -57,7 +59,9 @@ class ProfileUpdateData {
       city != null ||
       country != null;
 
-  bool get hasChanges => hasUserChanges || hasAddressChanges;
+  //did the user change  any info at all ?
+  bool get hasChanged => userChanges || addressChanges;
+
   //USED IN DATA LAYER
   String? validate() {
     final updatedPhone = phone;

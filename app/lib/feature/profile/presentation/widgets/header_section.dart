@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/widgets/info_badge.dart';
@@ -49,6 +51,9 @@ class HeaderSection extends StatelessWidget {
   }
 
   Card _userAvatar(BuildContext context, Student student) {
+    final user = student.user;
+    final image = _profileImage(user?.photoUrl ?? "");
+
     return Card(
       shape: CircleBorder(
         side: BorderSide(color: context.colors.primary, width: 4),
@@ -57,14 +62,35 @@ class HeaderSection extends StatelessWidget {
       child: CircleAvatar(
         radius: 60,
         backgroundColor: context.colors.surfaceContainer,
-        child: Text(
-          "${student.user?.firstName[0] ?? ''}${student.user?.lastName[0] ?? ''}",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        backgroundImage: image,
+        child: image == null
+            ? Text(
+                _initials(student),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : null,
       ),
     );
+  }
+
+  ImageProvider? _profileImage(String photoUrl) {
+    final value = photoUrl.trim();
+    if (value.isEmpty) return null;
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+      return NetworkImage(value);
+    }
+    return FileImage(File(value));
+  }
+
+  String _initials(Student student) {
+    final user = student.user;
+    if (user == null) return "";
+
+    final firstInitial = user.firstName.isEmpty ? "" : user.firstName[0];
+    final lastInitial = user.lastName.isEmpty ? "" : user.lastName[0];
+    return "$firstInitial$lastInitial";
   }
 }
