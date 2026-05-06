@@ -52,7 +52,7 @@ const seedAcademy = async () => {
          email, legal_name, registration_number, tax_id
        )
        VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8)
-       RETURNING id`,
+       RETURNING id, wallet_address`,
       [
         SEED_WALLET,
         SEED_ACADEMY_NUMBER,
@@ -63,6 +63,13 @@ const seedAcademy = async () => {
         'REG-PROF-0001',
         'TAX-PROF-0001',
       ],
+    );
+
+    await db.query(
+      `INSERT INTO identities (wallet_address, role, is_active)
+       VALUES ($1, 'academy', TRUE)
+       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE`,
+      [academy.wallet_address],
     );
 
     return academy.id;
@@ -234,6 +241,12 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 404 DEPARTMENT_NOT_FOUND when department is not in the academy', async () => {
+      const OTHER_WALLET = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const OTHER_EMAIL = 'other.academy@seed.internal';
+      
+      await db.query(`DELETE FROM departments WHERE academy_id IN (SELECT id FROM academies WHERE email = $1 OR wallet_address = $2)`, [OTHER_EMAIL, OTHER_WALLET]);
+      await db.query(`DELETE FROM academies WHERE email = $1 OR wallet_address = $2`, [OTHER_EMAIL, OTHER_WALLET]);
+
       const otherAcademy = await db.query(
         `INSERT INTO academies (
            wallet_address, academy_number, name, short_name, type,
@@ -242,11 +255,11 @@ describe('POST /api/professors', () => {
          VALUES ($1,$2,$3,$4,'university',$5,$6,$7,$8)
          RETURNING id`,
         [
-          '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          OTHER_WALLET,
           'ACD_PROF_0002',
           'Other Academy',
           'OAC',
-          'other.academy@seed.internal',
+          OTHER_EMAIL,
           'Other Academy Legal',
           'REG-PROF-0002',
           'TAX-PROF-0002',

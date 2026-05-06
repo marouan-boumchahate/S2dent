@@ -73,17 +73,47 @@ const ensureProfessorExists = async (professor_id) => {
   }
 };
 const ensureAcademyExists = async (academy_id) => {
-  const { rows } = await db.query(
-    `SELECT 1 FROM academies WHERE id = $1 LIMIT 1`,
-    [academy_id]
+  const { rows: [academy] } = await db.query(
+    'SELECT id, wallet_address FROM academies WHERE id = $1 LIMIT 1',
+    [academy_id],
   );
-  if (rows.length === 0) {
+
+  if (!academy) {
     const err = new Error('Academy not found');
     err.statusCode = 404;
     err.code = 'ACADEMY_NOT_FOUND';
     throw err;
   }
+
+  const { rows } = await db.query(
+    `SELECT 1
+      FROM identities
+      WHERE wallet_address = $1
+        AND role = 'academy'
+        AND is_active = TRUE
+      LIMIT 1`,
+    [academy.wallet_address],
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Academy has no active identity');
+    err.statusCode = 403;
+    err.code = 'ACADEMY_IDENTITY_INACTIVE';
+    throw err;
+  }
 };
+const generateRandomEmployeeId = async () => {
+  const result = await db.query(`SELECT nextval('employee_seq')`);
+  const seq = result.rows[0].nextval;
+
+  const now = new Date();
+  const date = now.toISOString().slice(2,10).replace(/-/g,'');
+
+  const employeeId = `EMP_${date}${seq}`;
+
+  return employeeId;
+}
+
 const insertProfessorToDB = async ({
   user_id,
   academy_id,
@@ -97,8 +127,7 @@ const insertProfessorToDB = async ({
   office_location,
   office_hours,
   bio
-}) => {
-  const { rows: [professor] } = await db.query(
+}) => await db.query(
     `INSERT INTO professors (
         user_id,
         academy_id,
@@ -146,9 +175,6 @@ const insertProfessorToDB = async ({
       bio ?? null
     ],
   );
-
-  return { rows: [professor] };
-};
 const updateProfessorInDB = async ({
   professor_id,
   rank,
@@ -156,7 +182,7 @@ const updateProfessorInDB = async ({
   office_location,
   office_hours,
   bio
-}) => db.query(
+}) => await db.query(
   `UPDATE professors SET
      rank = COALESCE($1, rank),
      employment_type = COALESCE($2, employment_type),
@@ -176,17 +202,6 @@ const updateProfessorInDB = async ({
     professor_id
   ]
 );
-const generateRandomEmployeeId = async () => {
-  const result = await db.query(`SELECT nextval('employee_seq')`);
-  const seq = result.rows[0].nextval;
-
-  const now = new Date();
-  const date = now.toISOString().slice(2,10).replace(/-/g,'');
-
-  const employeeId = `EMP_${date}${seq}`;
-
-  return employeeId;
-}
 
 
 // Service functions
