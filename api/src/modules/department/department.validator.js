@@ -13,4 +13,8 @@ const createDepartmentSchema = Joi.object({
   is_active: Joi.boolean().optional(),
 });
 
-export { createDepartmentSchema };
+const updateDepartmentSchema = Joi.object({
+  description: Joi.string().trim().optional(),
+}).min(1);
+
+export { createDepartmentSchema, updateDepartmentSchema };
