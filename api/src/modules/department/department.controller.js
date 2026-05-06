@@ -1,5 +1,11 @@
-import { created } from '../../utils/response.js';
-import { createDepartmentService } from './department.service.js';
+import { created, ok } from '../../utils/response.js';
+import {
+  createDepartmentService,
+  listDepartmentsService,
+  getDepartmentByIdService,
+  updateDepartmentService,
+  deleteDepartmentService,
+} from './department.service.js';
 
 const createDepartmentController = async (req, res) => {
   const payload = {
@@ -17,5 +23,46 @@ const createDepartmentController = async (req, res) => {
   return created(res, result, 'Department created successfully');
 };
 
-export { createDepartmentController };
+const listDepartmentsController = async (req, res) => {
+  const result = await listDepartmentsService(req.query.academy_id);
+
+  return ok(res, result, 'Departments retrieved successfully');
+};
+
+const getDepartmentByIdController = async (req, res) => {
+  const { id } = req.params;
+
+  const result = await getDepartmentByIdService(id);
+
+  return ok(res, result, 'Department retrieved successfully');
+};
+
+const updateDepartmentController = async (req, res) => {
+  const { id } = req.params;
+
+  const payload = {
+    department_id: id,
+    description: req.body.description,
+  };
+
+  const result = await updateDepartmentService(payload);
+
+  return ok(res, result, 'Department updated successfully');
+};
+
+const deleteDepartmentController = async (req, res) => {
+  const { id } = req.params;
+
+  const result = await deleteDepartmentService(id);
+
+  return ok(res, result, 'Department deactivated successfully');
+};
+
+export {
+  createDepartmentController,
+  listDepartmentsController,
+  getDepartmentByIdController,
+  updateDepartmentController,
+  deleteDepartmentController,
+};
 
