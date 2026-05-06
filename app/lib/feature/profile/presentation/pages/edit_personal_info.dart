@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/widgets/buttons/primary_button.dart';
 import 'package:app/core/widgets/custom_appbar.dart';
@@ -8,6 +6,8 @@ import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/providers/profile_provider.dart';
 import 'package:app/feature/profile/presentation/widgets/editible_textfield.dart';
+import 'package:app/feature/profile/presentation/widgets/phone_field.dart';
+import 'package:app/feature/profile/presentation/widgets/photo_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,8 +28,8 @@ class EditPersonalInfoPage extends ConsumerStatefulWidget {
 class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
-  late final TextEditingController _phoneController;
   late final TextEditingController _notesController;
+  late String _phoneNumber;
   XFile? _pickedImage;
   bool _isSaving = false;
 
@@ -38,20 +38,20 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
     super.initState();
     final user = widget.student.user;
     _emailController = TextEditingController(text: user?.email ?? "");
-    _phoneController = TextEditingController(text: user?.phone ?? "");
+    _phoneNumber = user?.phone ?? "";
     _notesController = TextEditingController(text: user?.notes ?? "");
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _phoneController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
     //close keyboard and remove focus from fields
     FocusManager.instance.primaryFocus?.unfocus();
@@ -92,10 +92,17 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
 
     return ProfileUpdateData(
       email: _changedValue(user?.email, _emailController),
-      phone: _changedValue(user?.phone, _phoneController),
+      phone: _changedPhoneValue(user?.phone),
       photoUrl: _pickedImage?.path,
       notes: _changedValue(user?.notes, _notesController),
     );
+  }
+
+  String? _changedPhoneValue(String? originalValue) {
+    final original = originalValue ?? "";
+    final updated = _phoneNumber.trim();
+    if (updated == original) return null;
+    return updated;
   }
 
   String? _changedValue(
@@ -141,7 +148,11 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          _photoPicker(context),
+          PhotoPicker(
+            pickedImage: _pickedImage,
+            initials: _initials(),
+            onTap: _pickImage,
+          ),
           const SizedBox(height: 16),
           EditibleTextfield(
             label: "Email",
@@ -149,11 +160,14 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
             keyboardType: TextInputType.emailAddress,
             validator: ProfileUpdateData.validateEmail,
           ),
-          EditibleTextfield(
-            label: "Phone Number",
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            validator: ProfileUpdateData.validatePhone,
+          PhoneField(
+            phoneNumber: _phoneNumber,
+            onChanged: (phoneNumber) {
+              _phoneNumber = phoneNumber;
+            },
+            onSaved: (phoneNumber) {
+              _phoneNumber = phoneNumber;
+            },
           ),
           EditibleTextfield(
             label: "Notes",
@@ -168,48 +182,6 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
           ),
           const SizedBox(height: 24),
         ],
-      ),
-    );
-  }
-
-  Widget _photoPicker(BuildContext context) {
-    return Center(
-      child: GestureDetector(
-        onTap: _pickImage,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: context.colors.surfaceContainer,
-              backgroundImage: _pickedImage != null
-                  ? FileImage(File(_pickedImage!.path))
-                  : null,
-              child: _pickedImage == null
-                  ? Text(
-                      _initials(),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: context.colors.primary,
-                child: const Icon(
-                  Icons.camera_alt,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -27,7 +27,7 @@ class ProfileUpdateData {
   final String? city;
   final String? country;
 
-  static final RegExp phoneRegExp = RegExp(r'^\+\d{7,14}$');
+  static final RegExp phoneRegExp = RegExp(r'^\+\d{7,15}$');
   //USED IN THE UI LAYER
   static String? validateEmail(String? value) {
     final text = value?.trim() ?? "";
@@ -39,7 +39,7 @@ class ProfileUpdateData {
 
   static String? validatePhone(String? value) {
     if (!phoneRegExp.hasMatch(value?.trim() ?? "")) {
-      return "Phone number must start with country key and contain 8-15 digits.";
+      return "Phone number must start with a country code.";
     }
     return null;
   }
