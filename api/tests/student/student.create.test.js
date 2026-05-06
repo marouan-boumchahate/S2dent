@@ -60,7 +60,7 @@ const seedAcademy = async () => {
       tax_id
     )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id`,
+     RETURNING id, wallet_address`,
     [
       SEED_WALLET,
       SEED_EMAIL,
@@ -72,6 +72,13 @@ const seedAcademy = async () => {
       'REG-STU-001',
       'TAX-STU-001',
     ],
+  );
+
+  await db.query(
+    `INSERT INTO identities (wallet_address, role, is_active)
+     VALUES ($1, 'academy', TRUE)
+     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE`,
+    [academy.wallet_address],
   );
 
   return academy.id;
