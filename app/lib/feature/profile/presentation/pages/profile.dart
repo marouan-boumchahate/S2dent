@@ -84,26 +84,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         loading: () => Center(
           child: CircularProgressIndicator(),
         ),
-        data: (student) => RefreshIndicator(
-          onRefresh: () =>
-              ref.read(profileControllerProvider.notifier).loadFullProfile(),
-          child: MainLayout(
-            topSafeArea: false,
-            children: [
-              HeaderSection(student: student),
-              UserSection(
-                  onTap: () => onTapEditUserInfo(student), student: student),
-              AcademicSection(student: student),
-              AddressSection(
-                onTap: () => onTapEditAddressInfo(student),
-                student: student,
-              ),
-              SettingsSection(
-                onTapContactUs: onTapContactUs,
-                onTapSettings: onTapSettings,
-              ),
-            ],
-          ),
+        data: (student) => MainLayout(
+          children: [
+            HeaderSection(student: student),
+            UserSection(
+                onTap: () => onTapEditUserInfo(student), student: student),
+            AcademicSection(student: student),
+            AddressSection(
+              onTap: () => onTapEditAddressInfo(student),
+              student: student,
+            ),
+            SettingsSection(
+              onTapContactUs: onTapContactUs,
+              onTapSettings: onTapSettings,
+            ),
+          ],
         ),
       ),
     );

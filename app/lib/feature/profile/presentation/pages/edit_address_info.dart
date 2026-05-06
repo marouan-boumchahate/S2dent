@@ -70,7 +70,7 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
 
     FocusManager.instance.primaryFocus?.unfocus();
     final data = _buildUpdateData();
-    if (!data.hasChanges) {
+    if (!data.hasChanged) {
       Navigator.pop(context);
       return;
     }

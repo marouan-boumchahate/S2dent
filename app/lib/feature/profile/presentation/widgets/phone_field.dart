@@ -50,10 +50,14 @@ class PhoneField extends StatelessWidget {
           ),
         ),
         onChanged: (phone) {
-          onChanged(phone.completeNumber);
+          onChanged(phone.number.trim().isEmpty ? "" : phone.completeNumber);
         },
         onSaved: (phone) {
-          onSaved(phone?.completeNumber ?? "");
+          onSaved(
+            phone == null || phone.number.trim().isEmpty
+                ? ""
+                : phone.completeNumber,
+          );
         },
       ),
     );

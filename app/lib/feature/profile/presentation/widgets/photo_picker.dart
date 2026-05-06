@@ -8,16 +8,20 @@ class PhotoPicker extends StatelessWidget {
   const PhotoPicker({
     super.key,
     required this.pickedImage,
+    required this.photoUrl,
     required this.initials,
     required this.onTap,
   });
 
   final XFile? pickedImage;
+  final String photoUrl;
   final String initials;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final image = _photoImage();
+
     return Center(
       child: GestureDetector(
         onTap: onTap,
@@ -27,10 +31,8 @@ class PhotoPicker extends StatelessWidget {
             CircleAvatar(
               radius: 50,
               backgroundColor: context.colors.surfaceContainer,
-              backgroundImage: pickedImage != null
-                  ? FileImage(File(pickedImage!.path))
-                  : null,
-              child: pickedImage == null
+              backgroundImage: image,
+              child: image == null
                   ? Text(
                       initials,
                       style: const TextStyle(
@@ -57,5 +59,17 @@ class PhotoPicker extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  ImageProvider? _photoImage() {
+    final picked = pickedImage;
+    if (picked != null) return FileImage(File(picked.path));
+
+    final value = photoUrl.trim();
+    if (value.isEmpty) return null;
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+      return NetworkImage(value);
+    }
+    return FileImage(File(value));
   }
 }
