@@ -33,6 +33,10 @@ class PhotoPicker extends StatelessWidget {
               backgroundColor: context.colors.surfaceContainer,
               backgroundImage: image,
               child: image == null
+              backgroundImage: pickedImage != null
+                  ? FileImage(File(pickedImage!.path))
+                  : null,
+              child: pickedImage == null
                   ? Text(
                       initials,
                       style: const TextStyle(
