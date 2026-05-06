@@ -33,4 +33,16 @@ const createUserSchema = Joi.object({
   notes: Joi.string().trim().optional(),
 });
 
-export { createUserSchema };
+const updateUserSchema = Joi.object({
+  phone: Joi.string().pattern(PHONE_REGEX).optional()
+    .messages({
+      'string.pattern.base': 'phone must be a valid international phone number',
+    }),
+  photo_url: Joi.string().uri().trim().max(500).optional()
+    .messages({
+      'string.uri': 'photo_url must be a valid URL',
+    }),
+  notes: Joi.string().trim().optional(),
+}).min(1);
+
+export { createUserSchema, updateUserSchema };
