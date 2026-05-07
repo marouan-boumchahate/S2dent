@@ -2,8 +2,6 @@ DO $$ BEGIN
     CREATE TYPE enrollment_status AS ENUM (
         'active',
         'inactive',
-        'suspended',
-        'withdrawn',
         'graduated'
     );
 EXCEPTION
@@ -19,7 +17,7 @@ CREATE TABLE IF NOT EXISTS students (
 
     student_number VARCHAR(50) UNIQUE NOT NULL,
 
-    current_level VARCHAR(50) NOT NULL,
+    cgpa NUMERIC(3,2) DEFAULT 0.00 CHECK (cgpa >= 0.00 AND cgpa <= 4.00),
 
     enrollment_status enrollment_status NOT NULL DEFAULT 'active',
     enrollment_date DATE NOT NULL,

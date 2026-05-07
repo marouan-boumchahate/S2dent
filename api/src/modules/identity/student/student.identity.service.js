@@ -17,7 +17,6 @@ const formatDateOnly = (value) => {
         return String(value).slice(0, 10)
     }
 }
-
 const getStudentIdentityPayload = async (email) => {
     const { rows: [student] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, u.nationality, u.gender,
@@ -28,8 +27,8 @@ const getStudentIdentityPayload = async (email) => {
          FROM users u
          JOIN students s ON u.id = s.user_id
          JOIN academies a ON s.academy_id = a.id
-         JOIN addresses addr ON addr.user_id = u.id
-         JOIN departments d ON d.academy_id = a.id
+         LEFT JOIN addresses addr ON addr.user_id = u.id
+         LEFT JOIN departments d ON d.academy_id = a.id
          WHERE u.email = $1`,
         [email]
     )
@@ -41,7 +40,7 @@ const getStudentIdentityPayload = async (email) => {
         throw err
     }
 
-    if (!student.is_department_active){
+    if (student.is_department_active === false) {
         const err = new Error('Student\'s department is not active')
         err.statusCode = 403
         err.code = 'DEPARTMENT_INACTIVE'
@@ -57,7 +56,6 @@ const getStudentIdentityPayload = async (email) => {
     
     return student;
 }
-
 const getStudentRevokePayload = async (academyAddress, studentAddress) => {
     const { rows: [student] } = await db.query(
         `SELECT u.email, u.full_name, u.gender,
@@ -89,7 +87,19 @@ const getStudentRevokePayload = async (academyAddress, studentAddress) => {
 
     return student;
 }
+const ensureWalletAddressUnique = async (walletAddress) => {
+    const { rows } = await db.query(
+        `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
+        [walletAddress]
+    );
 
+    if(rows.length > 0) {
+        const err = new Error('Wallet address is already associated with an existing identity')
+        err.statusCode = 409
+        err.code = 'WALLET_ADDRESS_NOT_UNIQUE'
+        throw err
+    }
+}
 const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
 
@@ -115,6 +125,7 @@ const ON_FAILURE = (title, name) => ({
 export const issueStudentIdentityService = async ({ wallet_address, email }) => {
     const studentWallet = wallet_address
 
+    await ensureWalletAddressUnique(studentWallet)
     const student = await getStudentIdentityPayload(email)
 
     const tx = await issueStudentIdentity({

@@ -8,14 +8,14 @@ const toStudentDto = (student) => ({
   academy_id: student.academy_id,
   department_id: student.department_id,
   student_number: student.student_number,
-  current_level: student.current_level,
+  current_level: new Date().getFullYear() - new Date(student.enrollment_date).getFullYear() + 1,
   enrollment_status: student.enrollment_status,
+  cgpa: student.cgpa,
   enrollment_date: student.enrollment_date,
   expected_graduation_date: student.expected_graduation_date,
   actual_graduation_date: student.actual_graduation_date,
-  department_code: student.department_code,
-  department_name: student.department_name
 });
+
 
 // Helpers
 const ensureStudentUnique = async (
@@ -94,6 +94,23 @@ const getDepartmentGraduationYears = async (department_id) => {
 
   return department;
 }
+const ensureStudentExists = async (student_id) => {
+  const { rows: [row] } = await db.query(`
+    SELECT i.is_active
+    FROM students s
+    JOIN identities i ON s.user_id = i.user_id
+    WHERE s.id = $1
+    LIMIT 1
+  `, [student_id]);
+
+
+  if (!row || !row.is_active) {
+    const err = new Error('No active student account found for the provided ID');
+    err.statusCode = 403;
+    err.code = 'STUDENT_NOT_FOUND';
+    throw err;
+  }
+}
 
 const insertStudentToDB = async ({
   user_id,
@@ -105,43 +122,45 @@ const insertStudentToDB = async ({
   enrollment_date,
   total_years_to_graduate,
   actual_graduation_date,
-}) => await db.query(
-    `WITH inserted AS (
-      INSERT INTO students (
-          user_id,
-          academy_id,
-          department_id,
-          student_number,
-          current_level,
-          enrollment_status,
-          enrollment_date,
-          expected_graduation_date,
-          actual_graduation_date
-        )
-        VALUES (
-          $1, $2, $3, $4, $5,
-          COALESCE($6::enrollment_status, 'active'::enrollment_status),
-          COALESCE($7::date, CURRENT_DATE),
-          COALESCE($7::date, CURRENT_DATE) + make_interval(years => $8),
-          $9
-        )
-        RETURNING *
-    )
-    SELECT i.*, d.code as department_code, d.name as department_name
-    FROM inserted i
-    JOIN departments d ON i.department_id = d.id`,
+}) => await db.query(`
+    INSERT INTO students (
+      user_id,
+      academy_id,
+      department_id,
+      student_number,
+      enrollment_status,
+      enrollment_date,
+      expected_graduation_date,
+      actual_graduation_date
+    ) VALUES (
+      $1, $2, $3, $4,
+      COALESCE($5::enrollment_status, 'active'::enrollment_status),
+      COALESCE($6::date, CURRENT_DATE),
+      COALESCE($6::date, CURRENT_DATE) + make_interval(years => $7),
+      $8
+    ) RETURNING *`,
     [
       user_id,
       academy_id,
       department_id,
       student_number,
-      current_level,
       enrollment_status ?? null,
       enrollment_date ?? null,
       total_years_to_graduate,
       actual_graduation_date ?? null,
     ],
   );
+const updateStudentToDB = async ({
+  student_id,
+  cgpa
+}) => await db.query(
+    `UPDATE students
+      SET cgpa = COALESCE($2, cgpa)
+      WHERE id = $1
+      RETURNING *`,
+    [student_id, cgpa],
+  );
+
 
 // Services
 export const createStudentService = async (payload) => {
@@ -170,5 +189,16 @@ export const createStudentService = async (payload) => {
   })
 
   return { student: toStudentDto(student) };
+};
+export const updateStudentService = async (payload) => {
+  const { student_id, cgpa } = payload;
 
+  await ensureStudentExists(student_id);
+
+  const { rows: [student] } = await updateStudentToDB({
+    student_id,
+    cgpa
+  });
+
+  return { student: toStudentDto(student) };
 };

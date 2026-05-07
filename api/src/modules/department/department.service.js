@@ -271,13 +271,16 @@ const updateDepartmentService = async (payload) => {
   };
 };
 const deleteDepartmentService = async (department_id) => {
-  await ensureDepartmentExists(department_id);
+  const { is_active } = await ensureDepartmentExists(department_id);
 
+  if(!is_active) {
+    const err = new Error('Department is already inactive');
+    err.statusCode = 400;
+    err.code = 'DEPARTMENT_ALREADY_INACTIVE';
+    throw err;
+  }
+  
   const { rows: [department] } = await deactivateDepartmentInDB(department_id);
-
-  return {
-    department: toDepartmentDto(department),
-  };
 };
 
 

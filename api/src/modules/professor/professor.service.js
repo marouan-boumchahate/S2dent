@@ -63,13 +63,19 @@ const ensureUserExists = async (user_id) => {
   }
 };
 const ensureProfessorExists = async (professor_id) => {
-  const { rows } = await db.query('SELECT id FROM professors WHERE id = $1', [professor_id]);
-
-  if (!rows.length) {
-    const e = new Error('Professor not found');
-    e.statusCode = 404;
-    e.code = 'PROFESSOR_NOT_FOUND';
-    throw e;
+  const { rows: [row] } = await db.query(`
+    SELECT i.is_active
+    FROM professors as p
+    JOIN identities as i ON p.user_id = i.user_id
+    WHERE p.id = $1
+    LIMIT 1
+  `, [professor_id]);
+    
+  if (!row || !row.is_active) {
+    const err = new Error('No active professor account found for the provided ID');
+    err.statusCode = 404;
+    err.code = 'PROFESSOR_NOT_FOUND';
+    throw err;
   }
 };
 const ensureAcademyExists = async (academy_id) => {

@@ -7,6 +7,7 @@ import db from '../../src/config/db.js';
 const endpoint = '/api/users';
 
 const cleanupUsers = async () => {
+  await db.query(`DELETE FROM identities WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@userupdatecases.test')`);
   await db.query(`DELETE FROM users WHERE email LIKE '%@userupdatecases.test'`);
 };
 
@@ -75,6 +76,13 @@ const seedTUser = async () => {
      RETURNING id`,
     insertVals,
   );
+
+  await db.query(
+    `INSERT INTO identities (user_id, role, is_active)
+     VALUES ($1, $2, $3)`,
+    [u.id, 'student', true],
+  );
+
   return u.id;
 };
 
@@ -199,7 +207,7 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 500 when database throws unexpectedly during update', async () => {
     const stub = sinon.stub(db, 'query');
-    stub.onFirstCall().resolves({ rows: [{ id: USER_ID }] });
+    stub.onFirstCall().resolves({ rows: [{ is_active: true }] });
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)

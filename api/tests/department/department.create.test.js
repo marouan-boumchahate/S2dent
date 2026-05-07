@@ -13,6 +13,26 @@ const SEED_ACADEMY_NUMBER = 'ACD_DEPT_0001';
 let ACADEMY_ID;
 
 const seedAcademy = async () => {
+  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+
+  await db.query(
+    `DELETE FROM students
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM professors
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
@@ -21,7 +41,7 @@ const seedAcademy = async () => {
           OR wallet_address = $2
           OR academy_number = $3
      )`,
-    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
+    identifiers,
   );
 
   await db.query(
@@ -29,7 +49,7 @@ const seedAcademy = async () => {
      WHERE email = $1
         OR wallet_address = $2
         OR academy_number = $3`,
-    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
+    identifiers,
   );
 
   const { rows: [academy] } = await db.query(
@@ -73,6 +93,26 @@ const cleanupDepartments = async () => {
 };
 
 const teardownSeed = async () => {
+  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+
+  await db.query(
+    `DELETE FROM students
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM professors
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
   await db.query(
     `DELETE FROM departments
      WHERE academy_id IN (
@@ -81,7 +121,7 @@ const teardownSeed = async () => {
           OR wallet_address = $2
           OR academy_number = $3
      )`,
-    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
+    identifiers,
   );
 
   await db.query(
@@ -89,7 +129,7 @@ const teardownSeed = async () => {
      WHERE email = $1
         OR wallet_address = $2
         OR academy_number = $3`,
-    [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER],
+    identifiers,
   );
 };
 

@@ -86,7 +86,6 @@ const seedStudentUser = async ({
     national_id = `NID-${Math.random().toString(16).slice(2, 10)}`,
     nationality = 'Turkish',
     student_number = 'STU-001',
-    current_level = '4th Year',
     enrollment_status = 'active',
     enrollment_date = '2022-09-15',
     expected_graduation_date = '2026-06-30',
@@ -149,16 +148,15 @@ const seedStudentUser = async ({
         await db.query(
             `INSERT INTO students (
                 user_id, academy_id, department_id,
-                student_number, current_level,
+                student_number,
                 enrollment_status, enrollment_date, expected_graduation_date
             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
                 user.id,
                 academy_id,
                 department_id,
                 student_number,
-                current_level,
                 enrollment_status,
                 enrollment_date,
                 expected_graduation_date,

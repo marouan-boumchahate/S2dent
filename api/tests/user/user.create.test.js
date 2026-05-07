@@ -8,6 +8,12 @@ const endpoint = '/api/users';
 
 const cleanupUsers = async () => {
   await db.query(
+    `DELETE FROM identities
+     WHERE user_id IN (
+       SELECT id FROM users WHERE email LIKE '%@usercases.edu'
+     )`,
+  );
+  await db.query(
     `DELETE FROM students
      WHERE user_id IN (
        SELECT id FROM users WHERE email LIKE '%@usercases.edu'
@@ -97,7 +103,7 @@ describe('POST /api/users', () => {
       .send(validBody({ national_id: 'USER-TEST-002' }));
 
     assert.equal(res.status, 409);
-    assert.equal(res.body.code, 'EMAIL_DUPLICATE');
+    assert.equal(res.body.code, 'USER_NOT_UNIQUE');
   });
 
   it('returns 409 USER_NATIONAL_ID_DUPLICATE when national_id already exists', async () => {
@@ -110,7 +116,7 @@ describe('POST /api/users', () => {
       .send(validBody({ email: 'user.002@usercases.edu' }));
 
     assert.equal(res.status, 409);
-    assert.equal(res.body.code, 'USER_NATIONAL_ID_DUPLICATE');
+    assert.equal(res.body.code, 'USER_NOT_UNIQUE');
   });
 
   it('returns 422 when body is empty', async () => {
@@ -135,4 +141,3 @@ describe('POST /api/users', () => {
     assert.ok(field, 'errors should contain a phone entry');
   });
 });
-

@@ -12,7 +12,7 @@ import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
 const getAcademyByWallet = async (wallet_address) => {
     const { rows: [academy] } = await db.query(
         `SELECT id, wallet_address, academy_number, name, short_name, type,
-        legal_name, registration_number, tax_id, billing_email, email
+            legal_name, registration_number, tax_id, billing_email, email
         FROM academies
         WHERE wallet_address = $1
         LIMIT 1`,
@@ -28,7 +28,6 @@ const getAcademyByWallet = async (wallet_address) => {
     
     return academy
 }
-
 const ensureAcademyHasAddress = async (academyId) => {
     const { rows } = await db.query(
         `SELECT 1
@@ -45,7 +44,6 @@ const ensureAcademyHasAddress = async (academyId) => {
         throw err
     }
 }
-
 const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
     
@@ -55,6 +53,21 @@ const saveTransaction = async (txHash, payloadObj) => {
         [txHash, payload]
     )
 }
+const ensureWalletAddressUnique = async (walletAddress) => 
+{
+    const { rows } = await db.query(
+        `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
+        [walletAddress]
+    );
+
+    if(rows.length > 0) {
+        const err = new Error('Wallet address is already associated with an existing identity')
+        err.statusCode = 409
+        err.code = 'WALLET_ADDRESS_NOT_UNIQUE'
+        throw err
+    }
+}
+
 
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
     await db.query(
@@ -64,7 +77,6 @@ const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex)
         [walletAddress, certPem, chainPem, fingerprintHex]
     )
 }
-
 const getCertificate = async (
     walletAddress,
     academy_number,
@@ -103,6 +115,7 @@ const ON_FAILURE = {
 export const issueAcademyIdentity = async ({ wallet_address }) => {
     const normalizedWallet = wallet_address.toLowerCase()
     
+    await ensureWalletAddressUnique(normalizedWallet)
     const academy = await getAcademyByWallet(normalizedWallet)
     await ensureAcademyHasAddress(academy.id)
     

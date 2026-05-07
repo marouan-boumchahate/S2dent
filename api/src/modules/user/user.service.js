@@ -21,33 +21,29 @@ const toUserDto = (u) => ({
 
 // Helpers
 const ensureUserUnique = async (email, nationalId) => {
-  const [emailExists, nationalIdExists] = await Promise.all([
-    db.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]),
-    db.query('SELECT id FROM users WHERE national_id = $1 LIMIT 1', [nationalId]),
-  ]);
+  const { rows } = await db.query(
+    'SELECT id FROM users WHERE email = $1 OR national_id = $2 LIMIT 1',
+    [email, nationalId],
+  );
 
-  if (emailExists.rows.length > 0) {
-    const err = new Error('A user with this email already exists');
+  if (rows.length > 0) {
+    const err = new Error('A user with this email or national ID already exists');
     err.statusCode = 409;
-    err.code = 'EMAIL_DUPLICATE';
-    throw err;
-  }
-
-  if (nationalIdExists.rows.length > 0) {
-    const err = new Error('A user with this national ID already exists');
-    err.statusCode = 409;
-    err.code = 'USER_NATIONAL_ID_DUPLICATE';
+    err.code = 'USER_NOT_UNIQUE';
     throw err;
   }
 };
 const ensureUserExists = async (user_id) => {
-  const { rows } = await db.query(
-    'SELECT 1 FROM users WHERE id = $1 LIMIT 1',
-    [user_id],
+  const { rows: [row] } = await db.query(`
+    SELECT i.is_active 
+    FROM users 
+    JOIN identities i ON users.id = i.user_id 
+    WHERE users.id = $1 LIMIT 1`,
+    [user_id]
   );
 
-  if (rows.length === 0) {
-    const err = new Error('User not found');
+  if (!row || !row.is_active) {
+    const err = new Error('No active user account found for the provided ID');
     err.statusCode = 404;
     err.code = 'USER_NOT_FOUND';
     throw err;
@@ -165,15 +161,7 @@ export const createUserService = async (payload) => {
 
   const {rows: [user]} = await insertUserToDB({ ...payload });
 
-  return {
-    user: {
-      id: user.id,
-      full_name: user.full_name,
-      national_id: user.national_id,
-      email: user.email,
-      phone: user.phone,
-    }
-  }
+  return { user: toUserDto(user) };
 };
 export const updateUserService = async (payload) => {
   const { user_id } = payload;

@@ -1,4 +1,4 @@
-import { created, ok } from '../../utils/response.js';
+import { created, noContent, ok } from '../../utils/response.js';
 import {
   createDepartmentService,
   listDepartmentsService,

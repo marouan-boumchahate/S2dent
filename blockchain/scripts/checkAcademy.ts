@@ -11,9 +11,7 @@ async function main() {
   const ACADEMY_WALLET = "0x1234567890abcdef1234567890abcdef12345678";
   const data = await contract.academies(ACADEMY_WALLET);
 
-  console.log("isNotRevoked:", data.status.isNotRevoked); // false = already revoked
-  console.log("revokedAt:", data.status.revokedAt.toString());
-  console.log("revoker:", data.status.revoker);
+  console.log("Academy Data:", data);
 }
 
 main().catch(console.error);
