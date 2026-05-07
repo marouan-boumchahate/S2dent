@@ -1,10 +1,10 @@
-import 'package:app/core/widgets/buttons/primary_button.dart';
+import 'package:app/core/navigation/shell_page.dart';
+import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/feature/auth/presentation/widgets/secondary_button.dart';
 
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';
-import 'package:app/feature/home/presentation/pages/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,11 +28,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void onTapSignIn() {
-    Navigator.push(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (ctx) => HomePage(),
+        builder: (ctx) => ShellPage(),
       ),
+      (route) => false,
     );
   }
 

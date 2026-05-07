@@ -1,6 +1,6 @@
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/widgets/info_section.dart';
-import 'package:app/core/widgets/info_tile.dart';
+import 'package:app/core/widgets/ui/info_section.dart';
+import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/models/user.dart';
 import 'package:app/feature/profile/presentation/widgets/custom_text_button.dart';

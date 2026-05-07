@@ -63,8 +63,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void onTapCredentials() {
     debugPrint("navigate to {credentials} page");
-    //dummy navigation
-    Navigator.push(context, MaterialPageRoute(builder: (ctx) => ProfilePage()));
   }
 
   void onTapScan() {
@@ -77,18 +75,15 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.onPrimary,
-      body: MainLayout(
-        children: [
-          _header(),
-          _userInfoContainer(context),
-          const SizedBox(height: 20),
-          _quickActions(),
-          const SizedBox(height: 20),
-          _recentActivities(),
-        ],
-      ),
+    return MainLayout(
+      children: [
+        _header(),
+        _userInfoContainer(context),
+        const SizedBox(height: 20),
+        _quickActions(),
+        const SizedBox(height: 20),
+        _recentActivities(),
+      ],
     );
   }
 
