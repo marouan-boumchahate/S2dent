@@ -182,6 +182,12 @@ const createProfessor = async (overrides = {}) => {
 
 const cleanupProfessors = async () => {
   await db.query(
+    `DELETE FROM identities
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test'
+     )`,
+  );
+  await db.query(
     `DELETE FROM professors
      WHERE user_id IN (
         SELECT id FROM users WHERE email LIKE '%@profupdatecases.test'
@@ -193,6 +199,7 @@ const cleanupProfessors = async () => {
 const teardownSeed = async () => {
   await db.query(`DELETE FROM professors WHERE academy_id = $1`, [ACADEMY_ID]);
   await db.query(`DELETE FROM departments WHERE academy_id = $1`, [ACADEMY_ID]);
+  await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [SEED_WALLET]);
   await db.query(`DELETE FROM academies WHERE id = $1`, [ACADEMY_ID]);
 };
 
@@ -204,6 +211,14 @@ before(async () => {
 beforeEach(async () => {
   await cleanupProfessors();
   TUSER_ID = await seedTUser();
+
+  // Seed identity for professor
+  await db.query(
+    `INSERT INTO identities (user_id, role, is_active)
+     VALUES ($1, 'professor', TRUE)`,
+    [TUSER_ID]
+  );
+
   PROFESSOR_ID = (await createProfessor()).id;
 });
 
@@ -331,7 +346,7 @@ describe('PUT /api/professors/:id', () => {
 
   it('returns 500 when the database throws unexpectedly during update', async () => {
     const stub = sinon.stub(db, 'query');
-    stub.onFirstCall().resolves({ rows: [{ id: PROFESSOR_ID }] });
+    stub.onFirstCall().resolves({ rows: [{ is_active: true }] });
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)

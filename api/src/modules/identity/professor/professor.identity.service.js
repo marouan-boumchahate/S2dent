@@ -16,7 +16,6 @@ const formatDateOnly = (value) => {
         return String(value).slice(0, 10)
     }
 }
-
 const getProfessorIdentityPayload = async (email) => {
     const { rows: [professor] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, 
@@ -27,8 +26,8 @@ const getProfessorIdentityPayload = async (email) => {
          FROM users u
          JOIN professors p ON u.id = p.user_id
          JOIN academies a ON p.academy_id = a.id
-         JOIN addresses addr ON addr.user_id = u.id
-         JOIN departments d ON d.academy_id = a.id
+         LEFT JOIN addresses addr ON addr.user_id = u.id
+         LEFT JOIN departments d ON d.academy_id = a.id
          WHERE u.email = $1`,
         [email]
     )
@@ -40,23 +39,22 @@ const getProfessorIdentityPayload = async (email) => {
         throw err
     }
 
-    if (!professor.is_department_active){
-        const err = new Error('Professor\'s department is not active')
+    if (professor.is_department_active === false) {
+        const err = new Error("Professor's department is not active")
         err.statusCode = 403
         err.code = 'DEPARTMENT_INACTIVE'
         throw err
     }
 
-    if (!professor.address_id){
+    if (!professor.address_id) {
         const err = new Error('Professor does not have a registered address')
         err.statusCode = 400
         err.code = 'ADDRESS_NOT_FOUND'
         throw err
     }
-    
-    return professor;
-}
 
+    return professor
+}
 const getProfessorRevokePayload = async (academyAddress, professorAddress) => {
     const { rows: [professor] } = await db.query(
         `SELECT u.email, u.full_name,
@@ -81,7 +79,19 @@ const getProfessorRevokePayload = async (academyAddress, professorAddress) => {
 
     return professor;
 }
+const ensureWalletAddressUnique = async (walletAddress) => {
+    const { rows } = await db.query(
+        `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
+        [walletAddress]
+    );
 
+    if(rows.length > 0) {
+        const err = new Error('Wallet address is already associated with an existing identity')
+        err.statusCode = 409
+        err.code = 'WALLET_ADDRESS_NOT_UNIQUE'
+        throw err
+    }
+}
 const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
 
@@ -106,8 +116,9 @@ const ISSUE_ON_FAILURE = (title, name) => ({
 export const issueProfessorIdentityService = async ({ wallet_address, email }) => {
     const professorWallet = wallet_address
 
+    await ensureWalletAddressUnique(professorWallet)
     const professor = await getProfessorIdentityPayload(email)
-    
+
     const tx = await issueProfessorIdentity({
         professorWallet,
         academyWallet: professor.academy_wallet_address.toLowerCase(),

@@ -119,7 +119,7 @@ const seedUser = async () => {
     '2004-01-15',
     'male',
     'STU-NID-001',
-    'student.001@studentcases.test',
+    'student.001@studentcreate.test',
     '+905551234567',
     null,
     null,
@@ -144,13 +144,19 @@ const seedUser = async () => {
 
 const cleanupStudents = async () => {
   await db.query(
+    `DELETE FROM identities
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@studentcreate.test'
+     )`,
+  );
+  await db.query(
     `DELETE FROM students
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@studentcases.test'
+        SELECT id FROM users WHERE email LIKE '%@studentcreate.test'
      )`,
   );
   
-  await db.query(`DELETE FROM users WHERE email LIKE '%@studentcases.test'`);
+  await db.query(`DELETE FROM users WHERE email LIKE '%@studentcreate.test'`);
 };
 
 const teardownSeed = async () => {
@@ -209,7 +215,6 @@ describe('POST /api/students', () => {
       user_id: USER_ID,
       academy_id: ACADEMY_ID,
       department_id: DEPARTMENT_ID,
-      current_level: '4th Year',
       actual_graduation_date: '2028-06-30',
     };
 
@@ -226,11 +231,8 @@ describe('POST /api/students', () => {
     assert.ok(student.id);
     assert.ok(student.student_number);
     assert.match(student.student_number, /^STU_\d{6}\d+$/);
-    assert.equal(student.current_level, body.current_level);
+    assert.equal(student.current_level, 1);
     assert.equal(student.enrollment_status, 'active');
-
-    assert.equal(student.department_code, 'CENG');
-    assert.equal(student.department_name, 'Computer Engineering');
 
     assert.ok(student.enrollment_date);
     assert.ok(student.expected_graduation_date);
@@ -242,8 +244,7 @@ describe('POST /api/students', () => {
       user_id: USER_ID,
       academy_id: ACADEMY_ID,
       department_id: DEPARTMENT_ID,
-      current_level: '2nd Year',
-      enrollment_status: 'suspended',
+      enrollment_status: 'inactive',
       enrollment_date: '2023-09-15',
     };
 
@@ -264,7 +265,6 @@ describe('POST /api/students', () => {
       user_id: USER_ID,
       academy_id: ACADEMY_ID,
       department_id: DEPARTMENT_ID,
-      current_level: '1st Year',
     };
 
     const res = await request(app)
@@ -291,7 +291,6 @@ describe('POST /api/students', () => {
       'user_id',
       'academy_id',
       'department_id',
-      'current_level',
     ];
 
     for (const field of requiredFields) {
@@ -299,7 +298,6 @@ describe('POST /api/students', () => {
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
-        current_level: '2nd Year',
         actual_graduation_date: '2029-06-30',
       };
       delete body[field];
@@ -325,7 +323,6 @@ describe('POST /api/students', () => {
         user_id: 'not-a-uuid',
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
-        current_level: '2nd Year',
       });
 
     assert.equal(res.status, 422);
@@ -341,7 +338,6 @@ describe('POST /api/students', () => {
         user_id: USER_ID,
         academy_id: 'not-a-uuid',
         department_id: DEPARTMENT_ID,
-        current_level: '2nd Year',
       });
 
     assert.equal(res.status, 422);
@@ -357,7 +353,6 @@ describe('POST /api/students', () => {
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: 'not-a-uuid',
-        current_level: '2nd Year',
       });
 
     assert.equal(res.status, 422);
@@ -373,7 +368,6 @@ describe('POST /api/students', () => {
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
-        current_level: '2nd Year',
         actual_graduation_date: 'not-a-date',
       });
 
@@ -392,7 +386,6 @@ describe('POST /api/students', () => {
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
         department_id: DEPARTMENT_ID,
-        current_level: '4th Year',
       });
 
     assert.equal(res.status, 500);

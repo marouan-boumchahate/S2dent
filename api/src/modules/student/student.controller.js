@@ -1,4 +1,4 @@
-import { createStudentService } from './student.service.js';
+import { createStudentService, updateStudentService } from './student.service.js';
 import { created } from '../../utils/response.js';
 
 const createStudentController = async (req, res) => {
@@ -17,4 +17,13 @@ const createStudentController = async (req, res) => {
     return created(res, result, 'Student registered successfully');
 };
 
-export { createStudentController };
+const updateStudentController = async (req, res) => {
+    const { id } = req.params;
+    const payload = { cgpa: req.body.cgpa };
+
+    const result = await updateStudentService( { ...payload, student_id: id });
+
+    return created(res, result, 'Student updated successfully');
+};
+
+export { createStudentController, updateStudentController };

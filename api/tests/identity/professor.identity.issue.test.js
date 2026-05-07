@@ -450,7 +450,7 @@ describe('POST /api/identity/professors/issue', function () {
         assert.equal(res.body.code, 'DEPARTMENT_INACTIVE');
     });
 
-    it('returns 404 PROFESSOR_NOT_FOUND when professor has no address row', async () => {
+    it('returns 400 ADDRESS_NOT_FOUND when professor has no address row', async () => {
         const { academy, department } = await seedAcademy();
         await seedProfessorUser({
             academy_id: academy.id,
@@ -465,8 +465,8 @@ describe('POST /api/identity/professors/issue', function () {
             .post(endpoint)
             .send({ email: 'no-address@test-identity.edu', wallet_address: WALLET_ADDRESS });
 
-        assert.equal(res.status, 404);
-        assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
+        assert.equal(res.status, 400);
+        assert.equal(res.body.code, 'ADDRESS_NOT_FOUND');
     });
 
     it('returns 502 BLOCKCHAIN_ERROR when the blockchain call fails', async () => {

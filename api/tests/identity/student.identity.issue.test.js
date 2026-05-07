@@ -87,7 +87,6 @@ const seedStudentUser = async ({
     national_id = `NID-${Math.random().toString(16).slice(2, 10)}`,
     nationality = 'Turkish',
     student_number = 'STU-001',
-    current_level = '4th Year',
     enrollment_status = 'active',
     enrollment_date = '2022-09-15',
     expected_graduation_date = '2026-06-30',
@@ -150,16 +149,15 @@ const seedStudentUser = async ({
         await db.query(
             `INSERT INTO students (
                 user_id, academy_id, department_id,
-                student_number, current_level,
+                student_number,
                 enrollment_status, enrollment_date, expected_graduation_date
             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
                 user.id,
                 academy_id,
                 department_id,
                 student_number,
-                current_level,
                 enrollment_status,
                 enrollment_date,
                 expected_graduation_date,
@@ -459,7 +457,7 @@ describe('POST /api/identity/students/issue', function () {
         assert.equal(res.body.code, 'DEPARTMENT_INACTIVE');
     });
 
-    it('returns 404 STUDENT_NOT_FOUND when student has no address row', async () => {
+    it('returns 400 ADDRESS_NOT_FOUND when student has no address row', async () => {
         const { academy, department } = await seedAcademy();
         await seedStudentUser({
             academy_id: academy.id,
@@ -474,8 +472,8 @@ describe('POST /api/identity/students/issue', function () {
             .post(endpoint)
             .send({ email: 'no-address@test-identity.edu', wallet_address: STUDENT_WALLET });
 
-        assert.equal(res.status, 404);
-        assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
+        assert.equal(res.status, 400);
+        assert.equal(res.body.code, 'ADDRESS_NOT_FOUND');
     });
 
     it('returns 400 ADDRESS_NOT_FOUND when student address has empty country', async () => {

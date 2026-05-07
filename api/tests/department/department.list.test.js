@@ -13,6 +13,45 @@ const SEED_ACADEMY_NUMBER = 'ACD_LIST_DEPT_0001';
 let ACADEMY_ID;
 
 const seedAcademy = async () => {
+  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+
+  await db.query(
+    `DELETE FROM students
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM professors
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM departments
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM academies
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    identifiers,
+  );
+
   const { rows: [academy] } = await db.query(
     `INSERT INTO academies (
         wallet_address,
@@ -54,9 +93,43 @@ const cleanupDepartments = async (academyId) => {
 };
 
 const teardownSeed = async () => {
+  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+
   await db.query(
-    'DELETE FROM academies WHERE id = $1',
-    [ACADEMY_ID],
+    `DELETE FROM students
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM professors
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM departments
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1
+          OR wallet_address = $2
+          OR academy_number = $3
+     )`,
+    identifiers,
+  );
+
+  await db.query(
+    `DELETE FROM academies
+     WHERE email = $1
+        OR wallet_address = $2
+        OR academy_number = $3`,
+    identifiers,
   );
 };
 
