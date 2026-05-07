@@ -6,7 +6,6 @@ import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.da
 import 'package:app/feature/home/presentation/widgets/quick_action.dart';
 import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/profile/presentation/pages/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,8 +62,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void onTapCredentials() {
     debugPrint("navigate to {credentials} page");
-    //dummy navigation
-    Navigator.push(context, MaterialPageRoute(builder: (ctx) => ProfilePage()));
   }
 
   void onTapScan() {
@@ -77,18 +74,15 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.onPrimary,
-      body: MainLayout(
-        children: [
-          _header(),
-          _userInfoContainer(context),
-          const SizedBox(height: 20),
-          _quickActions(),
-          const SizedBox(height: 20),
-          _recentActivities(),
-        ],
-      ),
+    return MainLayout(
+      children: [
+        _header(),
+        _userInfoContainer(context),
+        const SizedBox(height: 20),
+        _quickActions(),
+        const SizedBox(height: 20),
+        _recentActivities(),
+      ],
     );
   }
 

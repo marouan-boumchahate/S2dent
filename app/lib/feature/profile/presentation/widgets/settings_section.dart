@@ -1,5 +1,5 @@
-import 'package:app/core/widgets/buttons/pressable_info_tile.dart';
-import 'package:app/core/widgets/info_section.dart';
+import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
+import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:flutter/material.dart';
 
 class SettingsSection extends StatelessWidget {

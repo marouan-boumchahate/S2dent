@@ -1,7 +1,7 @@
 import 'package:app/core/widgets/layouts/app_layout.dart';
 import 'package:app/feature/role_selection/presentation/widgets/document_container.dart';
 import 'package:app/feature/role_selection/presentation/widgets/identity_button.dart';
-import 'package:app/core/widgets/buttons/primary_button.dart';
+import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/login.dart';
 import 'package:app/feature/qr/presentation/pages/scanner.dart';

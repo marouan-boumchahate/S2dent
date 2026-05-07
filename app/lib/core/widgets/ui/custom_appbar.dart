@@ -1,5 +1,5 @@
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/widgets/buttons/custom_backbutton.dart';
+import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
 import 'package:flutter/material.dart';
 
 class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {

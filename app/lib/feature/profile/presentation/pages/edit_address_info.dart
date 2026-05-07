@@ -1,6 +1,6 @@
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/widgets/buttons/primary_button.dart';
-import 'package:app/core/widgets/custom_appbar.dart';
+import 'package:app/core/widgets/ui/buttons/primary_button.dart';
+import 'package:app/core/widgets/ui/custom_appbar.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';

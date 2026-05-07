@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/buttons/primary_button.dart';
+import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_textfield.dart';
 import 'package:app/core/extensions/context_extensions.dart';

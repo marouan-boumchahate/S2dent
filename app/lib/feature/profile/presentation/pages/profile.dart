@@ -1,4 +1,3 @@
-import 'package:app/core/widgets/custom_appbar.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/pages/edit_address_info.dart';
@@ -7,8 +6,6 @@ import 'package:app/feature/profile/presentation/providers/profile_provider.dart
 import 'package:app/feature/profile/presentation/widgets/academic_section.dart';
 import 'package:app/feature/profile/presentation/widgets/address_section.dart';
 import 'package:app/feature/profile/presentation/widgets/header_section.dart';
-import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/profile/presentation/widgets/refresh_button.dart';
 import 'package:app/feature/profile/presentation/widgets/settings_section.dart';
 import 'package:app/feature/profile/presentation/widgets/user_section.dart';
 import 'package:app/feature/settings/presentation/pages/settings.dart';
@@ -69,23 +66,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final studentData = ref.watch(profileControllerProvider);
-    return Scaffold(
-      backgroundColor: context.colors.onPrimary,
-      appBar: CustomAppbar(
-        trailing: RefreshButton(
-          onTap: () =>
-              ref.read(profileControllerProvider.notifier).loadFullProfile(),
-        ),
+    return studentData.when(
+      error: (error, stackTrace) => Center(
+        child: Text("ERROR OCCURED"),
       ),
-      body: studentData.when(
-        error: (error, stackTrace) => Center(
-          child: Text("ERROR OCCURED"),
-        ),
-        loading: () => Center(
-          child: CircularProgressIndicator(),
-        ),
-        data: (student) => MainLayout(
+      loading: () => Center(
+        child: CircularProgressIndicator(),
+      ),
+      data: (student) => RefreshIndicator(
+        onRefresh: () =>
+            ref.read(profileControllerProvider.notifier).loadFullProfile(),
+        child: MainLayout(
           children: [
+            const SizedBox(height: 32),
             HeaderSection(student: student),
             UserSection(
                 onTap: () => onTapEditUserInfo(student), student: student),
