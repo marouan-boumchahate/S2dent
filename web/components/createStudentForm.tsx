@@ -5,6 +5,9 @@ import Button from './Button';
 import FormField from './FormField';
 import AddressForm from './AddressForm';
 
+import { store } from '@/lib/store';
+import { useRouter } from 'next/navigation';
+
 export default function CreateStudentForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState('');
@@ -24,22 +27,25 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
   const [enrollmentDate, setEnrollmentDate] = useState('');
   const [actualGraduationDate, setActualGraduationDate] = useState('');
 
+  const router = useRouter();
+
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
     setStep(2);
     onStepChange(2);
   };
 
-  const handleStep3Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: for the API call
-    console.log({
-      firstName, middleName, lastName, dateOfBirth, gender, nationality,
-      nationalId, email, phone, photoUrl, notes,
-      department, currentLevel, enrollmentStatus, enrollmentDate, actualGraduationDate,
-    });
-    onClose();
-  };
+ const handleStep3Submit = (e: React.FormEvent) => {
+  e.preventDefault();
+  store.addStudent({
+    firstName, middleName, lastName, dateOfBirth, gender, nationality,
+    nationalId, email, phone, photoUrl, notes,
+    department, currentLevel, enrollmentStatus, enrollmentDate,
+    actualGraduationDate,
+  });
+  onClose();
+router.push('/students');
+};
 
   if (step === 2) {
     return (

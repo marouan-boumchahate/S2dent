@@ -5,7 +5,10 @@ import Button from './Button';
 import FormField from './FormField';
 import AddressForm from './AddressForm';
 
-export default function CreateStudentForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
+import { store } from '@/lib/store';
+import { useRouter } from 'next/navigation';
+
+export default function CreateProfessorForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
   const [step, setStep] = useState(1);
 
   const [firstName, setFirstName] = useState('');
@@ -19,11 +22,18 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [notes, setNotes] = useState('');
+
   const [department, setDepartment] = useState('');
-  const [currentLevel, setCurrentLevel] = useState('');
-  const [enrollmentStatus, setEnrollmentStatus] = useState('');
-  const [enrollmentDate, setEnrollmentDate] = useState('');
-  const [actualGraduationDate, setActualGraduationDate] = useState('');
+  const [title, setTitle] = useState('');
+  const [rank, setRank] = useState('');
+  const [specialization, setSpecialization] = useState('');
+  const [hireDate, setHireDate] = useState('');
+  const [employmentType, setEmploymentType] = useState('full_time');
+  const [officeLocation, setOfficeLocation] = useState('');
+  const [officeHours, setOfficeHours] = useState('');
+  const [bio, setBio] = useState('');
+
+  const router = useRouter();
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +41,17 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
     onStepChange(2);
   };
 
-  const handleStep3Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: for the API call
-    console.log({
-      firstName, middleName, lastName, dateOfBirth, gender, nationality,
-      nationalId, email, phone, photoUrl, notes,
-      department, currentLevel, enrollmentStatus, enrollmentDate, actualGraduationDate,
-    });
-    onClose();
-  };
+const handleStep3Submit = (e: React.FormEvent) => {
+  e.preventDefault();
+  store.addProfessor({
+    firstName, middleName, lastName, dateOfBirth, gender, nationality,
+    nationalId, email, phone, photoUrl, notes,
+    department, title, rank, specialization, hireDate,
+    employmentType, officeLocation, officeHours, bio,
+  });
+  onClose();
+  router.push('/professors');
+};
 
   if (step === 2) {
     return (
@@ -50,16 +61,15 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
       />
     );
   }
-  
-  // here the step 3 and agian the step 2 in the address form           
+  // here the step 3 and agian the step 2 in the address form
   if (step === 3) {
     return (
       <form onSubmit={handleStep3Submit} className="flex flex-col h-full flex-1">
-        <h2 className="text-3xl font-bold text-textLight mb-8">Student Information</h2>
+        <h2 className="text-3xl font-bold text-textLight mb-8">Professor Information</h2>
 
         <div className="space-y-6">
 
-          {/* department, current level */}
+          {/* department, title */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Department"
@@ -69,47 +79,72 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
               options={['', 'Nursing', 'Pharmacy', 'Economics', 'Marketing', 'Mathematics', 'Physics', 'Biology', 'History', 'Computer Engineering', 'Mechanical Engineering', 'Civil Engineering']}
             />
             <FormField
-              label="Current Level (e.g. Year 2)"
-              value={currentLevel}
-              onChange={setCurrentLevel}
+              label="Title (e.g. Dr.)"
+              value={title}
+              onChange={setTitle}
               required
-              maxLength={20}
+              maxLength={100}
             />
           </div>
 
-          {/* enrollment status, enrollment date */}
+          {/* rank, employment type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
-              label="Enrollment Status"
-              value={enrollmentStatus}
-              onChange={setEnrollmentStatus}
-              options={['', 'active', 'inactive', 'suspended', 'withdrawn', 'graduated']}
+              label="Rank"
+              value={rank}
+              onChange={setRank}
+              required
+              options={['', 'Assist. Prof', 'Assoc. Prof', 'Prof', 'Lecturer', 'Instructor']}
             />
             <FormField
-              label="Enrollment Date"
-              isDate
-              value={enrollmentDate}
-              onChange={setEnrollmentDate}
+              label="Employment Type"
+              value={employmentType}
+              onChange={setEmploymentType}
+              options={['full_time', 'part_time', 'adjunct', 'visiting', 'contract']}
             />
           </div>
 
-          {/* actual graduation date */}
+          {/* specialization, hire date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
-              label="Actual Graduation Date"
+              label="Specialization"
+              value={specialization}
+              onChange={setSpecialization}
+              maxLength={255}
+              placeholder="e.g. Artificial Intelligence"
+            />
+            <FormField
+              label="Hire Date"
               isDate
-              value={actualGraduationDate}
-              onChange={setActualGraduationDate}
+              value={hireDate}
+              onChange={setHireDate}
             />
           </div>
 
-          {/* notes */}
+          {/* office location, office hours */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <FormField
+              label="Office Location"
+              value={officeLocation}
+              onChange={setOfficeLocation}
+              maxLength={255}
+              placeholder="e.g. Building A, Room 204"
+            />
+            <FormField
+              label="Office Hours"
+              value={officeHours}
+              onChange={setOfficeHours}
+              placeholder="e.g. Mon/Wed 14:00-16:00"
+            />
+          </div>
+
+          {/* bio */}
           <FormField
-            label="Notes"
-            value={notes}
-            onChange={setNotes}
+            label="Bio"
+            value={bio}
+            onChange={setBio}
             isTextarea
-            placeholder="Any additional notes..."
+            placeholder="Short biography..."
           />
 
         </div>

@@ -15,19 +15,19 @@ export default function CreateStudentPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Student Management" onAddNew={() => setIsOpen(true)} />
+      <PageHeader title="Create Student" onAddNew={() => setIsOpen(true)} />
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-3xl rounded-3xl shadow-xl border border-borderLine max-h-[90vh] overflow-y-auto">
 
-            {/* Header */}
+            {/* header */}
             <div className="flex justify-between items-center p-6 border-b border-borderLine">
               <h2 className="text-xl font-bold text-textLight">Add New Student</h2>
               <button onClick={handleClose} className="text-textMuted hover:text-textLight text-2xl">✕</button>
             </div>
 
-            {/* steps next Indicator */}
+            {/* steps next indicator */}
             <div className="flex items-center justify-center gap-4 p-4 border-b border-borderLine">
               <div className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-sm ${currentStep >= 1 ? 'bg-mint text-navy' : 'bg-navy border border-borderLine text-textMuted'}`}>1</div>
