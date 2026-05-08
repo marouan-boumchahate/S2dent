@@ -67,12 +67,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final studentData = ref.watch(profileControllerProvider);
     return studentData.when(
-      error: (error, stackTrace) => Center(
-        child: Text("ERROR OCCURED"),
-      ),
-      loading: () => Center(
-        child: CircularProgressIndicator(),
-      ),
       data: (student) => RefreshIndicator(
         onRefresh: () =>
             ref.read(profileControllerProvider.notifier).loadFullProfile(),
@@ -93,6 +87,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ],
         ),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text("ERROR OCCURED"),
+      ),
+      loading: () => Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }
