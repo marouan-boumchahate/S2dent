@@ -1,4 +1,5 @@
 import 'package:app/core/widgets/ui/navigation/custom_bottom_nav.dart';
+import 'package:app/feature/credentials/presentation/pages/credential.dart';
 import 'package:app/feature/home/presentation/pages/home.dart';
 import 'package:app/feature/profile/presentation/pages/profile.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ class _ShellPageState extends State<ShellPage> {
   final List<Widget> _tabs = [
     HomePage(),
     ProfilePage(),
+    CredentialPage(),
   ];
   @override
   Widget build(BuildContext context) {
