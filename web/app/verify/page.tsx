@@ -12,7 +12,7 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-navy flex items-center justify-center">
       <div className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
         
-        {/* email png for the Verify by inserting your email page */}
+        {/* email png */}
         <div className="flex justify-center mb-4">
           <Image
             src="/email_light.png"
