@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/ui/custom_overscroll_glow.dart';
+﻿import 'package:app/core/widgets/ui/custom_overscroll_glow.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/utils/dimensions.dart';
 import 'package:flutter/material.dart';

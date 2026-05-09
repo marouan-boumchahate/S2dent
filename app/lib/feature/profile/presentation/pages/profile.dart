@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/layouts/main_layout.dart';
+﻿import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/pages/edit_address_info.dart';
 import 'package:app/feature/profile/presentation/pages/edit_personal_info.dart';

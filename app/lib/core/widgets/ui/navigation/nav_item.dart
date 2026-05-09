@@ -1,4 +1,4 @@
-import 'package:app/core/extensions/context_extensions.dart';
+﻿import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
 import 'package:flutter/material.dart';
 

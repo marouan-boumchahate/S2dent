@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
+﻿import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
 import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:flutter/material.dart';
 

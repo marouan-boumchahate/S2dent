@@ -1,4 +1,4 @@
-import 'package:app/feature/profile/domain/models/academic.dart';
+﻿import 'package:app/feature/profile/domain/models/academic.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 
 class AcademicDataSource {

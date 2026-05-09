@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';

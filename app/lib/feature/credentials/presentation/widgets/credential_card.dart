@@ -1,4 +1,4 @@
-import 'package:app/core/extensions/context_extensions.dart';
+﻿import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/utils/date_formatter.dart';
 import 'package:app/feature/credentials/domain/models/credential.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
@@ -9,9 +9,11 @@ class CredentialCard extends StatelessWidget {
   const CredentialCard({
     super.key,
     required this.credential,
+    required this.onTap,
   });
 
   final Credential credential;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,7 @@ class CredentialCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

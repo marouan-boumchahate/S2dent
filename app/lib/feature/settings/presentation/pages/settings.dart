@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
+﻿import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
 import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/info_section.dart';

@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/ui/info_tile.dart';
+﻿import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:flutter/material.dart';
 
 class PressableInfoTile extends StatelessWidget {

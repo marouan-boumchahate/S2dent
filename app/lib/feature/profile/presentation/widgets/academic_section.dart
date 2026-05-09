@@ -1,4 +1,4 @@
-import 'package:app/core/utils/date_formatter.dart';
+﻿import 'package:app/core/utils/date_formatter.dart';
 import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/feature/profile/domain/models/academic.dart';

@@ -1,4 +1,4 @@
-import 'package:app/feature/profile/data/datasources/academic_datasource.dart';
+﻿import 'package:app/feature/profile/data/datasources/academic_datasource.dart';
 import 'package:app/feature/profile/data/datasources/address_datasource.dart';
 import 'package:app/feature/profile/data/datasources/department_datasource.dart';
 import 'package:app/feature/profile/data/datasources/identity_datasource.dart';

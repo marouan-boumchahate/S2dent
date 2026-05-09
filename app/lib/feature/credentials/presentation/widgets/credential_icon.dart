@@ -1,4 +1,4 @@
-import 'package:app/feature/credentials/domain/models/credential.dart';
+﻿import 'package:app/feature/credentials/domain/models/credential.dart';
 import 'package:flutter/material.dart';
 
 class CredentialIcon extends StatelessWidget {
