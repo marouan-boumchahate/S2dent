@@ -26,8 +26,8 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
   @override
   Widget build(BuildContext context) {
     final image = Theme.of(context).brightness == Brightness.dark
-        ? "assets/otp_dark.png"
-        : "assets/otp_light.png";
+        ? "assets/images/otp_dark.png"
+        : "assets/images/otp_light.png";
     return AuthLayout(
       children: [
         _content(context, image),

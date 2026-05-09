@@ -37,8 +37,8 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   @override
   Widget build(BuildContext context) {
     final image = Theme.of(context).brightness == Brightness.dark
-        ? "assets/email_dark.png"
-        : "assets/email_light.png";
+        ? "assets/images/email_dark.png"
+        : "assets/images/email_light.png";
     return AuthLayout(
       children: [
         _headerSection(context, image),

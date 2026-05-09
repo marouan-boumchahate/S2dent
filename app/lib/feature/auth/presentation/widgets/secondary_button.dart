@@ -36,7 +36,7 @@ class SecondaryButton extends StatelessWidget {
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SvgPicture.asset("assets/metamask.svg", width: 25),
+                    SvgPicture.asset("assets/logos/metamask.svg", width: 25),
                     const SizedBox(width: 12),
                     _labelTextWidget(context),
                   ],
