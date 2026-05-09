@@ -4,7 +4,7 @@ import { ok } from '../../../utils/response.js'
 export const issueIdentity = async (req, res) => {
   const { wallet_address } = req.body
 
-  const result = await issueAcademyIdentity({ wallet_address: wallet_address.toLowerCase() })
+  const result = await issueAcademyIdentity({ wallet_address })
 
   return ok(res, result, 'Academy identity issuance request submitted successfully')
 }

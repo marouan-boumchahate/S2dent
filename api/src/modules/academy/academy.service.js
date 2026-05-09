@@ -1,5 +1,8 @@
 import db from '../../config/db.js';
+import { ethers } from 'ethers';
 
+
+// Helpers
 const ensureAcademyUnique = async (
   wallet_address,
   email,
@@ -7,7 +10,7 @@ const ensureAcademyUnique = async (
   short_name
 ) => {
   const [walletExists, emailExists, nameExists, shortNameExists] = await Promise.all([
-    db.query('SELECT id FROM academies WHERE wallet_address = $1 LIMIT 1', [wallet_address.toLowerCase()]),
+    db.query('SELECT id FROM academies WHERE wallet_address = $1 LIMIT 1', [wallet_address]),
     db.query('SELECT id FROM academies WHERE email = $1 LIMIT 1', [email]),
     db.query('SELECT id FROM academies WHERE name = $1 LIMIT 1', [name]),
     db.query('SELECT id FROM academies WHERE short_name = $1 LIMIT 1', [short_name.toUpperCase()]),
@@ -41,7 +44,6 @@ const ensureAcademyUnique = async (
     throw err;
   }
 }
-
 const insertAcademyToDB = async ({
   wallet_address,
   email,
@@ -97,7 +99,7 @@ const insertAcademyToDB = async ({
         tax_id,
         billing_email`,
     [
-      wallet_address.toLowerCase(),
+      wallet_address,
       email,
       academy_number,
       name,
@@ -116,7 +118,6 @@ const insertAcademyToDB = async ({
 
   return { rows: [academy] };
 };
-
 const generateRandomAcademyNumber = async () => {
   const result = await db.query(`SELECT nextval('academy_seq')`);
   const seq = result.rows[0].nextval;
@@ -129,6 +130,8 @@ const generateRandomAcademyNumber = async () => {
   return academy_number;
 }
 
+
+// Services
 const createAcademyService = async (payload) => {
   const {
     wallet_address,
@@ -146,12 +149,15 @@ const createAcademyService = async (payload) => {
     billing_email,
   } = payload;
 
-  await ensureAcademyUnique(wallet_address, email, name, short_name);
+  const checksumAddr = ethers.getAddress(wallet_address);
+
+  await ensureAcademyUnique(checksumAddr, email, name, short_name);
   const academy_number = await generateRandomAcademyNumber();
 
   const { rows: [academy] } = await insertAcademyToDB({
     ...payload,
     academy_number,
+    wallet_address: checksumAddr,
   });
 
   return {

@@ -5,7 +5,7 @@ export const issueIdentity = async (req, res) => {
     const { wallet_address, email } = req.body
 
     const result = await issueProfessorIdentityService({ 
-        wallet_address: wallet_address.toLowerCase(),
+        wallet_address,
         email: email.toLowerCase()
     })
 

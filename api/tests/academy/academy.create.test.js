@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { strict as assert } from 'assert';
 import sinon from 'sinon';
+import { ethers } from 'ethers';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
 
@@ -8,7 +9,7 @@ import db from '../../src/config/db.js';
 // ========
 const validBody = (overrides = {}) => ({
     email: 'admin@fenerbahce.edu.tr',
-    wallet_address: '0x8fA1b2C3d4E5F67890123456789abcdefABCDEF0',
+    wallet_address: '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
     name: 'Fenerbahce University',
     short_name: 'FBU',
     type: 'university',
@@ -78,7 +79,7 @@ describe('POST /api/academies', () => {
         assert.equal(academy.short_name, body.short_name);
         assert.equal(academy.type, body.type);
         assert.equal(academy.email, body.email);
-        assert.equal(academy.wallet_address, body.wallet_address.toLowerCase());
+        assert.equal(academy.wallet_address, ethers.getAddress(body.wallet_address));
 
         assert.equal(academy.description, null);
         assert.equal(academy.website, null);
@@ -95,7 +96,7 @@ describe('POST /api/academies', () => {
     });
 
     it('stores wallet_address lowercased regardless of input casing', async () => {
-        const body = validBody({ wallet_address: '0xABCDEF1234567890abcdef1234567890abcdef12' });
+        const body = validBody({ wallet_address: '0xabcdef1234567890abcdef1234567890abcdef12' });
 
         const res = await request(app)
             .post('/api/academies')
@@ -104,7 +105,7 @@ describe('POST /api/academies', () => {
         assert.equal(res.status, 201);
         assert.equal(
             res.body.data.academy.wallet_address,
-            body.wallet_address.toLowerCase(),
+            ethers.getAddress(body.wallet_address),
         );
     });
 
