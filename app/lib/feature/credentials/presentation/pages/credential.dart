@@ -1,15 +1,11 @@
 ﻿import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/utils/dimensions.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_card.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
-import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
-import 'package:app/feature/credentials/presentation/widgets/credential_status_badge.dart';
 import 'package:app/feature/credentials/presentation/widgets/filter_bottom_sheet.dart';
-import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
