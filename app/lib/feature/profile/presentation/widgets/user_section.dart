@@ -1,4 +1,4 @@
-import 'package:app/core/extensions/context_extensions.dart';
+﻿import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/feature/profile/domain/models/student.dart';

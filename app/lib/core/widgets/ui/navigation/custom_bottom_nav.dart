@@ -1,4 +1,4 @@
-import 'package:app/core/extensions/context_extensions.dart';
+﻿import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/widgets/ui/navigation/nav_item.dart';
 import 'package:flutter/material.dart';
 

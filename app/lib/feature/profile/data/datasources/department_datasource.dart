@@ -1,4 +1,4 @@
-import 'package:app/feature/profile/domain/models/department.dart';
+﻿import 'package:app/feature/profile/domain/models/department.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 
 class DepartmentDataSource {

@@ -1,4 +1,4 @@
-import 'package:app/feature/profile/domain/models/profile_update_data.dart';
+﻿import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/models/user.dart';
 

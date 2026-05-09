@@ -1,4 +1,4 @@
-import 'package:app/core/widgets/layouts/main_layout.dart';
+﻿import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/home/presentation/widgets/activity_item.dart';
 import 'package:app/feature/home/presentation/widgets/custom_horizontal_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
@@ -18,7 +18,7 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final String dummyAddress = "0x4f2aB8Af89539nBBFe73983BfUUBbbDBbBBDD76S86390";
-  bool isCopied = false;
+  bool _isCopied = false;
 
   final List<Map<String, dynamic>> dummyActivites = [
     {
@@ -43,14 +43,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void onTapCopy() async {
     setState(() {
-      isCopied = true;
+      _isCopied = true;
     });
     await Clipboard.setData(ClipboardData(text: dummyAddress));
     Future.delayed(
       Duration(seconds: 3),
       () {
         setState(() {
-          isCopied = false;
+          _isCopied = false;
         });
       },
     );
@@ -211,14 +211,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           overflow: TextOverflow.ellipsis,
         ),
         trailing: IconButton(
-          onPressed: isCopied ? null : onTapCopy,
+          onPressed: _isCopied ? null : onTapCopy,
           icon: AnimatedSwitcher(
             duration: Duration(milliseconds: 250),
             transitionBuilder: (child, animation) => ScaleTransition(
               scale: animation,
               child: child,
             ),
-            child: isCopied
+            child: _isCopied
                 ? Icon(
                     Icons.done_all_rounded,
                     key: ValueKey("done"),

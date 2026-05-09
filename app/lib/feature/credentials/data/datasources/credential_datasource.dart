@@ -7,7 +7,8 @@ class CredentialDatasource {
       "title": "Bachelor of Computer Engineering",
       "type": "degree",
       "issuer_name": "Fenerbahce University",
-      "issued_to": "0x4f2aB8Af89539nBBFe73983BfUUBbbDBbBBDD76S86390",
+      //TODO: issued to, is it name ? or wallet address
+      "issued_to": "Ousama",
       "issued_at": "2026-06-30T00:00:00.000Z",
       "expires_at": null,
       "status": "valid",
