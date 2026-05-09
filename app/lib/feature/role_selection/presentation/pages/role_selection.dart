@@ -109,9 +109,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _imageContainer("assets/student.png", context.colors.secondary),
+          _imageContainer("assets/images/student.png", context.colors.secondary),
           DocumentContainer(),
-          _imageContainer("assets/scan.png", context.colors.tertiary)
+          _imageContainer("assets/images/scan.png", context.colors.tertiary)
         ],
       ),
     );

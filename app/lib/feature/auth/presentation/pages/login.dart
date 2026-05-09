@@ -40,8 +40,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final icon = Theme.brightnessOf(context) == Brightness.dark
-        ? "assets/s2dent_dark.png"
-        : "assets/s2dent_light.png";
+        ? "assets/logos/s2dent_dark.png"
+        : "assets/logos/s2dent_light.png";
     return AuthLayout(
       children: [
         _headerSection(context, icon),
