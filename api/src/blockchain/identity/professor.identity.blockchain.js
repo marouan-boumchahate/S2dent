@@ -3,6 +3,7 @@ import { env } from '../../config/env.js'
 import { platformWallet } from '../../config/blockchain.js'
 import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
+// constants
 const blockchain = env.blockchain
 
 const GAS_MARGIN_NUM = 120n; // +20%
@@ -26,13 +27,14 @@ const PROFESSOR_RANK_TO_UINT8 = {
     other: 5,
 }
 
+
+// Helpers
 const getContract = () =>
     new ethers.Contract(
         blockchain.deployedContractAddress,
         S2dentABI.abi,
         platformWallet
     )
-
 const getGasLimit = async (contract, methodName, params) => {
     const gasEstimate = 
         await contract[methodName].estimateGas(...params)
@@ -41,7 +43,6 @@ const getGasLimit = async (contract, methodName, params) => {
         ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
         : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
 }
-
 const toUnixSeconds = (value) => {
     if (value instanceof Date) 
         return Math.floor(value.getTime() / 1000)
@@ -49,6 +50,8 @@ const toUnixSeconds = (value) => {
     return Math.floor(new Date(value).getTime() / 1000)
 }
 
+
+// Services
 const issueProfessorIdentity = async (payload) => {
     try {
         const contract = getContract()
@@ -92,7 +95,6 @@ const issueProfessorIdentity = async (payload) => {
         throw wrapped
     }
 }
-
 const revokeProfessorIdentity = async (payload) => {
     try {
         const contract = getContract()
@@ -119,5 +121,42 @@ const revokeProfessorIdentity = async (payload) => {
         throw wrapped
     }
 }
+const getProfessorIdentity = async (walletAddress) => {
+    try {
+        const contract = getContract()
 
-export { issueProfessorIdentity, revokeProfessorIdentity }
+        const [identity, status] = await contract.professors(walletAddress)
+
+        if (status.issuedAt === 0n) {
+            return null
+        }
+
+        return {
+            identity: {
+                employeeIdHash: identity.employeeIdHash,
+                nationalIdHash: identity.nationalIdHash,
+                fullName: identity.fullName,
+                rank: Number(identity.rank),
+                employmentType: Number(identity.employmentType),
+                hireDate: new Date(Number(identity.hireDate) * 1000),
+            },
+            status: {
+                issuedAt: new Date(Number(status.issuedAt) * 1000),
+                issuer: status.issuer.toString(),
+                isRevoked: !status.isNotRevoked,
+                revokedAt: status.revokedAt === 0n ? null : new Date(Number(status.revokedAt) * 1000),
+                revoker: status.revokedAt === 0n ? null : status.revoker.toString(),
+            },
+        }
+    } catch (err) {
+        const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        const wrapped = new Error(`getProfessorIdentity failed: ${reason}`)
+        wrapped.statusCode = 502
+        wrapped.code = 'BLOCKCHAIN_ERROR'
+        wrapped.cause = err
+        throw wrapped
+    }
+}
+
+export { issueProfessorIdentity, revokeProfessorIdentity, getProfessorIdentity }

@@ -24,6 +24,7 @@ const createProfessorController = async (req, res) => {
 const updateProfessorController = async (req, res) => {
     const { id } = req.params;
     const { rank, employment_type, office_location, office_hours, bio } = req.body;
+
     const result = await updateProfessorService({
         professor_id: id,
         rank,
@@ -32,6 +33,7 @@ const updateProfessorController = async (req, res) => {
         office_hours,
         bio
     });
+    
     return ok(res, result, 'Professor updated successfully');
 };
 

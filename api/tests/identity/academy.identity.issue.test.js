@@ -1,11 +1,12 @@
 import esmock from 'esmock';
 import request from 'supertest';
 import { strict as assert } from 'assert';
+import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
 
 
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
-const WALLET_ADDRESS = '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0';
+const WALLET_ADDRESS = ethers.getAddress('0x8fa1b2c3d4e5f67890123456789abcdefabcdef0');
 const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 
 const FAKE_CERT = {
@@ -251,6 +252,7 @@ const cleanupDB = async () => {
 const DEFAULT_BLOCKCHAIN_IMPL = {
     issueAcademyIdentity: async () => FAKE_TX,
     revokeAcademyIdentity: async () => FAKE_TX,
+    getAcademyIdentity: async () => null,
 };
 
 const makeApp = async (

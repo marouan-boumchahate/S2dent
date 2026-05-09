@@ -3,34 +3,12 @@ import { env } from '../../config/env.js'
 import { platformWallet } from '../../config/blockchain.js'
 import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
+
+// Constants
 const blockchain = env.blockchain
 
 const GAS_MARGIN_NUM = 120n; // +20%
 const GAS_MARGIN_DEN = 100n;
-
-
-const getContract = () =>
-    new ethers.Contract(
-        blockchain.deployedContractAddress,
-        S2dentABI.abi,
-        platformWallet
-    )
-
-const toUnixSeconds = (value) => {
-    if (value instanceof Date) 
-        return Math.floor(value.getTime() / 1000)
-
-    return Math.floor(new Date(value).getTime() / 1000)
-}
-
-const getGasLimit = async (contract, methodName, params) => {
-    const gasEstimate = 
-        await contract[methodName].estimateGas(...params)
-
-    return (typeof gasEstimate === 'bigint')
-        ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
-        : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
-}
 
 const ACADEMY_TYPE_TO_UINT8 = {
     university: 0,
@@ -42,6 +20,30 @@ const ACADEMY_TYPE_TO_UINT8 = {
 }
 
 
+// Helpers
+const getContract = () =>
+    new ethers.Contract(
+        blockchain.deployedContractAddress,
+        S2dentABI.abi,
+        platformWallet
+    )
+const toUnixSeconds = (value) => {
+    if (value instanceof Date) 
+        return Math.floor(value.getTime() / 1000)
+
+    return Math.floor(new Date(value).getTime() / 1000)
+}
+const getGasLimit = async (contract, methodName, params) => {
+    const gasEstimate = 
+        await contract[methodName].estimateGas(...params)
+
+    return (typeof gasEstimate === 'bigint')
+        ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
+        : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
+}
+
+
+// Services
 const issueAcademyIdentity = async (payload) => {
     try {
         const contract = getContract()
@@ -109,7 +111,6 @@ const issueAcademyIdentity = async (payload) => {
         throw wrapped
     }
 }
-
 const revokeAcademyIdentity = async (payload) => {
     try {
         const contract = getContract()
@@ -134,5 +135,51 @@ const revokeAcademyIdentity = async (payload) => {
         throw wrapped
     }
 }
+const getAcademyIdentity = async (walletAddress) => {
+    try {
+        const contract = getContract()
 
-export { issueAcademyIdentity, revokeAcademyIdentity }
+        const [identity, proofs, cert, status] = await contract.academies(walletAddress)
+
+        if (status.issuedAt === 0n) return null
+
+        return {
+            identity: {
+                academyIdHash: identity.academyIdHash.toString(),
+                name: identity.name.toString(),
+                shortName: identity.shortName.toString(),
+                academyType: Number(identity.academyType),
+            },
+            proofs: {
+                legalName: proofs.legalName.toString(),
+                registrationNumber: proofs.registrationNumber.toString(),
+                taxId: proofs.taxId.toString(),
+                billingEmail: proofs.billingEmail.toString(),
+            },
+            cert: {
+                fingerprint: cert.fingerprint.toString(),
+                certificate: cert.certificate.toString(),
+                chain: cert.chain.toString(),
+                issuedAt: new Date(Number(cert.notBefore) * 1000),
+                expiresAt: new Date(Number(cert.notAfter) * 1000),
+            },
+            status: {
+                issuedAt: new Date(Number(status.issuedAt) * 1000),
+                issuer: status.issuer.toString(),
+                isRevoked: !status.isNotRevoked,
+                revokedAt: status.revokedAt === 0n ? null : new Date(Number(status.revokedAt) * 1000),
+                revoker: status.revokedAt === 0n ? null : status.revoker.toString(),
+            },
+        }
+    } catch (err) {
+        const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        const wrapped = new Error(`getAcademyIdentity failed: ${reason}`)
+        wrapped.statusCode = 502
+        wrapped.code = 'BLOCKCHAIN_ERROR'
+        wrapped.cause = err
+        throw wrapped
+    }
+}
+
+export { issueAcademyIdentity, revokeAcademyIdentity, getAcademyIdentity }

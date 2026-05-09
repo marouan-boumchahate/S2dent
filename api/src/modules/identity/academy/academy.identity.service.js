@@ -1,7 +1,9 @@
 import db from '../../../config/db.js'
+import { ethers } from 'ethers'
 import {
     issueAcademyIdentity as issueAcademy,
-    revokeAcademyIdentity as revokeAcademy
+    revokeAcademyIdentity as revokeAcademy,
+    getAcademyIdentity
 } from '../../../blockchain/identity/academy.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
@@ -68,7 +70,6 @@ const ensureWalletAddressUnique = async (walletAddress) =>
     }
 }
 
-
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
     await db.query(
         `INSERT INTO identity_certificates
@@ -113,10 +114,11 @@ const ON_FAILURE = {
 }
 
 export const issueAcademyIdentity = async ({ wallet_address }) => {
-    const normalizedWallet = wallet_address.toLowerCase()
+    const checksumAddr = ethers.getAddress(wallet_address)
     
-    await ensureWalletAddressUnique(normalizedWallet)
-    const academy = await getAcademyByWallet(normalizedWallet)
+    console.log('Issuing academy identity for wallet address:', checksumAddr)
+    await ensureWalletAddressUnique(checksumAddr)
+    const academy = await getAcademyByWallet(checksumAddr)
     await ensureAcademyHasAddress(academy.id)
     
     
@@ -127,14 +129,14 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         notBefore,
         notAfter
     } = await getCertificate(
-        normalizedWallet,
+        checksumAddr,
         academy.academy_number,
         academy.name,
         academy.short_name
     )
     
     const tx = await issueAcademy({
-        walletAddress: normalizedWallet,
+        walletAddress: checksumAddr,
         
         academyNumber: academy.academy_number,
         name: academy.name,
@@ -153,13 +155,13 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
         notAfter
     })
     
-    await saveCertificate(normalizedWallet, certificatePem, chainPem, fingerprint)
+    await saveCertificate(checksumAddr, certificatePem, chainPem, fingerprint)
     
     // Saving Transaction Off-Chain
     const payload = {
         action: 'issue',
         
-        wallet_address: normalizedWallet,
+        wallet_address: checksumAddr,
         academy_number: academy.academy_number,
         certificate_fingerprint: fingerprint,
 
@@ -175,6 +177,7 @@ export const issueAcademyIdentity = async ({ wallet_address }) => {
     await saveTransaction(tx.hash, payload)
     
     listenOnTransaction(tx)
+
     
     return {
         blockchain_transaction: {
@@ -201,19 +204,17 @@ const REVOKE_ON_FAILURE = {
 }
 
 export const revokeAcademyIdentity = async ({ wallet_address }) => {
-    const normalizedWallet = wallet_address.toLowerCase()
+    const checksumAddr = ethers.getAddress(wallet_address)
 
-    const academy = await getAcademyByWallet(normalizedWallet)
+    const academy = await getAcademyByWallet(checksumAddr)
 
-    const tx = await revokeAcademy({
-        walletAddress: normalizedWallet
-    })
+    const tx = await revokeAcademy({ walletAddress: checksumAddr })
 
     // Saving Transaction Off-Chain
     const payload = {
         action: 'revoke',
 
-        wallet_address: normalizedWallet,
+        wallet_address: checksumAddr,
         academy_number: academy.academy_number,
 
         name: academy.name,

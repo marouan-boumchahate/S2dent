@@ -5,20 +5,16 @@ export const issueIdentity = async (req, res) => {
     const { wallet_address, email } = req.body
 
     const result = await issueStudentIdentityService({ 
-        wallet_address: wallet_address.toLowerCase(),
+        wallet_address,
         email: email.toLowerCase()
     })
 
     return ok(res, result, 'Student identity issuance request submitted successfully')
 }
-
 export const revokeIdentity = async (req, res) => {
     const { academy_address, student_address } = req.body
 
-    const result = await revokeStudentIdentityService({ 
-        academy_address: academy_address.toLowerCase(),
-        student_address: student_address.toLowerCase()
-    })
+    const result = await revokeStudentIdentityService({  academy_address, student_address })
 
     return ok(res, result, 'Student identity revocation request submitted successfully')
 }

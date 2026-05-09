@@ -5,6 +5,7 @@ import {
 } from '../../../blockchain/identity/professor.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 
+
 // Helpers
 // -------
 const formatDateOnly = (value) => {
@@ -102,6 +103,7 @@ const saveTransaction = async (txHash, payloadObj) => {
     )
 }
 
+
 // Issuance
 // --------
 const ISSUE_ON_SUCCESS = (title, name, academyName) => ({
@@ -114,14 +116,14 @@ const ISSUE_ON_FAILURE = (title, name) => ({
 })
 
 export const issueProfessorIdentityService = async ({ wallet_address, email }) => {
-    const professorWallet = wallet_address
+    const professorWallet = ethers.getAddress(wallet_address)
 
     await ensureWalletAddressUnique(professorWallet)
     const professor = await getProfessorIdentityPayload(email)
 
     const tx = await issueProfessorIdentity({
         professorWallet,
-        academyWallet: professor.academy_wallet_address.toLowerCase(),
+        academyWallet: professor.academy_wallet_address,
 
         employeeId: professor.employee_number,
         fullName: professor.full_name,
@@ -159,6 +161,7 @@ export const issueProfessorIdentityService = async ({ wallet_address, email }) =
     }
 }
 
+
 // Revocation
 // ----------
 const REVOKE_ON_SUCCESS = (title, name, academyName) => ({
@@ -171,14 +174,14 @@ const REVOKE_ON_FAILURE = (title, name) => ({
 })
 
 export const revokeProfessorIdentityService = async ({ academy_address, professor_address }) => {
-    const professorWallet = professor_address
-    const academyWallet = academy_address
+    const professorWallet = ethers.getAddress(professor_address)
+    const academyWallet = ethers.getAddress(academy_address)
 
     const professor = await getProfessorRevokePayload(academyWallet, professorWallet)
 
     const tx = await revokeProfessorIdentity({
         professorWallet,
-        academyWallet: professor.academy_wallet_address.toLowerCase()
+        academyWallet: professor.academy_wallet_address
     })
 
     const payload = {

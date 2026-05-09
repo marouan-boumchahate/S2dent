@@ -4,6 +4,7 @@ import {
     revokeStudentIdentity
 } from '../../../blockchain/identity/student.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
+import { ethers } from 'ethers'
 
 
 // Helpers
@@ -123,14 +124,14 @@ const ON_FAILURE = (title, name) => ({
 })
 
 export const issueStudentIdentityService = async ({ wallet_address, email }) => {
-    const studentWallet = wallet_address
+    const studentWallet = ethers.getAddress(wallet_address)
 
     await ensureWalletAddressUnique(studentWallet)
     const student = await getStudentIdentityPayload(email)
 
     const tx = await issueStudentIdentity({
         studentWallet,
-        academyWallet: student.academy_wallet_address.toLowerCase(),
+        academyWallet: student.academy_wallet_address,
 
         studentId: student.student_number,
         fullName: student.full_name,
@@ -183,15 +184,12 @@ const REVOKE_ON_FAILURE = (title, name) => ({
 })
 
 export const revokeStudentIdentityService = async ({ academy_address, student_address }) => {
-    const studentWallet = student_address
-    const academyWallet = academy_address
+    const studentWallet = ethers.getAddress(student_address)
+    const academyWallet = ethers.getAddress(academy_address)
 
     const student = await getStudentRevokePayload(academyWallet, studentWallet)
 
-    const tx = await revokeStudentIdentity({
-        studentWallet,
-        academyWallet: student.academy_wallet_address.toLowerCase()
-    })
+    const tx = await revokeStudentIdentity({ studentWallet, academyWallet})
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
     const payload = {

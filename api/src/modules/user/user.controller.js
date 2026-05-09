@@ -32,7 +32,6 @@ const createUserController = async (req, res) => {
 
   return created(res, result, 'User registered successfully');
 };
-
 const updateUserController = async (req, res) => {
   const { id } = req.params;
 

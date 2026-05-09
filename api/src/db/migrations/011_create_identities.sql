@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS identities (
     wallet_address VARCHAR(42) UNIQUE,
     role user_role NOT NULL,
     
-    nonce VARCHAR(64),
+    nonce VARCHAR(128),
     nonce_expires_at TIMESTAMP,
 
     issue_identity_tx_hash VARCHAR(66),

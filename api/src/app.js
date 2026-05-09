@@ -1,6 +1,8 @@
 import express from 'express'
 import { errorMiddleware } from './middlewares/error.middleware.js'
 
+import authRouter from './modules/auth/auth.routes.js'
+
 import academyRouter from './modules/academy/academy.routes.js'
 import professorRouter from './modules/professor/professor.routes.js'
 import studentRouter from './modules/student/student.routes.js'
@@ -14,7 +16,11 @@ import studentIdentityRouter from './modules/identity/student/student.identity.r
 
 
 const app = express()
+
+
 app.use(express.json())
+
+app.use('/api/auth', authRouter)
 
 app.use('/api/academies', academyRouter)
 app.use('/api/professors', professorRouter)
@@ -26,6 +32,7 @@ app.use('/api/departments', departmentRouter)
 app.use('/api/identity/academies', academyIdentityRouter)
 app.use('/api/identity/professors', professorIdentityRouter)
 app.use('/api/identity/students', studentIdentityRouter)
+
 app.use(errorMiddleware)
 
 export default app;
