@@ -44,6 +44,11 @@ class AcademicSection extends StatelessWidget {
               dateFormatter(academic?.expectedGraduationDate),
             ),
             icon: Icons.school_outlined,
+          ),
+          InfoTile(
+            label: "CGPA",
+            trailing: Text(academic?.cgpa.toStringAsFixed(2) ?? ""),
+            icon: Icons.grade_outlined,
           )
         ],
       ),

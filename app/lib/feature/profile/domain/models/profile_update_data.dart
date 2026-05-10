@@ -3,7 +3,6 @@ class ProfileUpdateData {
     this.phone,
     this.email,
     this.photoUrl,
-    this.notes,
     this.addressLine1,
     this.addressLine2,
     this.street,
@@ -17,7 +16,6 @@ class ProfileUpdateData {
   final String? phone;
   final String? email;
   final String? photoUrl;
-  final String? notes;
   final String? addressLine1;
   final String? addressLine2;
   final String? street;
@@ -47,7 +45,7 @@ class ProfileUpdateData {
   }
 
   bool get userChanged =>
-      phone != null || email != null || photoUrl != null || notes != null;
+      phone != null || email != null || photoUrl != null;
 
   bool get addressChanged =>
       addressLine1 != null ||

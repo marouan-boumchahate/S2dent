@@ -23,7 +23,6 @@ class User {
     required this.email,
     required this.phone,
     required this.photoUrl,
-    required this.notes,
   });
 
   final String firstName;
@@ -36,7 +35,6 @@ class User {
   final String email;
   final String phone;
   final String photoUrl;
-  final String notes;
 
   String fullName() => "$firstName $middleName $lastName";
 
@@ -52,7 +50,6 @@ class User {
     String? email,
     String? phone,
     String? photoUrl,
-    String? notes,
   }) {
     return User(
       firstName: firstName ?? this.firstName,
@@ -65,7 +62,6 @@ class User {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       photoUrl: photoUrl ?? this.photoUrl,
-      notes: notes ?? this.notes,
     );
   }
 
@@ -81,7 +77,6 @@ class User {
       email: json["email"] ?? "",
       phone: json["phone"] ?? "",
       photoUrl: json["photo_url"] ?? "",
-      notes: json["notes"] ?? "",
     );
   }
 
@@ -97,7 +92,6 @@ class User {
       "email": email,
       "phone": phone,
       "photo_url": photoUrl,
-      "notes": notes,
     };
   }
 }

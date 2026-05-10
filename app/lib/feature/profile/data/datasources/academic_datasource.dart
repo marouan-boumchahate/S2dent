@@ -11,6 +11,7 @@ class AcademicDataSource {
     "enrollment_date": "2022-09-19T00:00:00.000Z",
     "expected_graduation_date": "2026-06-30T00:00:00.000Z",
     "actual_graduation_date": "2026-06-30T00:00:00.000Z",
+    "cgpa": 3.75,
   };
 
   Future<Student> getAcademicInfo() async {

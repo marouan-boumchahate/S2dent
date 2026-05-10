@@ -28,7 +28,6 @@ class EditPersonalInfoPage extends ConsumerStatefulWidget {
 class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
-  late final TextEditingController _notesController;
   late String _phoneNumber;
   XFile? _pickedImage;
   bool _isSaving = false;
@@ -39,13 +38,11 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
     final user = widget.student.user;
     _emailController = TextEditingController(text: user?.email ?? "");
     _phoneNumber = user?.phone ?? "";
-    _notesController = TextEditingController(text: user?.notes ?? "");
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
@@ -94,7 +91,6 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
       email: _changedValue(user?.email, _emailController),
       phone: _changedPhoneValue(user?.phone),
       photoUrl: _pickedImage?.path,
-      notes: _changedValue(user?.notes, _notesController),
     );
   }
 
@@ -169,11 +165,6 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
             onSaved: (phoneNumber) {
               _phoneNumber = phoneNumber;
             },
-          ),
-          EditibleTextfield(
-            label: "Notes",
-            controller: _notesController,
-            maxLines: 3,
           ),
           const SizedBox(height: 12),
           PrimaryButton(
