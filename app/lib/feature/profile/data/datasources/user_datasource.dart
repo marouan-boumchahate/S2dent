@@ -16,7 +16,6 @@ class UserDataSource {
     "email": "ousama.eddin@stu.fbu.edu.tr",
     "phone": "+905551957963",
     "photo_url": "",
-    "notes": "I love myself",
   };
 
   Future<Student> getUserInfo() async {
@@ -36,7 +35,6 @@ class UserDataSource {
       phone: data.phone,
       email: data.email,
       photoUrl: data.photoUrl,
-      notes: data.notes,
     );
 
     _userJson = user.toJson();

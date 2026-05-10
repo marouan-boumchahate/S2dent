@@ -22,6 +22,7 @@ class Academic {
     required this.enrollmentDate,
     required this.expectedGraduationDate,
     required this.actualGraduationDate,
+    required this.cgpa,
   });
 
   final String studentNumber;
@@ -30,6 +31,7 @@ class Academic {
   final DateTime enrollmentDate;
   final DateTime expectedGraduationDate;
   final DateTime actualGraduationDate;
+  final double cgpa;
 
   factory Academic.fromJson(Map<String, dynamic> json) {
     return Academic(
@@ -39,6 +41,7 @@ class Academic {
       enrollmentDate: DateTime.parse(json["enrollment_date"]),
       expectedGraduationDate: DateTime.parse(json["expected_graduation_date"]),
       actualGraduationDate: DateTime.parse(json["actual_graduation_date"]),
+      cgpa: (json["cgpa"] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -50,6 +53,7 @@ class Academic {
       "enrollment_date": enrollmentDate.toIso8601String(),
       "expected_graduation_date": expectedGraduationDate.toIso8601String(),
       "actual_graduation_date": actualGraduationDate.toIso8601String(),
+      "cgpa": cgpa,
     };
   }
 }
