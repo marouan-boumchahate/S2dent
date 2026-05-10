@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import { store, Student } from '@/lib/store';
 
@@ -21,7 +21,7 @@ export default function StudentsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Students" />
+      <PageHeader title="Students" onAddNew={() => redirect('/createStudent')} />
 
       <div className="p-6 space-y-6">
 

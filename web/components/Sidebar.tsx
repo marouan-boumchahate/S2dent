@@ -1,5 +1,4 @@
 'use client';
-import SidebarItems from './sidebarItems';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -8,47 +7,26 @@ const SIDEBAR_GROUPS = [
   {
     label: 'Students',
     href: '/students',
-    items: [
-      { href: '/createStudent', label: 'Create Student' },
-      { href: '/updateStudent', label: 'Update Student' },
-      { href: '/revokeStudent', label: 'Revoke Student' },
-    ],
   },
   {
     label: 'Professors',
     href: '/professors',
-    items: [
-      { href: '/createProfessor', label: 'Create Professor' },
-      { href: '/updateProfessor', label: 'Update Professor' },
-      { href: '/revokeProfessor', label: 'Revoke Professor' },
-    ],
   },
   {
     label: 'Certificates',
     href: '/certificates',
-    items: [
-      { href: '/issueCertificate', label: 'Issue Certificate' },
-      { href: '/revokeCertificate', label: 'Revoke Certificate' },
-    ],
   },
   {
     label: 'Credentials',
     href: '/credentials',
-    items: [],
   },
   {
     label: 'Departments',
     href: '/departments',
-    items: [
-      { href: '/createDepartment', label: 'Create Department' },
-      { href: '/updateDepartment', label: 'Update Department' },
-      { href: '/deleteDepartment', label: 'Delete Department' },
-    ],
   },
   {
     label: 'Settings',
     href: '/settings',
-    items: [],
   },
 ];
 
@@ -58,13 +36,6 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<string[]>(['Students', 'Professors']);
-
-  const toggleGroup = (label: string) => {
-    setOpenGroups(prev =>
-      prev.includes(label) ? prev.filter(g => g !== label) : [...prev, label]
-    );
-  };
 
   return (
     <>
@@ -109,7 +80,7 @@ export default function Sidebar() {
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {SIDEBAR_GROUPS.map((group) => (
             <div key={group.label}>
-              {/* group header - clickable link + toggle arrow */}
+              {/* group header - clickable link */}
               <div className="flex items-center justify-between rounded-lg hover:bg-surface transition">
                 <button
                   onClick={() => router.push(group.href)}
@@ -119,30 +90,7 @@ export default function Sidebar() {
                 >
                   {group.label}
                 </button>
-                {group.items.length > 0 && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="px-3 py-3 text-textMuted text-xs hover:text-textLight"
-                  >
-                    {openGroups.includes(group.label) ? '▼' : '▶'}
-                  </button>
-                )}
               </div>
-
-              {/* sub-items */}
-              {openGroups.includes(group.label) && group.items.length > 0 && (
-                <div className="ml-3 mt-1 space-y-1 border-l border-borderLine pl-3">
-                  {group.items.map((item) => (
-                    <SidebarItems
-                      key={item.href}
-                      href={item.href}
-                      label={item.label}
-                      activeColor={activeColor}
-                      isActive={pathname === item.href}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </nav>
