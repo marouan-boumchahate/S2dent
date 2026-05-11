@@ -5,8 +5,10 @@ import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/theme_provider.dart';
+import 'package:app/feature/settings/presentation/pages/faqs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -16,9 +18,26 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  void onTapHelp() {}
+  void onTapHelp() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FaqsPage(),
+      ),
+    );
+  }
 
-  void onTapContactUs() {}
+  Future<void> onTapContactUs() async {
+    final uri = Uri(
+      scheme: "mailto",
+      path: "test@fbu.tr",
+      queryParameters: {
+        "subject": "Support Request",
+        "body": "",
+      },
+    );
+    await launchUrl(uri);
+  }
 
   void onToggleTheme(bool isDarkMode) {
     ref

@@ -59,10 +59,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  void onTapContactUs() {
-    debugPrint("on tap contact us");
-  }
-
   @override
   Widget build(BuildContext context) {
     final studentData = ref.watch(profileControllerProvider);
@@ -82,7 +78,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               student: student,
             ),
             SettingsSection(
-              onTapContactUs: onTapContactUs,
               onTapSettings: onTapSettings,
             ),
           ],

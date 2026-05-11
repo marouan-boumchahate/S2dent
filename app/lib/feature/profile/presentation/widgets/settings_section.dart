@@ -6,10 +6,8 @@ class SettingsSection extends StatelessWidget {
   const SettingsSection({
     super.key,
     required this.onTapSettings,
-    required this.onTapContactUs,
   });
   final void Function() onTapSettings;
-  final void Function() onTapContactUs;
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -22,11 +20,6 @@ class SettingsSection extends StatelessWidget {
             onTap: onTapSettings,
             icon: Icons.settings,
           ),
-          PressableInfoTile(
-            label: "Contact Us",
-            onTap: onTapContactUs,
-            icon: Icons.contact_support_outlined,
-          )
         ],
       ),
     );
