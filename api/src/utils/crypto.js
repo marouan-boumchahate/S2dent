@@ -5,6 +5,7 @@ const ALGORITHM = 'aes-256-gcm';
 
 const getNonce = (byteLength = 32) => crypto.randomBytes(byteLength).toString('hex');
 const recoverSigner = (message, signature) => ethers.verifyMessage(message, signature);
+const hash = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 const encrypt = (text, SECRET) => {
     try{
@@ -21,7 +22,6 @@ const encrypt = (text, SECRET) => {
         throw new Error('Failed to encrypt data');
     }
 };
-
 const decrypt = (payload, SECRET) => {
     const [ivHex, tagHex, encryptedHex] = payload.split(':');
 
@@ -35,4 +35,5 @@ const decrypt = (payload, SECRET) => {
     return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 };
 
-export { recoverSigner, getNonce, encrypt, decrypt };
+
+export { recoverSigner, getNonce, encrypt, decrypt, hash };

@@ -15,6 +15,11 @@ export const env = {
     password: process.env.DB_PASSWORD,
     ssl: process.env.DB_SSL === 'true',
   },
+  redis: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
+  },
   blockchain: {
     rpcUrl: process.env.BLOCKCHAIN_RPC_URL,
     platformPrivateKey: process.env.BLOCKCHAIN_PLATFORM_PRIVATE_KEY,

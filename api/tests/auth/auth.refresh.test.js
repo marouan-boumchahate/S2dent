@@ -1,5 +1,7 @@
 import esmock from 'esmock';
 import request from 'supertest';
+import sinon from 'sinon';
+import crypto from 'crypto';
 import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import { signTokens, verifyAccessToken } from '../../src/utils/jwt.js';
@@ -47,22 +49,36 @@ const DEFAULT_BLOCKCHAIN = {
     },
 };
 
-const makeApp = async (overrides = {}) => {
+// supertest sends from localhost; trust proxy lets us pin req.ip via X-Forwarded-For.
+const TEST_IP = '127.0.0.1';
+const TEST_UA = 'test-agent/1.0';
+
+// Default cache stubs treat any refresh token as present in cache for the
+// (TEST_IP, TEST_UA) tuple, so the refresh flow advances past the cache check.
+const makeCacheStubs = (overrides = {}) => ({
+    getCache: sinon.stub().resolves({ ip: TEST_IP, device: TEST_UA }),
+    setCache: sinon.stub().resolves(),
+    delCache: sinon.stub().resolves(),
+    ...overrides,
+});
+
+const makeApp = async ({ blockchain = {}, cache = makeCacheStubs() } = {}) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
         import.meta.url,
         {},
         {
             '../../src/blockchain/identity/student.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.student,   ...(overrides.student ?? {}) },
+                { ...DEFAULT_BLOCKCHAIN.student,   ...(blockchain.student ?? {}) },
             '../../src/blockchain/identity/professor.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.professor, ...(overrides.professor ?? {}) },
+                { ...DEFAULT_BLOCKCHAIN.professor, ...(blockchain.professor ?? {}) },
             '../../src/blockchain/identity/academy.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.academy,   ...(overrides.academy ?? {}) },
+                { ...DEFAULT_BLOCKCHAIN.academy,   ...(blockchain.academy ?? {}) },
             '../../src/blockchain/listener.js': { listenOnTransaction: () => {} },
+            '../../src/cache/cache.client.js': cache,
         },
     );
-    return app;
+    return { app, cache };
 };
 
 // auth.service uses different expiries depending on role:
@@ -76,6 +92,13 @@ const issueRefreshToken = (address, role = 'professor') => {
     return signTokens({ address, role }, options).refreshToken;
 };
 
+const refreshReq = (app, refreshToken) =>
+    request(app)
+        .post('/api/auth/refresh')
+        .set('User-Agent', TEST_UA)
+        .set('X-Forwarded-For', TEST_IP)
+        .send({ refreshToken });
+
 
 describe('POST /api/auth/refresh', function () {
     this.timeout(10000);
@@ -88,11 +111,9 @@ describe('POST /api/auth/refresh', function () {
 
     it('returns 201 with a new accessToken and the same refreshToken on a valid input (professor)', async () => {
         const refreshToken = issueRefreshToken(address, 'professor');
-        const app = await makeApp();
+        const { app } = await makeApp();
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 201);
         assert.equal(res.body.success, true);
@@ -111,15 +132,15 @@ describe('POST /api/auth/refresh', function () {
         const refreshToken = issueRefreshToken(address, 'student');
 
         const calls = { student: 0, professor: 0, academy: 0 };
-        const app = await makeApp({
-            student:   { getStudentIdentity:   async () => { calls.student++;   return buildIdentity(); } },
-            professor: { getProfessorIdentity: async () => { calls.professor++; return buildIdentity(); } },
-            academy:   { getAcademyIdentity:   async () => { calls.academy++;   return buildIdentity(); } },
+        const { app } = await makeApp({
+            blockchain: {
+                student:   { getStudentIdentity:   async () => { calls.student++;   return buildIdentity(); } },
+                professor: { getProfessorIdentity: async () => { calls.professor++; return buildIdentity(); } },
+                academy:   { getAcademyIdentity:   async () => { calls.academy++;   return buildIdentity(); } },
+            },
         });
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 201);
         assert.equal(calls.student, 1);
@@ -134,15 +155,15 @@ describe('POST /api/auth/refresh', function () {
         const refreshToken = issueRefreshToken(address, 'academy');
 
         const calls = { student: 0, professor: 0, academy: 0 };
-        const app = await makeApp({
-            student:   { getStudentIdentity:   async () => { calls.student++;   return buildIdentity(); } },
-            professor: { getProfessorIdentity: async () => { calls.professor++; return buildIdentity(); } },
-            academy:   { getAcademyIdentity:   async () => { calls.academy++;   return buildIdentity(); } },
+        const { app } = await makeApp({
+            blockchain: {
+                student:   { getStudentIdentity:   async () => { calls.student++;   return buildIdentity(); } },
+                professor: { getProfessorIdentity: async () => { calls.professor++; return buildIdentity(); } },
+                academy:   { getAcademyIdentity:   async () => { calls.academy++;   return buildIdentity(); } },
+            },
         });
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 201);
         assert.equal(calls.student, 0);
@@ -152,7 +173,7 @@ describe('POST /api/auth/refresh', function () {
 
     // ── Validation ──────────────────────────────────────────────────────────────
     it('returns 422 VALIDATION_ERROR when refreshToken is missing', async () => {
-        const app = await makeApp();
+        const { app } = await makeApp();
 
         const res = await request(app)
             .post('/api/auth/refresh')
@@ -168,7 +189,7 @@ describe('POST /api/auth/refresh', function () {
     });
 
     it('returns 422 VALIDATION_ERROR when refreshToken is an empty string', async () => {
-        const app = await makeApp();
+        const { app } = await makeApp();
 
         const res = await request(app)
             .post('/api/auth/refresh')
@@ -182,7 +203,7 @@ describe('POST /api/auth/refresh', function () {
     });
 
     it('returns 422 VALIDATION_ERROR when refreshToken is not a string', async () => {
-        const app = await makeApp();
+        const { app } = await makeApp();
 
         const res = await request(app)
             .post('/api/auth/refresh')
@@ -195,16 +216,55 @@ describe('POST /api/auth/refresh', function () {
         assert.ok(found);
     });
 
+    // ── Cache check (runs before any blockchain / jwt work) ─────────────────────
+    it('returns 401 UNAUTHORIZED when the refresh token is not in cache', async () => {
+        const refreshToken = issueRefreshToken(address, 'professor');
+        const { app } = await makeApp({
+            cache: makeCacheStubs({ getCache: sinon.stub().resolves(null) }),
+        });
+
+        const res = await refreshReq(app, refreshToken);
+
+        assert.equal(res.status, 401);
+        assert.equal(res.body.code, 'UNAUTHORIZED');
+    });
+
+    it('returns 401 UNAUTHORIZED when the cached ip does not match the request ip', async () => {
+        const refreshToken = issueRefreshToken(address, 'professor');
+        const { app } = await makeApp({
+            cache: makeCacheStubs({
+                getCache: sinon.stub().resolves({ ip: '8.8.8.8', device: TEST_UA }),
+            }),
+        });
+
+        const res = await refreshReq(app, refreshToken);
+
+        assert.equal(res.status, 401);
+        assert.equal(res.body.code, 'UNAUTHORIZED');
+    });
+
+    it('returns 401 UNAUTHORIZED when the cached device does not match the request user-agent', async () => {
+        const refreshToken = issueRefreshToken(address, 'professor');
+        const { app } = await makeApp({
+            cache: makeCacheStubs({
+                getCache: sinon.stub().resolves({ ip: TEST_IP, device: 'other-agent' }),
+            }),
+        });
+
+        const res = await refreshReq(app, refreshToken);
+
+        assert.equal(res.status, 401);
+        assert.equal(res.body.code, 'UNAUTHORIZED');
+    });
+
     // ── Identity checks (run AFTER successful jwt verification) ─────────────────
     it('returns 404 IDENTITY_NOT_FOUND when the blockchain returns null for the identity', async () => {
         const refreshToken = issueRefreshToken(address, 'professor');
-        const app = await makeApp({
-            professor: { getProfessorIdentity: async () => null },
+        const { app } = await makeApp({
+            blockchain: { professor: { getProfessorIdentity: async () => null } },
         });
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'IDENTITY_NOT_FOUND');
@@ -213,13 +273,11 @@ describe('POST /api/auth/refresh', function () {
 
     it('returns 403 IDENTITY_REVOKED when the blockchain identity has been revoked', async () => {
         const refreshToken = issueRefreshToken(address, 'professor');
-        const app = await makeApp({
-            professor: { getProfessorIdentity: async () => REVOKED_IDENTITY },
+        const { app } = await makeApp({
+            blockchain: { professor: { getProfessorIdentity: async () => REVOKED_IDENTITY } },
         });
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'IDENTITY_REVOKED');
@@ -228,11 +286,9 @@ describe('POST /api/auth/refresh', function () {
 
     it('returns 400 INVALID_ROLE when the token role is not one of student/professor/academy', async () => {
         const refreshToken = issueRefreshToken(address, 'system_admin');
-        const app = await makeApp();
+        const { app } = await makeApp();
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken });
+        const res = await refreshReq(app, refreshToken);
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'INVALID_ROLE');
@@ -241,11 +297,9 @@ describe('POST /api/auth/refresh', function () {
 
     // ── Token failures (jwt/decrypt errors propagate without statusCode → 500) ─
     it('returns 500 when refreshToken is malformed (decryption fails)', async () => {
-        const app = await makeApp();
+        const { app } = await makeApp();
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken: 'not-a-real-token' });
+        const res = await refreshReq(app, 'not-a-real-token');
 
         assert.equal(res.status, 500);
         assert.equal(res.body.success, false);
@@ -256,13 +310,41 @@ describe('POST /api/auth/refresh', function () {
         // (signed with REFRESH_SECRET) is required — both share the same encryption
         // key so decrypt succeeds but jwt.verify with REFRESH_SECRET fails.
         const { accessToken } = signTokens({ address, role: 'professor' });
-        const app = await makeApp();
+        const { app } = await makeApp();
 
-        const res = await request(app)
-            .post('/api/auth/refresh')
-            .send({ refreshToken: accessToken });
+        const res = await refreshReq(app, accessToken);
 
         assert.equal(res.status, 500);
         assert.equal(res.body.success, false);
+    });
+
+    // ── Cache integration (sinon-stubbed cache layer) ──────────────────────────
+    describe('cache integration', () => {
+        const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
+        const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
+
+        it('looks up the refresh token in cache under key `refresh:{sha256(token)}`', async () => {
+            const refreshToken = issueRefreshToken(address, 'professor');
+            const { app, cache } = await makeApp();
+
+            const res = await refreshReq(app, refreshToken);
+
+            assert.equal(res.status, 201);
+            assert.equal(cache.getCache.calledOnce, true);
+            assert.equal(cache.getCache.firstCall.args[0], cacheKeyFor(refreshToken));
+        });
+
+        it('returns the same refresh token without rotating it (no setCache / no delCache)', async () => {
+            const refreshToken = issueRefreshToken(address, 'professor');
+            const { app, cache } = await makeApp();
+
+            const res = await refreshReq(app, refreshToken);
+
+            assert.equal(res.status, 201);
+            assert.equal(res.body.data.refreshToken, refreshToken,
+                'refresh service must echo the same refreshToken back (no rotation)');
+            assert.equal(cache.setCache.called, false, 'setCache must not be called on refresh');
+            assert.equal(cache.delCache.called, false, 'delCache must not be called on refresh');
+        });
     });
 });

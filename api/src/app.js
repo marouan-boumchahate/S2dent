@@ -16,6 +16,7 @@ import studentIdentityRouter from './modules/identity/student/student.identity.r
 
 
 const app = express()
+app.set('trust proxy', true); // fetching client IP from req.ip instead of the proxy's IP
 
 
 app.use(express.json())

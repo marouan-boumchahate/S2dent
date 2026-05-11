@@ -1,9 +1,12 @@
 import esmock from 'esmock';
 import request from 'supertest';
+import sinon from 'sinon';
+import crypto from 'crypto';
 import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
 import { verifyAccessToken, verifyRefreshToken } from '../../src/utils/jwt.js';
+import { ACADEMY_REFRESH_TOKEN, STUDENT_REFRESH_TOKEN } from '../../src/cache/cache.ttl.js';
 
 
 const buildIdentity = (overrides = {}) => ({
@@ -49,19 +52,21 @@ const DEFAULT_BLOCKCHAIN = {
 };
 
 const makeApp = async (overrides = {}) => {
+    const mocks = {
+        '../../src/blockchain/identity/student.identity.blockchain.js':
+            { ...DEFAULT_BLOCKCHAIN.student,   ...(overrides.student ?? {}) },
+        '../../src/blockchain/identity/professor.identity.blockchain.js':
+            { ...DEFAULT_BLOCKCHAIN.professor, ...(overrides.professor ?? {}) },
+        '../../src/blockchain/identity/academy.identity.blockchain.js':
+            { ...DEFAULT_BLOCKCHAIN.academy,   ...(overrides.academy ?? {}) },
+        '../../src/blockchain/listener.js': { listenOnTransaction: () => {} },
+    };
+    if (overrides.cache) mocks['../../src/cache/cache.client.js'] = overrides.cache;
     const { default: app } = await esmock.strict(
         '../../src/app.js',
         import.meta.url,
         {},
-        {
-            '../../src/blockchain/identity/student.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.student,   ...(overrides.student ?? {}) },
-            '../../src/blockchain/identity/professor.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.professor, ...(overrides.professor ?? {}) },
-            '../../src/blockchain/identity/academy.identity.blockchain.js':
-                { ...DEFAULT_BLOCKCHAIN.academy,   ...(overrides.academy ?? {}) },
-            '../../src/blockchain/listener.js': { listenOnTransaction: () => {} },
-        },
+        mocks,
     );
     return app;
 };
@@ -440,5 +445,101 @@ describe('POST /api/auth/verify', function () {
             [address],
         );
         assert.equal(row.nonce, nonce, 'nonce must remain when signature check fails');
+    });
+
+    // ── Cache integration (sinon-stubbed cache layer) ──────────────────────────
+    describe('cache integration', () => {
+        const TEST_IP = '127.0.0.1';
+        const TEST_UA = 'verify-cache-test/1.0';
+
+        const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
+        const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
+
+        const makeCacheStubs = () => ({
+            getCache: sinon.stub().resolves(null),
+            setCache: sinon.stub().resolves(),
+            delCache: sinon.stub().resolves(),
+        });
+
+        const verifyReq = (app, addr, sig) =>
+            request(app)
+                .post('/api/auth/verify')
+                .set('User-Agent', TEST_UA)
+                .set('X-Forwarded-For', TEST_IP)
+                .send({ address: addr, signature: sig });
+
+        it('saves the refresh token in cache under key `refresh:{sha256(token)}`', async () => {
+            const nonce = await seedIdentity(address, 'professor');
+            const signature = await signNonce(wallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, signature);
+
+            assert.equal(res.status, 201);
+            assert.equal(cache.setCache.calledOnce, true, 'setCache must be called exactly once');
+            assert.equal(cache.setCache.firstCall.args[0], cacheKeyFor(res.body.data.refreshToken));
+        });
+
+        it('saves the payload { ip, device } where device is the request user-agent', async () => {
+            const nonce = await seedIdentity(address, 'professor');
+            const signature = await signNonce(wallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, signature);
+
+            assert.equal(res.status, 201);
+            assert.deepEqual(cache.setCache.firstCall.args[1], { ip: TEST_IP, device: TEST_UA });
+        });
+
+        it('uses STUDENT_REFRESH_TOKEN as TTL for the student role', async () => {
+            const nonce = await seedIdentity(address, 'student');
+            const signature = await signNonce(wallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, signature);
+
+            assert.equal(res.status, 201);
+            assert.equal(cache.setCache.firstCall.args[2], STUDENT_REFRESH_TOKEN);
+        });
+
+        it('uses ACADEMY_REFRESH_TOKEN as TTL for the professor role', async () => {
+            const nonce = await seedIdentity(address, 'professor');
+            const signature = await signNonce(wallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, signature);
+
+            assert.equal(res.status, 201);
+            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN);
+        });
+
+        it('uses ACADEMY_REFRESH_TOKEN as TTL for the academy role', async () => {
+            const nonce = await seedIdentity(address, 'academy');
+            const signature = await signNonce(wallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, signature);
+
+            assert.equal(res.status, 201);
+            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN);
+        });
+
+        it('does not call setCache when verification fails (invalid signature)', async () => {
+            const nonce = await seedIdentity(address, 'professor');
+            const otherWallet = ethers.Wallet.createRandom();
+            const wrongSignature = await signNonce(otherWallet, nonce);
+            const cache = makeCacheStubs();
+            const app = await makeApp({ cache });
+
+            const res = await verifyReq(app, address, wrongSignature);
+
+            assert.equal(res.status, 401);
+            assert.equal(cache.setCache.called, false, 'setCache must not be called when verify fails');
+        });
     });
 });

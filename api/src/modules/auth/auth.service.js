@@ -1,12 +1,16 @@
 import crypto from 'crypto';
 import { ethers, recoverAddress } from 'ethers';
 import db from '../../config/db.js';
+import { setCache, getCache, delCache } from '../../cache/cache.client.js';
+import { refreshToken } from '../../cache/cache.keys.js';
+import { ACADEMY_REFRESH_TOKEN, STUDENT_REFRESH_TOKEN } from '../../cache/cache.ttl.js';
 import { getNonce } from '../../utils/crypto.js';
 import { getAcademyIdentity } from '../../blockchain/identity/academy.identity.blockchain.js';
 import { getStudentIdentity } from '../../blockchain/identity/student.identity.blockchain.js';
 import { getProfessorIdentity } from '../../blockchain/identity/professor.identity.blockchain.js';
-import { recoverSigner } from '../../utils/crypto.js';
+import { recoverSigner, hash } from '../../utils/crypto.js';
 import { signTokens, verifyRefreshToken } from '../../utils/jwt.js';
+import { get } from 'http';
 
 
 // Helpers
@@ -14,7 +18,7 @@ const storeNonce = async (address, nonce) => await db.query(
       `UPDATE identities
        SET nonce = $2, nonce_expires_at = $3
        WHERE wallet_address = $1`,
-      [address, nonce, new Date(Date.now() + 25 * 60 * 1000)]
+      [address, nonce, new Date(Date.now() + 5 * 60 * 1000)]
     );
 const deleteNonce = async (address) => await db.query(
       `UPDATE identities
@@ -109,6 +113,40 @@ const isRefreshTokenValid = async (refreshToken) => {
 
     return user;
 }
+const saveRefreshTokenInCache = async (token, ip, device, role) => {
+    const tokenHash = hash(token);
+
+    const cacheKey = refreshToken(tokenHash);
+    const ttl = role === 'student' ? STUDENT_REFRESH_TOKEN : ACADEMY_REFRESH_TOKEN;
+    const payload = { ip, device };
+
+    await setCache(cacheKey, payload, ttl);
+}
+const isRefreshTokenExistingInCache = async (token, ip, device) => {
+    const tokenHash = hash(token);
+    const cacheKey = refreshToken(tokenHash);
+    const cachedData = await getCache(cacheKey);
+
+    if (!cachedData) {
+        const err = new Error('Refresh token not found or expired');
+        err.statusCode = 401;
+        err.code = 'UNAUTHORIZED';
+        throw err;
+    }
+
+    if (cachedData.ip !== ip || cachedData.device !== device) {
+        const err = new Error('Refresh token is being used from an unauthorized device or IP');
+        err.statusCode = 401;
+        err.code = 'UNAUTHORIZED';
+        throw err;
+    }
+}
+const revokeRefreshTokenFromCache = async (token) => {
+    const tokenHash = hash(token);
+    const cacheKey = refreshToken(tokenHash);
+
+    await delCache(cacheKey);
+}
 
 
 // Services
@@ -123,7 +161,7 @@ const generateNonceService = async (address) => {
 
     return { message: `Sign this nonce to authenticate: ${nonce}` };
 }
-const verifySignatureService = async (address, signature) => {
+const verifySignatureService = async (address, signature, { ip, device }) => {
     const checksumAddr = ethers.getAddress(address);
     const { role, nonce, nonce_expires_at } = await fetchIdentityByAddress(checksumAddr);
 
@@ -131,13 +169,17 @@ const verifySignatureService = async (address, signature) => {
 
     isNonceExpired(nonce, nonce_expires_at);
     isSignatureValid(checksumAddr, nonce, signature);
+
     await deleteNonce(checksumAddr);
     
     const tokens = getJwt(checksumAddr, role);
+    await saveRefreshTokenInCache(tokens.refreshToken, ip, device, role);
 
     return tokens;
 }
-const refreshTokenService = async (refreshToken) => {
+const refreshTokenService = async (refreshToken, { ip, device }) => {
+    await isRefreshTokenExistingInCache(refreshToken, ip, device);
+
     const { address, role } = await isRefreshTokenValid(refreshToken);
     await ensureIdentityExistsInBlockchain(address, role);
 
@@ -145,6 +187,10 @@ const refreshTokenService = async (refreshToken) => {
 
     return { accessToken, refreshToken };
 }
+const logoutService = async (refreshToken, { ip, device }) => {
+    await isRefreshTokenExistingInCache(refreshToken, ip, device);
+    await revokeRefreshTokenFromCache(refreshToken);
+}
 
 
-export { generateNonceService, verifySignatureService, refreshTokenService };
+export { generateNonceService, verifySignatureService, refreshTokenService, logoutService };
