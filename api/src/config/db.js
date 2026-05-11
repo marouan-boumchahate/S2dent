@@ -7,10 +7,10 @@ const { Pool, Client } = pg;
 // ───────────────────────────────────────
 export const ensureDatabaseExists = async () => {
   const client = new Client({
-    host:     env.db.host,
-    port:     env.db.port,
+    host: env.db.host,
+    port: env.db.port,
     database: 'postgres', // Connect to default DB to check/create our target DB
-    user:     env.db.user,
+    user: env.db.user,
     password: env.db.password,
   });
 

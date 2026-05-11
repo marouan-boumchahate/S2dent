@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
 import { generateNonceSchema, verifySignatureSchema, refreshTokenSchema } from './auth.validator.js';
-import { generateNonceController, verifySignatureController, refreshTokenController } from './auth.controller.js';
+import { generateNonceController, verifySignatureController, refreshTokenController, logoutController } from './auth.controller.js';
 
 const router = Router();
 
@@ -21,6 +21,12 @@ router.post(
     '/refresh',
     validate(refreshTokenSchema),
     refreshTokenController
+)
+
+router.delete(
+    '/logout',
+    validate(refreshTokenSchema),
+    logoutController
 )
 
 export default router;

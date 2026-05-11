@@ -13,3 +13,6 @@ reset_db.sh
 
 # about api development
 api.md
+
+# Migrations
+MIGRATIONS.md

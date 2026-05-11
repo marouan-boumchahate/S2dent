@@ -159,7 +159,7 @@ describe('GET /api/auth/nonce', function () {
         assert.equal(calls.academy, 1);
     });
 
-    it('persists the nonce and an expiration ~25 minutes in the future', async () => {
+    it('persists the nonce and an expiration ~5 minutes in the future', async () => {
         await seedIdentity(address, 'professor');
         const app = await makeApp();
 
@@ -180,9 +180,9 @@ describe('GET /api/auth/nonce', function () {
         assert.equal(row.nonce, expectedNonce, 'stored nonce must equal the one in the response message');
 
         const expiresMs = new Date(row.nonce_expires_at).getTime();
-        // 25 * 60 * 1000 ms ahead of Date.now() at storeNonce call time
-        const lower = before + 24 * 60 * 1000;
-        const upper = after  + 26 * 60 * 1000;
+        // 5 * 60 * 1000 ms ahead of Date.now() at storeNonce call time
+        const lower = before + 4 * 60 * 1000;
+        const upper = after  + 6 * 60 * 1000;
         assert.ok(
             expiresMs >= lower && expiresMs <= upper,
             `nonce_expires_at (${expiresMs}) must be between ${lower} and ${upper}`,
