@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/users';
 
@@ -14,9 +15,14 @@ const cleanupUsers = async () => {
 const validBody = (overrides = {}) => ({
   phone: '+905557654321',
   photo_url: 'https://example.com/photo.png',
-  notes: 'Updated notes',
   ...overrides,
 });
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: '0x0000000000000000000000000000000000000001', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 let userColumnCache = null;
 
@@ -47,7 +53,6 @@ const seedTUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'User',
@@ -59,7 +64,6 @@ const seedTUser = async () => {
     'USER-UPD-001',
     'user.update@userupdatecases.test',
     '+905551234567',
-    null,
     null,
   ];
 
@@ -87,22 +91,25 @@ const seedTUser = async () => {
 };
 
 let USER_ID;
+let userToken;
 
 beforeEach(async () => {
   await cleanupUsers();
   USER_ID = await seedTUser();
+  userToken = issueAccessToken({ role: 'student', uid: USER_ID });
 });
 
 afterEach(async () => {
   sinon.restore();
 });
 
-describe('PUT /api/users/:id', () => {
+describe('PUT /api/users', () => {
   it('returns 200 and the updated user DTO on valid full update', async () => {
     const body = validBody();
 
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send(body);
 
     assert.equal(res.status, 200);
@@ -114,7 +121,6 @@ describe('PUT /api/users/:id', () => {
     assert.equal(user.id, USER_ID);
     assert.equal(user.phone, body.phone);
     assert.equal(user.photo_url, body.photo_url);
-    assert.equal(user.notes, body.notes);
     assert.equal(user.email, 'user.update@userupdatecases.test');
     assert.equal(user.full_name, 'User Update Cases');
     assert.equal(user.national_id, 'USER-UPD-001');
@@ -122,7 +128,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 200 on partial update (phone only)', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send({ phone: '+905559999999' });
 
     assert.equal(res.status, 200);
@@ -130,12 +137,14 @@ describe('PUT /api/users/:id', () => {
     const { user } = res.body.data;
     assert.equal(user.phone, '+905559999999');
     assert.equal(user.photo_url, null);
-    assert.equal(user.notes, null);
   });
 
   it('returns 404 USER_NOT_FOUND when user does not exist', async () => {
+    const missingId = '00000000-0000-0000-0000-000000000000';
+    const missingToken = issueAccessToken({ role: 'student', uid: missingId });
     const res = await request(app)
-      .put(`${endpoint}/00000000-0000-0000-0000-000000000000`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${missingToken}`)
       .send(validBody());
 
     assert.equal(res.status, 404);
@@ -144,7 +153,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send({});
 
     assert.equal(res.status, 422);
@@ -155,7 +165,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 422 for invalid phone format', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send(validBody({ phone: '05551234567' }));
 
     assert.equal(res.status, 422);
@@ -166,7 +177,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 422 when photo_url is not a valid URL', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send(validBody({ photo_url: 'not-a-url' }));
 
     assert.equal(res.status, 422);
@@ -177,7 +189,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 422 when photo_url exceeds 500 chars', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send(validBody({ photo_url: `https://example.com/${'a'.repeat(500)}` }));
 
     assert.equal(res.status, 422);
@@ -188,7 +201,8 @@ describe('PUT /api/users/:id', () => {
 
   it('returns 200 and strips unknown keys', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send({
         phone: '+905558888888',
         email: 'evil@hack.test',
@@ -211,7 +225,8 @@ describe('PUT /api/users/:id', () => {
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)
-      .put(`${endpoint}/${USER_ID}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${userToken}`)
       .send(validBody({ phone: '+905557000000' }));
 
     assert.equal(res.status, 500);

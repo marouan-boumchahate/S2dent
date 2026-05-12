@@ -60,8 +60,7 @@ const insertUserToDB = async ({
   national_id,
   email,
   phone,
-  photo_url,
-  notes,
+  photo_url
 }) => {
   const full_name = `${first_name} ${middle_name ? `${middle_name} ` : ''}${last_name}`.trim();
 
@@ -77,10 +76,9 @@ const insertUserToDB = async ({
           email,
           phone,
           photo_url,
-          notes,
           nationality
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING
           id,
           first_name,
@@ -93,7 +91,6 @@ const insertUserToDB = async ({
           email,
           phone,
           photo_url,
-          notes,
           nationality`,
       [
         first_name,
@@ -106,20 +103,18 @@ const insertUserToDB = async ({
         email,
         phone ?? null,
         photo_url ?? null,
-        notes ?? null,
         nationality
       ],
   );
 
   return { rows: [user] };
 }
-const updateUserInDB = async ({ user_id, phone, photo_url, notes }) => {
+const updateUserInDB = async ({ user_id, phone, photo_url }) => {
   const { rows: [user] } = await db.query(
     `UPDATE users
         SET phone = COALESCE($1, phone),
-            photo_url = COALESCE($2, photo_url),
-            notes = COALESCE($3, notes)
-      WHERE id = $4
+            photo_url = COALESCE($2, photo_url)
+      WHERE id = $3
       RETURNING
         id,
         first_name,
@@ -132,9 +127,8 @@ const updateUserInDB = async ({ user_id, phone, photo_url, notes }) => {
         national_id,
         email,
         phone,
-        photo_url,
-        notes`,
-    [phone ?? null, photo_url ?? null, notes ?? null, user_id],
+        photo_url`,
+    [phone ?? null, photo_url ?? null, user_id],
   );
 
   return { rows: [user] };
@@ -153,8 +147,7 @@ export const createUserService = async (payload) => {
     national_id,
     email,
     phone,
-    photo_url,
-    notes,
+    photo_url
   } = payload;
 
   await ensureUserUnique(email, national_id);

@@ -7,6 +7,7 @@ import {
   deleteDepartmentService,
 } from './department.service.js';
 
+
 const createDepartmentController = async (req, res) => {
   const payload = {
     academy_id: req.body.academy_id,
@@ -22,13 +23,13 @@ const createDepartmentController = async (req, res) => {
 
   return created(res, result, 'Department created successfully');
 };
-
 const listDepartmentsController = async (req, res) => {
-  const result = await listDepartmentsService(req.query.academy_id);
+  const { rid } = req.user;
+
+  const result = await listDepartmentsService(rid);
 
   return ok(res, result, 'Departments retrieved successfully');
 };
-
 const getDepartmentByIdController = async (req, res) => {
   const { id } = req.params;
 
@@ -36,7 +37,6 @@ const getDepartmentByIdController = async (req, res) => {
 
   return ok(res, result, 'Department retrieved successfully');
 };
-
 const updateDepartmentController = async (req, res) => {
   const { id } = req.params;
 
@@ -49,7 +49,6 @@ const updateDepartmentController = async (req, res) => {
 
   return ok(res, result, 'Department updated successfully');
 };
-
 const deleteDepartmentController = async (req, res) => {
   const { id } = req.params;
 
@@ -57,6 +56,7 @@ const deleteDepartmentController = async (req, res) => {
 
   return ok(res, result, 'Department deactivated successfully');
 };
+
 
 export {
   createDepartmentController,

@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/departments';
 
@@ -11,6 +12,13 @@ const SEED_WALLET = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedept1111';
 const SEED_ACADEMY_NUMBER = 'ACD_LIST_DEPT_0001';
 
 let ACADEMY_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', rid: ACADEMY_ID, ...payload },
+  undefined,
+  true,
+).accessToken;
 
 const seedAcademy = async () => {
   const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
@@ -135,6 +143,7 @@ const teardownSeed = async () => {
 
 before(async () => {
   ACADEMY_ID = await seedAcademy();
+  ACADEMY_TOKEN = issueAccessToken();
 });
 
 beforeEach(async () => {
@@ -162,7 +171,7 @@ describe('GET /api/departments', () => {
 
     const res = await request(app)
       .get(endpoint)
-      .query({ academy_id: ACADEMY_ID });
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
@@ -173,18 +182,18 @@ describe('GET /api/departments', () => {
     assert.equal(res.body.data.departments[1].name, 'Electrical Engineering');
   });
 
-  it('returns 422 when academy_id is missing', async () => {
+  it('returns 401 when token is missing', async () => {
     const res = await request(app)
       .get(endpoint);
 
-    assert.equal(res.status, 422);
-    assert.equal(res.body.code, 'VALIDATION_ERROR');
+    assert.equal(res.status, 401);
   });
 
   it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
+    const missingToken = issueAccessToken({ rid: '00000000-0000-0000-0000-000000000000' });
     const res = await request(app)
       .get(endpoint)
-      .query({ academy_id: '00000000-0000-0000-0000-000000000000' });
+      .set('Authorization', `Bearer ${missingToken}`);
 
     assert.equal(res.status, 404);
     assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');

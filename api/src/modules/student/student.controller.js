@@ -16,7 +16,6 @@ const createStudentController = async (req, res) => {
 
     return created(res, result, 'Student registered successfully');
 };
-
 const updateStudentController = async (req, res) => {
     const { id } = req.params;
     const payload = { cgpa: req.body.cgpa };

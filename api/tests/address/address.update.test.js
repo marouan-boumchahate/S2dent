@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/addresses';
 
@@ -54,7 +55,6 @@ const seedTUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'Address',
@@ -67,12 +67,16 @@ const seedTUser = async () => {
     'address.update@addressupdatecases.test',
     '+905551234567',
     null,
-    null,
   ];
 
   if (columns.has('nationality')) {
     insertCols.push('nationality');
     insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
   }
 
   const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -87,10 +91,18 @@ const seedTUser = async () => {
 };
 
 let USER_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: '0x0000000000000000000000000000000000000001', role: 'academy', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 const createAddress = async (overrides = {}) => {
   const res = await request(app)
     .post(endpoint)
+    .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
     .send(validBody({ user_id: USER_ID, ...overrides }));
 
   assert.equal(res.status, 201);
@@ -100,13 +112,14 @@ const createAddress = async (overrides = {}) => {
 beforeEach(async () => {
   await cleanupAddresses();
   USER_ID = await seedTUser();
+  ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
 });
 
 afterEach(async () => {
   sinon.restore();
 });
 
-describe('PUT /api/addresses/:id', () => {
+describe('PUT /api/addresses', () => {
   it('returns 200 and the updated address DTO on valid input', async () => {
     const existing = await createAddress();
 
@@ -118,7 +131,8 @@ describe('PUT /api/addresses/:id', () => {
     };
 
     const res = await request(app)
-      .put(`${endpoint}/${existing.id}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(updateBody);
 
     assert.equal(res.status, 200);
@@ -140,7 +154,8 @@ describe('PUT /api/addresses/:id', () => {
 
   it('returns 404 ADDRESS_NOT_FOUND when address does not exist', async () => {
     const res = await request(app)
-      .put(`${endpoint}/00000000-0000-0000-0000-000000000000`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody());
 
     assert.equal(res.status, 404);
@@ -151,7 +166,8 @@ describe('PUT /api/addresses/:id', () => {
     const existing = await createAddress();
 
     const res = await request(app)
-      .put(`${endpoint}/${existing.id}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);
@@ -169,7 +185,8 @@ describe('PUT /api/addresses/:id', () => {
       delete body[field];
 
       const res = await request(app)
-        .put(`${endpoint}/${existing.id}`)
+        .put(endpoint)
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(body);
 
       assert.equal(
@@ -187,7 +204,8 @@ describe('PUT /api/addresses/:id', () => {
     const existing = await createAddress();
 
     const res = await request(app)
-      .put(`${endpoint}/${existing.id}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ latitude: 100 }));
 
     assert.equal(res.status, 422);
@@ -200,7 +218,8 @@ describe('PUT /api/addresses/:id', () => {
     const existing = await createAddress();
 
     const res = await request(app)
-      .put(`${endpoint}/${existing.id}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ longitude: -200 }));
 
     assert.equal(res.status, 422);
@@ -227,7 +246,8 @@ describe('PUT /api/addresses/:id', () => {
       const body = validBody({ [field]: 'A'.repeat(max + 1) });
 
       const res = await request(app)
-        .put(`${endpoint}/${existing.id}`)
+        .put(endpoint)
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(body);
 
       assert.equal(
@@ -249,7 +269,8 @@ describe('PUT /api/addresses/:id', () => {
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)
-      .put(`${endpoint}/${existing.id}`)
+      .put(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ city: 'Izmir', country: 'Turkey' }));
 
     assert.equal(res.status, 500);

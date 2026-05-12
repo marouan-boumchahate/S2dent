@@ -26,6 +26,15 @@ const deleteNonce = async (address) => await db.query(
        WHERE wallet_address = $1`,
       [address]
     );
+const isNonceExpired = (nonce, nonce_expires_at) => {
+    if (!nonce || new Date() > nonce_expires_at) {
+        const err = new Error('Nonce is missing or has expired');
+        err.statusCode = 400;
+        err.code = 'INVALID_NONCE';
+        throw err;
+    }
+}
+
 const fetchIdentityByAddress = async (address) => {
     const { rows: [identity] } = await db.query(
         `SELECT * FROM identities WHERE wallet_address = $1`,
@@ -75,14 +84,7 @@ const ensureIdentityExistsInBlockchain = async (address, role) => {
         throw err;
     }
 };
-const isNonceExpired = (nonce, nonce_expires_at) => {
-    if (!nonce || new Date() > nonce_expires_at) {
-        const err = new Error('Nonce is missing or has expired');
-        err.statusCode = 400;
-        err.code = 'INVALID_NONCE';
-        throw err;
-    }
-}
+
 const isSignatureValid = (address, nonce, signature) => {
     const message = `Sign this nonce to authenticate: ${nonce}`;
     const signer = recoverSigner(message, signature);
@@ -93,13 +95,6 @@ const isSignatureValid = (address, nonce, signature) => {
         err.code = 'INVALID_SIGNATURE';
         throw err;
     }
-}
-const getJwt = (address, role, isRefresh = false) => {
-    const payload = { address, role };
-    const options = (role === 'student') ? { accessExpiresIn: '15m', refreshExpiresIn: '3h' } 
-                                         : { accessExpiresIn: '1h',  refreshExpiresIn: '1d' };
-
-    return signTokens(payload, options, isRefresh);
 }
 const isRefreshTokenValid = async (refreshToken) => {
     const user = await verifyRefreshToken(refreshToken);
@@ -122,6 +117,7 @@ const saveRefreshTokenInCache = async (token, ip, device, role) => {
 
     await setCache(cacheKey, payload, ttl);
 }
+
 const isRefreshTokenExistingInCache = async (token, ip, device) => {
     const tokenHash = hash(token);
     const cacheKey = refreshToken(tokenHash);
@@ -147,6 +143,49 @@ const revokeRefreshTokenFromCache = async (token) => {
 
     await delCache(cacheKey);
 }
+const fetchStudentIdByUserId = async (userId) => {
+    const { rows: [student] } = await db.query(
+        `SELECT id FROM students WHERE user_id = $1`,
+        [userId]
+    );
+
+    return student?.id || null;
+}
+const fetchProfessorIdByUserId = async (userId) => {
+    const { rows: [professor] } = await db.query(
+        `SELECT id FROM professors WHERE user_id = $1`,
+        [userId]
+    );
+
+    return professor?.id || null;
+}
+const fetchAcademyIdByWallet = async (wallet) => {
+    const { rows: [academy] } = await db.query(
+        `SELECT id FROM academies WHERE wallet_address = $1`,
+        [wallet]
+    );
+
+    return academy?.id || null;
+}
+const createJwtOptions = (role) => {
+    return role === 'student' 
+        ? { accessExpiresIn: '15m', refreshExpiresIn: '3h' } 
+        : { accessExpiresIn: '1h',  refreshExpiresIn: '1d' };
+}
+const createJwtPayloadAndOptions = async (address, role, userId) => {
+    const roleId = (role === 'student')
+            ? await fetchStudentIdByUserId(userId)
+            : (role === 'professor')
+                ? await fetchProfessorIdByUserId(userId)
+                : await fetchAcademyIdByWallet(address);
+
+    const payload = { sub: address, uid: userId, role, rid: roleId };
+    const options = createJwtOptions(role);
+
+    return { payload, options };
+}
+const getJwt = (payload, options, isRefresh = false) => signTokens(payload, options, isRefresh);
+
 
 
 // Services
@@ -163,7 +202,7 @@ const generateNonceService = async (address) => {
 }
 const verifySignatureService = async (address, signature, { ip, device }) => {
     const checksumAddr = ethers.getAddress(address);
-    const { role, nonce, nonce_expires_at } = await fetchIdentityByAddress(checksumAddr);
+    const { user_id, role, nonce, nonce_expires_at } = await fetchIdentityByAddress(checksumAddr);
 
     await ensureIdentityExistsInBlockchain(checksumAddr, role);
 
@@ -171,8 +210,9 @@ const verifySignatureService = async (address, signature, { ip, device }) => {
     isSignatureValid(checksumAddr, nonce, signature);
 
     await deleteNonce(checksumAddr);
-    
-    const tokens = getJwt(checksumAddr, role);
+    const { payload, options } = await createJwtPayloadAndOptions(checksumAddr, role, user_id);
+
+    const tokens = signTokens(payload, options);
     await saveRefreshTokenInCache(tokens.refreshToken, ip, device, role);
 
     return tokens;
@@ -180,10 +220,12 @@ const verifySignatureService = async (address, signature, { ip, device }) => {
 const refreshTokenService = async (refreshToken, { ip, device }) => {
     await isRefreshTokenExistingInCache(refreshToken, ip, device);
 
-    const { address, role } = await isRefreshTokenValid(refreshToken);
-    await ensureIdentityExistsInBlockchain(address, role);
-
-    const { accessToken } = getJwt(address, role, true);
+    const { sub, uid, role, rid } = await isRefreshTokenValid(refreshToken);
+    await ensureIdentityExistsInBlockchain(sub, role);
+    
+    const payload = { sub, uid, role, rid };
+    const options = createJwtOptions(role);
+    const { accessToken } = signTokens(payload, options, true);
 
     return { accessToken, refreshToken };
 }

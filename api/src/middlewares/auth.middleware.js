@@ -11,26 +11,14 @@ function authenticate(req, res, next) {
         req.user = verifyAccessToken(token);
         next();
 
-    } catch (err) {
-        const msg = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
-        
-        const err = new Error(msg);
-        err.statusCode = 401;
-        err.code = 'UNAUTHORIZED';
-        throw err;
+    } catch (error) {
+        const msg = error.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
+
+        const authError = new Error(msg);
+        authError.statusCode = 401;
+        authError.code = 'UNAUTHORIZED';
+        throw authError;
     }
 }
 
-function requireRole(...roles) {
-    return (req, res, next) => {
-        if (!roles.includes(req.user?.role)) {
-            const err = new Error('Forbidden');
-            err.statusCode = 403;
-            err.code = 'FORBIDDEN';
-            throw err;
-        }
-        next();
-    };
-}
-
-module.exports = { authenticate, requireRole };
+export default authenticate;

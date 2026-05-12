@@ -71,6 +71,148 @@ const makeApp = async (overrides = {}) => {
     return app;
 };
 
+const uniqueSuffix = () => crypto.randomBytes(6).toString('hex');
+
+const seedAcademy = async ({ walletAddress } = {}) => {
+    const suffix = uniqueSuffix();
+    const resolvedWalletAddress = walletAddress ?? ethers.Wallet.createRandom().address;
+    const shortName = `AC${suffix.slice(0, 4).toUpperCase()}`;
+
+    const { rows: [academy] } = await db.query(
+        `INSERT INTO academies (
+            wallet_address,
+            email,
+            academy_number,
+            name,
+            short_name,
+            type,
+            legal_name,
+            registration_number,
+            tax_id
+        )
+         VALUES ($1, $2, $3, $4, $5, 'university', $6, $7, $8)
+         RETURNING id`,
+        [
+            resolvedWalletAddress,
+            `academy-${suffix}@example.test`,
+            `AC-${suffix}`,
+            `Seed Academy ${suffix}`,
+            shortName,
+            `Seed Academy ${suffix} Legal`,
+            `REG-${suffix}`,
+            `TAX-${suffix}`,
+        ],
+    );
+
+    return academy.id;
+};
+
+const seedDepartment = async (academyId) => {
+    const suffix = uniqueSuffix();
+    const { rows: [department] } = await db.query(
+        `INSERT INTO departments (academy_id, code, name, faculty, total_years)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [academyId, `CS${suffix.slice(0, 3).toUpperCase()}`, `Dept ${suffix}`, 'Engineering', 4],
+    );
+
+    return department.id;
+};
+
+const seedUser = async () => {
+    const suffix = uniqueSuffix();
+    const { rows: [user] } = await db.query(
+        `INSERT INTO users (
+            first_name,
+            middle_name,
+            last_name,
+            full_name,
+            date_of_birth,
+            gender,
+            national_id,
+            nationality,
+            email,
+            phone,
+            photo_url
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING id`,
+        [
+            'Test',
+            null,
+            `User${suffix}`,
+            `Test User ${suffix}`,
+            '1990-01-01',
+            'male',
+            `NID-${suffix}`,
+            'Testland',
+            `user-${suffix}@example.test`,
+            `+100000${suffix.slice(0, 5)}`,
+            null,
+        ],
+    );
+
+    return user.id;
+};
+
+const seedStudent = async (userId, academyId, departmentId) => {
+    const suffix = uniqueSuffix();
+    const { rows: [student] } = await db.query(
+        `INSERT INTO students (
+            user_id,
+            academy_id,
+            department_id,
+            student_number,
+            enrollment_status,
+            enrollment_date,
+            expected_graduation_date
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id`,
+        [
+            userId,
+            academyId,
+            departmentId,
+            `STU-${suffix}`,
+            'active',
+            '2022-09-01',
+            '2026-06-30',
+        ],
+    );
+
+    return student.id;
+};
+
+const seedProfessor = async (userId, academyId, departmentId) => {
+    const suffix = uniqueSuffix();
+    const { rows: [professor] } = await db.query(
+        `INSERT INTO professors (
+            user_id,
+            academy_id,
+            department_id,
+            employee_number,
+            title,
+            rank,
+            hire_date,
+            employment_type
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+            userId,
+            academyId,
+            departmentId,
+            `EMP-${suffix}`,
+            'Dr.',
+            'Assoc. Prof',
+            '2022-09-01',
+            'full_time',
+        ],
+    );
+
+    return professor.id;
+};
+
 const HEX_NONCE_64_BYTES = 'a'.repeat(128); // 64 bytes hex
 
 const seedIdentity = async (
@@ -80,13 +222,14 @@ const seedIdentity = async (
         nonce = HEX_NONCE_64_BYTES,
         nonce_expires_at = new Date(Date.now() + 5 * 60 * 1000),
         is_active = true,
+        user_id = null,
     } = {},
 ) => {
     await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
     await db.query(
-        `INSERT INTO identities (wallet_address, role, nonce, nonce_expires_at, is_active)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [walletAddress, role, nonce, nonce_expires_at, is_active],
+        `INSERT INTO identities (wallet_address, role, user_id, nonce, nonce_expires_at, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [walletAddress, role, user_id, nonce, nonce_expires_at, is_active],
     );
     return nonce;
 };
@@ -140,9 +283,9 @@ describe('POST /api/auth/verify', function () {
         const accessPayload  = verifyAccessToken(res.body.data.accessToken);
         const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
 
-        assert.equal(accessPayload.address,  address);
+        assert.equal(accessPayload.sub,  address);
         assert.equal(accessPayload.role,     'professor');
-        assert.equal(refreshPayload.address, address);
+        assert.equal(refreshPayload.sub, address);
         assert.equal(refreshPayload.role,    'professor');
     });
 
@@ -174,6 +317,113 @@ describe('POST /api/auth/verify', function () {
         assert.equal(res.status, 201);
         const accessPayload = verifyAccessToken(res.body.data.accessToken);
         assert.equal(accessPayload.role, 'academy');
+    });
+
+    it('adds uid and rid claims for a student identity with a user_id', async () => {
+        let academyId;
+        let departmentId;
+        let userId;
+        let studentId;
+
+        try {
+            academyId = await seedAcademy();
+            departmentId = await seedDepartment(academyId);
+            userId = await seedUser();
+            studentId = await seedStudent(userId, academyId, departmentId);
+
+            const nonce = await seedIdentity(address, 'student', { user_id: userId });
+            const signature = await signNonce(wallet, nonce);
+            const app = await makeApp();
+
+            const res = await request(app)
+                .post('/api/auth/verify')
+                .send({ address, signature });
+
+            assert.equal(res.status, 201);
+
+            const accessPayload = verifyAccessToken(res.body.data.accessToken);
+            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+
+            assert.equal(accessPayload.uid, userId);
+            assert.equal(accessPayload.rid, studentId);
+            assert.equal(refreshPayload.uid, userId);
+            assert.equal(refreshPayload.rid, studentId);
+        } finally {
+            await cleanupIdentity(address);
+            await cleanupIdentity(address.toLowerCase());
+            if (studentId) await db.query(`DELETE FROM students WHERE id = $1`, [studentId]);
+            if (userId) await db.query(`DELETE FROM users WHERE id = $1`, [userId]);
+            if (departmentId) await db.query(`DELETE FROM departments WHERE id = $1`, [departmentId]);
+            if (academyId) await db.query(`DELETE FROM academies WHERE id = $1`, [academyId]);
+        }
+    });
+
+    it('adds uid and rid claims for a professor identity with a user_id', async () => {
+        let academyId;
+        let departmentId;
+        let userId;
+        let professorId;
+
+        try {
+            academyId = await seedAcademy();
+            departmentId = await seedDepartment(academyId);
+            userId = await seedUser();
+            professorId = await seedProfessor(userId, academyId, departmentId);
+
+            const nonce = await seedIdentity(address, 'professor', { user_id: userId });
+            const signature = await signNonce(wallet, nonce);
+            const app = await makeApp();
+
+            const res = await request(app)
+                .post('/api/auth/verify')
+                .send({ address, signature });
+
+            assert.equal(res.status, 201);
+
+            const accessPayload = verifyAccessToken(res.body.data.accessToken);
+            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+
+            assert.equal(accessPayload.uid, userId);
+            assert.equal(accessPayload.rid, professorId);
+            assert.equal(refreshPayload.uid, userId);
+            assert.equal(refreshPayload.rid, professorId);
+        } finally {
+            await cleanupIdentity(address);
+            await cleanupIdentity(address.toLowerCase());
+            if (professorId) await db.query(`DELETE FROM professors WHERE id = $1`, [professorId]);
+            if (userId) await db.query(`DELETE FROM users WHERE id = $1`, [userId]);
+            if (departmentId) await db.query(`DELETE FROM departments WHERE id = $1`, [departmentId]);
+            if (academyId) await db.query(`DELETE FROM academies WHERE id = $1`, [academyId]);
+        }
+    });
+
+    it('sets uid to null and rid to academy_id when role is academy', async () => {
+        let academyId;
+
+        try {
+            academyId = await seedAcademy({ walletAddress: address });
+
+            const nonce = await seedIdentity(address, 'academy', { user_id: null });
+            const signature = await signNonce(wallet, nonce);
+
+            const app = await makeApp();
+
+            const res = await request(app)
+                .post('/api/auth/verify')
+                .send({ address, signature });
+
+            assert.equal(res.status, 201);
+
+            const accessPayload = verifyAccessToken(res.body.data.accessToken);
+            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+
+            assert.equal(accessPayload.uid, null);
+            assert.equal(accessPayload.rid, academyId);
+            assert.equal(refreshPayload.uid, null);
+            assert.equal(refreshPayload.rid, academyId);
+        } finally {
+            if (academyId) await db.query(`DELETE FROM academies WHERE id = $1`, [academyId]);
+        }
     });
 
     it('clears the nonce columns after successful verification', async () => {
@@ -208,7 +458,7 @@ describe('POST /api/auth/verify', function () {
 
         assert.equal(res.status, 201);
         const accessPayload = verifyAccessToken(res.body.data.accessToken);
-        assert.equal(accessPayload.address, address, 'accessToken must carry the checksummed address');
+        assert.equal(accessPayload.sub, address, 'accessToken must carry the checksummed address in sub');
     });
 
     // ── Validation ──────────────────────────────────────────────────────────────

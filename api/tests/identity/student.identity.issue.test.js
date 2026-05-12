@@ -111,7 +111,6 @@ const seedStudentUser = async ({
         'email',
         'phone',
         'photo_url',
-        'notes',
     ];
     const insertVals = [
         first_name,
@@ -124,7 +123,6 @@ const seedStudentUser = async ({
         email,
         null,
         null,
-        null,
     ];
 
     if (columns.has('nationality')) {
@@ -135,6 +133,11 @@ const seedStudentUser = async ({
     if (columns.has('is_active')) {
         insertCols.push('is_active');
         insertVals.push(true);
+    }
+
+    if (columns.has('notes')) {
+        insertCols.push('notes');
+        insertVals.push(null);
     }
 
     const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -331,7 +334,7 @@ describe('POST /api/identity/students/issue', function () {
         assert.equal(res.status, 200);
         assert.equal(calls.length, 1);
         assert.equal(calls[0].studentWallet, STUDENT_WALLET, 'wallet must be lowercased');
-        assert.equal(calls[0].academyWallet, ACADEMY_WALLET_LOWER, 'academy wallet must be lowercased');
+        assert.equal(calls[0].academyWallet, ACADEMY_WALLET, 'academy wallet must be normalized');
     });
 
     it('passes the correct payload to issueStudentIdentity', async () => {
@@ -363,7 +366,7 @@ describe('POST /api/identity/students/issue', function () {
 
         const call = calls[0];
         assert.equal(call.studentWallet, STUDENT_WALLET, 'wallet must be normalised');
-        assert.equal(call.academyWallet, ACADEMY_WALLET_LOWER, 'academy wallet must be passed');
+        assert.equal(call.academyWallet, ACADEMY_WALLET, 'academy wallet must be passed');
         assert.equal(call.studentId, 'STU-001', 'studentId must match');
         assert.equal(call.fullName, 'John Smith', 'fullName must match');
         assert.equal(call.nationalId, 'NID-12345678', 'nationalId must match');

@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const SEED_ACADEMY_EMAIL = 'seed.professor@seed.internal';
 const SEED_WALLET  = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -11,6 +12,13 @@ const SEED_ACADEMY_NUMBER = 'ACD_PROF_0001';
 let ACADEMY_ID;
 let DEPARTMENT_ID;
 let TUSER_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 let userColumnCache = null;
 
@@ -101,7 +109,6 @@ const seedTUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'Professor',
@@ -114,12 +121,16 @@ const seedTUser = async () => {
     `prof.${now}@profcases.test`,
     '+905551234567',
     null,
-    null,
   ];
 
   if (columns.has('nationality')) {
     insertCols.push('nationality');
     insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
   }
 
   const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -168,6 +179,7 @@ const teardownSeed = async () => {
 before(async () => {
     ACADEMY_ID = await seedAcademy();
     DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
 });
 
 beforeEach(async () => {
@@ -200,6 +212,7 @@ describe('POST /api/professors', () => {
 
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(body);
 
         assert.equal(res.status, 201);
@@ -225,6 +238,7 @@ describe('POST /api/professors', () => {
     it('returns 404 USER_NOT_FOUND when user_id does not exist', async () => {
       const res = await request(app)
         .post('/api/professors')
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(validBody({ user_id: '00000000-0000-0000-0000-000000000001' }));
 
       assert.equal(res.status, 404);
@@ -234,6 +248,7 @@ describe('POST /api/professors', () => {
     it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
       const res = await request(app)
         .post('/api/professors')
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(validBody({ academy_id: '00000000-0000-0000-0000-000000000001' }));
 
       assert.equal(res.status, 404);
@@ -276,6 +291,7 @@ describe('POST /api/professors', () => {
 
       const res = await request(app)
         .post('/api/professors')
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(validBody({ department_id: otherDepartment.rows[0].id }));
 
       assert.equal(res.status, 404);
@@ -288,6 +304,7 @@ describe('POST /api/professors', () => {
     it('returns 422 when body is empty', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send({});
 
         assert.equal(res.status, 422);
@@ -305,6 +322,7 @@ describe('POST /api/professors', () => {
 
             const res = await request(app)
                 .post('/api/professors')
+              .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
                 .send(body);
 
             assert.equal(
@@ -320,6 +338,7 @@ describe('POST /api/professors', () => {
     it('returns 422 when user_id is not a valid UUID', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody({ user_id: 'not-a-uuid' }));
 
         assert.equal(res.status, 422);
@@ -331,6 +350,7 @@ describe('POST /api/professors', () => {
     it('returns 422 when academy_id is not a valid UUID', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody({ academy_id: 'not-a-uuid' }));
 
         assert.equal(res.status, 422);
@@ -342,6 +362,7 @@ describe('POST /api/professors', () => {
     it('returns 422 when department_id is not a valid UUID', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody({ department_id: 'not-a-uuid' }));
 
         assert.equal(res.status, 422);
@@ -353,6 +374,7 @@ describe('POST /api/professors', () => {
     it('returns 422 for an invalid rank value', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody({ rank: 'Director' }));
 
         assert.equal(res.status, 422);
@@ -364,6 +386,7 @@ describe('POST /api/professors', () => {
     it('returns 422 for an invalid employment_type value', async () => {
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody({ employment_type: 'temporary' }));
 
         assert.equal(res.status, 422);
@@ -377,6 +400,7 @@ describe('POST /api/professors', () => {
 
         const res = await request(app)
             .post('/api/professors')
+          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
             .send(validBody());
 
         assert.equal(res.status, 500);

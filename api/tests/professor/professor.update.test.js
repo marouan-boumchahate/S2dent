@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const SEED_ACADEMY_EMAIL = 'seed.prof.update@seed.internal';
 const SEED_WALLET = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
@@ -12,6 +13,13 @@ let ACADEMY_ID;
 let DEPARTMENT_ID;
 let TUSER_ID;
 let PROFESSOR_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 let userColumnCache = null;
 
@@ -102,7 +110,6 @@ const seedTUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'Professor',
@@ -115,12 +122,16 @@ const seedTUser = async () => {
     `prof.${now}@profupdatecases.test`,
     '+905551234567',
     null,
-    null,
   ];
 
   if (columns.has('nationality')) {
     insertCols.push('nationality');
     insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
   }
 
   const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -159,7 +170,6 @@ const validBody = (overrides = {}) => ({
   employment_type: 'part_time',
   office_location: 'Building B - 101',
   office_hours: 'Tue 14:00-16:00',
-  bio: 'Updated bio.',
   ...overrides,
 });
 
@@ -174,6 +184,7 @@ const createProfessor = async (overrides = {}) => {
 
   const res = await request(app)
     .post('/api/professors')
+    .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
     .send(body);
 
   assert.equal(res.status, 201);
@@ -206,6 +217,7 @@ const teardownSeed = async () => {
 before(async () => {
   ACADEMY_ID = await seedAcademy();
   DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
 });
 
 beforeEach(async () => {
@@ -233,10 +245,11 @@ after(async () => {
 
 describe('PUT /api/professors/:id', () => {
   it('returns 200 on partial update', async () => {
-    const updateBody = { rank: 'Prof', bio: 'New bio' };
+    const updateBody = { rank: 'Prof' };
 
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(updateBody);
 
     assert.equal(res.status, 200);
@@ -246,7 +259,7 @@ describe('PUT /api/professors/:id', () => {
     const { professor } = res.body.data;
 
     assert.equal(professor.rank, updateBody.rank);
-    assert.equal(professor.bio, updateBody.bio);
+    assert.equal(professor.bio, createProfessorDefaults.bio);
     assert.equal(professor.employment_type, createProfessorDefaults.employment_type);
     assert.equal(professor.office_location, createProfessorDefaults.office_location);
     assert.equal(professor.office_hours, createProfessorDefaults.office_hours);
@@ -259,6 +272,7 @@ describe('PUT /api/professors/:id', () => {
 
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 200);
@@ -269,12 +283,13 @@ describe('PUT /api/professors/:id', () => {
     assert.equal(professor.employment_type, body.employment_type);
     assert.equal(professor.office_location, body.office_location);
     assert.equal(professor.office_hours, body.office_hours);
-    assert.equal(professor.bio, body.bio);
+    assert.equal(professor.bio, createProfessorDefaults.bio);
   });
 
   it('returns 404 PROFESSOR_NOT_FOUND when professor does not exist', async () => {
     const res = await request(app)
       .put('/api/professors/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody());
 
     assert.equal(res.status, 404);
@@ -284,6 +299,7 @@ describe('PUT /api/professors/:id', () => {
   it('returns 422 for invalid rank', async () => {
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ rank: 'Director' }));
 
     assert.equal(res.status, 422);
@@ -295,6 +311,7 @@ describe('PUT /api/professors/:id', () => {
   it('returns 422 for invalid employment_type', async () => {
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ employment_type: 'temporary' }));
 
     assert.equal(res.status, 422);
@@ -306,6 +323,7 @@ describe('PUT /api/professors/:id', () => {
   it('returns 422 when office_location exceeds max length', async () => {
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ office_location: 'A'.repeat(256) }));
 
     assert.equal(res.status, 422);
@@ -317,6 +335,7 @@ describe('PUT /api/professors/:id', () => {
   it('returns 200 and strips unknown keys', async () => {
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({
         title: 'Evil',
         specialization: 'Hacked',
@@ -338,6 +357,7 @@ describe('PUT /api/professors/:id', () => {
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);
@@ -351,6 +371,7 @@ describe('PUT /api/professors/:id', () => {
 
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody());
 
     assert.equal(res.status, 500);

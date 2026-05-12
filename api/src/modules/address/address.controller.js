@@ -1,6 +1,7 @@
 import { createAddressService, updateAddressService } from './address.service.js';
 import { created, ok } from '../../utils/response.js';
 
+
 const createAddressController = async (req, res) => {
   const payload = {
     user_id: req.body.user_id,
@@ -21,12 +22,12 @@ const createAddressController = async (req, res) => {
 
   return created(res, result, 'Address created successfully');
 };
-
 const updateAddressController = async (req, res) => {
-  const { id } = req.params;
+  const { rid, uid } = req.user;
 
   const payload = {
-    address_id: id,
+    user_id: uid,
+    role_id: rid,
     address_line1: req.body.address_line1,
     address_line2: req.body.address_line2,
     street: req.body.street,
@@ -43,5 +44,6 @@ const updateAddressController = async (req, res) => {
 
   return ok(res, result, 'Address updated successfully');
 };
+
 
 export { createAddressController, updateAddressController };

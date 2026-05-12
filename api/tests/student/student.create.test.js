@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const SEED_EMAIL = 'seed.student@seed.internal';
 const SEED_WALLET = '0xcccccccccccccccccccccccccccccccccccccccc';
@@ -11,6 +12,13 @@ const SEED_ACADEMY_NUMBER = 'ACD_STU_0001';
 let ACADEMY_ID;
 let DEPARTMENT_ID;
 let USER_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 let userColumnCache = null;
 
@@ -109,7 +117,6 @@ const seedUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'Student',
@@ -122,12 +129,16 @@ const seedUser = async () => {
     'student.001@studentcreate.test',
     '+905551234567',
     null,
-    null,
   ];
 
   if (columns.has('nationality')) {
     insertCols.push('nationality');
     insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
   }
 
   const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -183,6 +194,7 @@ const teardownSeed = async () => {
 before(async () => {
   ACADEMY_ID = await seedAcademy();
   DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
 });
 
 beforeEach(async () => {
@@ -220,6 +232,7 @@ describe('POST /api/students', () => {
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -250,6 +263,7 @@ describe('POST /api/students', () => {
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -269,6 +283,7 @@ describe('POST /api/students', () => {
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -278,6 +293,7 @@ describe('POST /api/students', () => {
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);
@@ -304,6 +320,7 @@ describe('POST /api/students', () => {
 
       const res = await request(app)
         .post(endpoint)
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
         .send(body);
 
       assert.equal(
@@ -319,6 +336,7 @@ describe('POST /api/students', () => {
   it('returns 422 when user_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({
         user_id: 'not-a-uuid',
         academy_id: ACADEMY_ID,
@@ -334,6 +352,7 @@ describe('POST /api/students', () => {
   it('returns 422 when academy_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({
         user_id: USER_ID,
         academy_id: 'not-a-uuid',
@@ -349,6 +368,7 @@ describe('POST /api/students', () => {
   it('returns 422 when department_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
@@ -364,6 +384,7 @@ describe('POST /api/students', () => {
   it('returns 422 when actual_graduation_date is invalid', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({
         user_id: USER_ID,
         academy_id: ACADEMY_ID,
@@ -382,6 +403,7 @@ describe('POST /api/students', () => {
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({
         user_id: USER_ID,
         academy_id: ACADEMY_ID,

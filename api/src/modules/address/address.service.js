@@ -141,14 +141,16 @@ const updateAddressInDB = async (payload) => {
   return { rows: [address] };
 };
 const isAddressExists = async (id) => {
-  const { rows } = await db.query('SELECT id FROM addresses WHERE id = $1', [id]);
+  const { rows: [row] } = await db.query('SELECT id FROM addresses WHERE academy_id = $1 OR user_id = $1', [id]);
   
-  if (rows.length === 0) {
+  if (!row) {
     const err = new Error('Address not found');
     err.statusCode = 404;
     err.code = 'ADDRESS_NOT_FOUND';
     throw err;
   }
+
+  return row.id;
 }
 
 
@@ -164,11 +166,12 @@ const createAddressService = async (payload) => {
   };
 };
 const updateAddressService = async (payload) => {
-  const { address_id } = payload;
+  const { role_id, user_id } = payload;
+  const id = user_id ?? role_id;
 
-  await isAddressExists(address_id);
+  const address_id = await isAddressExists(id);
 
-  const { rows: [address] } = await updateAddressInDB({ ...payload });
+  const { rows: [address] } = await updateAddressInDB({ ...payload, address_id });
 
   return {
     address: toAddressDto(address)

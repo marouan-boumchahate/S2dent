@@ -1,7 +1,8 @@
 import { issueProfessorIdentityService, revokeProfessorIdentityService } from './professor.identity.service.js'
 import { ok } from '../../../utils/response.js'
 
-export const issueIdentity = async (req, res) => {
+
+const issueIdentity = async (req, res) => {
     const { wallet_address, email } = req.body
 
     const result = await issueProfessorIdentityService({ 
@@ -11,14 +12,17 @@ export const issueIdentity = async (req, res) => {
 
     return ok(res, result, 'Professor identity issuance request submitted successfully')
 }
-
-export const revokeIdentity = async (req, res) => {
-    const { academy_address, professor_address } = req.body
+const revokeIdentity = async (req, res) => {
+    const { professor_address } = req.query
+    const { sub: academy_address } = req.user
 
     const result = await revokeProfessorIdentityService({ 
-        academy_address: academy_address.toLowerCase(),
-        professor_address: professor_address.toLowerCase()
+        academy_address,
+        professor_address
     })
 
     return ok(res, result, 'Professor identity revocation request submitted successfully')
 }
+
+
+export { issueIdentity, revokeIdentity }

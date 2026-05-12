@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/departments';
 
@@ -12,6 +13,13 @@ const SEED_ACADEMY_NUMBER = 'ACD_UPDATE_DEPT_0001';
 
 let ACADEMY_ID;
 let DEPARTMENT_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', rid: ACADEMY_ID, ...payload },
+  undefined,
+  true,
+).accessToken;
 
 const seedAcademy = async () => {
   const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
@@ -136,6 +144,7 @@ const teardownSeed = async () => {
 
 before(async () => {
   ACADEMY_ID = await seedAcademy();
+  ACADEMY_TOKEN = issueAccessToken();
 });
 
 beforeEach(async () => {
@@ -167,6 +176,7 @@ describe('PUT /api/departments/:id', () => {
 
     const res = await request(app)
       .put(`${endpoint}/${DEPARTMENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(payload);
 
     assert.equal(res.status, 200);
@@ -179,6 +189,7 @@ describe('PUT /api/departments/:id', () => {
   it('returns 404 DEPARTMENT_NOT_FOUND when department does not exist', async () => {
     const res = await request(app)
       .put(`${endpoint}/00000000-0000-0000-0000-000000000000`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ description: 'New description' });
 
     assert.equal(res.status, 404);
@@ -188,6 +199,7 @@ describe('PUT /api/departments/:id', () => {
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
       .put(`${endpoint}/${DEPARTMENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);

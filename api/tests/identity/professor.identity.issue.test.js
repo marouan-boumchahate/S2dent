@@ -111,7 +111,6 @@ const seedProfessorUser = async ({
         'email',
         'phone',
         'photo_url',
-        'notes',
     ];
     const insertVals = [
         first_name,
@@ -124,7 +123,6 @@ const seedProfessorUser = async ({
         email,
         null,
         null,
-        null,
     ];
 
     if (columns.has('nationality')) {
@@ -135,6 +133,11 @@ const seedProfessorUser = async ({
     if (columns.has('is_active')) {
         insertCols.push('is_active');
         insertVals.push(true);
+    }
+
+    if (columns.has('notes')) {
+        insertCols.push('notes');
+        insertVals.push(null);
     }
 
     const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
