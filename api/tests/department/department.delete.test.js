@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/departments';
 
@@ -12,6 +13,13 @@ const SEED_ACADEMY_NUMBER = 'ACD_DELETE_DEPT_0001';
 
 let ACADEMY_ID;
 let DEPARTMENT_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', rid: ACADEMY_ID, ...payload },
+  undefined,
+  true,
+).accessToken;
 
 const seedAcademy = async () => {
   const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
@@ -136,6 +144,7 @@ const teardownSeed = async () => {
 
 before(async () => {
   ACADEMY_ID = await seedAcademy();
+  ACADEMY_TOKEN = issueAccessToken();
 });
 
 beforeEach(async () => {
@@ -162,7 +171,8 @@ after(async () => {
 describe('DELETE /api/departments/:id', () => {
   it('returns 200 and deactivates the department', async () => {
     const res = await request(app)
-      .delete(`${endpoint}/${DEPARTMENT_ID}`);
+      .delete(`${endpoint}/${DEPARTMENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
@@ -180,7 +190,8 @@ describe('DELETE /api/departments/:id', () => {
 
   it('returns 404 DEPARTMENT_NOT_FOUND when department does not exist', async () => {
     const res = await request(app)
-      .delete(`${endpoint}/00000000-0000-0000-0000-000000000000`);
+      .delete(`${endpoint}/00000000-0000-0000-0000-000000000000`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`);
 
     assert.equal(res.status, 404);
     assert.equal(res.body.code, 'DEPARTMENT_NOT_FOUND');

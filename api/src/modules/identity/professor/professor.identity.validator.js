@@ -11,10 +11,6 @@ export const issueIdentitySchema = Joi.object({
 })
 
 export const revokeIdentitySchema = Joi.object({
-    academy_address: Joi.string().pattern(ETH_ADDRESS).required()
-        .messages({
-            'string.pattern.base': 'academy_address must be a valid Ethereum address (0x…)',
-        }),
     professor_address: Joi.string().pattern(ETH_ADDRESS).required()
         .messages({
             'string.pattern.base': 'professor_address must be a valid Ethereum address (0x…)',

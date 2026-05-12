@@ -49,6 +49,10 @@ const DEFAULT_BLOCKCHAIN = {
     },
 };
 
+const makeUuid = () => (crypto.randomUUID
+    ? crypto.randomUUID()
+    : crypto.randomBytes(16).toString('hex'));
+
 // supertest sends from localhost; trust proxy lets us pin req.ip via X-Forwarded-For.
 const TEST_IP = '127.0.0.1';
 const TEST_UA = 'test-agent/1.0';
@@ -89,7 +93,15 @@ const issueRefreshToken = (address, role = 'professor') => {
         ? { accessExpiresIn: '15m', refreshExpiresIn: '3h' }
         : { accessExpiresIn: '1h',  refreshExpiresIn: '1d' };
 
-    return signTokens({ address, role }, options).refreshToken;
+    return signTokens({ sub: address, role }, options).refreshToken;
+};
+
+const issueRefreshTokenWithClaims = (address, role, claims = {}) => {
+    const options = (role === 'student')
+        ? { accessExpiresIn: '15m', refreshExpiresIn: '3h' }
+        : { accessExpiresIn: '1h',  refreshExpiresIn: '1d' };
+
+    return signTokens({ sub: address, role, ...claims }, options).refreshToken;
 };
 
 const refreshReq = (app, refreshToken) =>
@@ -124,8 +136,38 @@ describe('POST /api/auth/refresh', function () {
             'response must echo the same refreshToken back');
 
         const accessPayload = verifyAccessToken(res.body.data.accessToken);
-        assert.equal(accessPayload.address, address);
+        assert.equal(accessPayload.sub, address);
         assert.equal(accessPayload.role,    'professor');
+    });
+
+    it('propagates uid and rid claims from the refresh token', async () => {
+        const uid = makeUuid();
+        const rid = makeUuid();
+        const refreshToken = issueRefreshTokenWithClaims(address, 'student', { uid, rid });
+        const { app } = await makeApp();
+
+        const res = await refreshReq(app, refreshToken);
+
+        assert.equal(res.status, 201);
+
+        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        assert.equal(accessPayload.uid, uid);
+        assert.equal(accessPayload.rid, rid);
+        assert.equal(accessPayload.role, 'student');
+    });
+
+    it('sets uid and rid to null when the refresh token belongs to an academy', async () => {
+        const refreshToken = issueRefreshTokenWithClaims(address, 'academy', { uid: null, rid: null });
+        const { app } = await makeApp();
+
+        const res = await refreshReq(app, refreshToken);
+
+        assert.equal(res.status, 201);
+
+        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        assert.equal(accessPayload.uid, null);
+        assert.equal(accessPayload.rid, null);
+        assert.equal(accessPayload.role, 'academy');
     });
 
     it('returns 201 for a valid student refreshToken and routes to getStudentIdentity', async () => {

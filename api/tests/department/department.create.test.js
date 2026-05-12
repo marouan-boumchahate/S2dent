@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/departments';
 
@@ -11,6 +12,13 @@ const SEED_WALLET = '0xdddddddddddddddddddddddddddddddddddddddd';
 const SEED_ACADEMY_NUMBER = 'ACD_DEPT_0001';
 
 let ACADEMY_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', rid: ACADEMY_ID, ...payload },
+  undefined,
+  true,
+).accessToken;
 
 const seedAcademy = async () => {
   const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
@@ -146,6 +154,7 @@ const validBody = (overrides = {}) => ({
 
 before(async () => {
   ACADEMY_ID = await seedAcademy();
+  ACADEMY_TOKEN = issueAccessToken();
 });
 
 beforeEach(async () => {
@@ -168,6 +177,7 @@ describe('POST /api/departments', () => {
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -188,6 +198,7 @@ describe('POST /api/departments', () => {
   it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ academy_id: '00000000-0000-0000-0000-000000000000' }));
 
     assert.equal(res.status, 404);
@@ -197,10 +208,12 @@ describe('POST /api/departments', () => {
   it('returns 409 DEPARTMENT_CODE_DUPLICATE when code already exists for academy', async () => {
     await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ code: 'DUP', name: 'Dept Test One' }));
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ code: 'DUP', name: 'Dept Test Two' }));
 
     assert.equal(res.status, 409);
@@ -210,10 +223,12 @@ describe('POST /api/departments', () => {
   it('returns 409 DEPARTMENT_NAME_DUPLICATE when name already exists for academy', async () => {
     await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ code: 'DUP1', name: 'Dept Test Same Name' }));
 
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(validBody({ code: 'DUP2', name: 'Dept Test Same Name' }));
 
     assert.equal(res.status, 409);
@@ -223,6 +238,7 @@ describe('POST /api/departments', () => {
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
       .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);

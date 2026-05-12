@@ -23,8 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20),
 
-    photo_url VARCHAR(500),
-    notes TEXT
+    photo_url VARCHAR(500)
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_full_name ON users(full_name);

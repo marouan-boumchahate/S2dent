@@ -4,6 +4,7 @@ import {
     revokeProfessorIdentity
 } from '../../../blockchain/identity/professor.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
+import { ethers } from 'ethers'
 
 
 // Helpers

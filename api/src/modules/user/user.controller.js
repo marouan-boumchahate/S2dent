@@ -12,8 +12,7 @@ const createUserController = async (req, res) => {
     national_id,
     email,
     phone,
-    photo_url,
-    notes,
+    photo_url
   } = req.body;
 
   const result = await createUserService({
@@ -26,20 +25,18 @@ const createUserController = async (req, res) => {
     national_id,
     email,
     phone,
-    photo_url,
-    notes,
+    photo_url
   });
 
   return created(res, result, 'User registered successfully');
 };
 const updateUserController = async (req, res) => {
-  const { id } = req.params;
+  const { uid } = req.user;
 
   const payload = {
-    user_id: id,
+    user_id: uid,
     phone: req.body.phone,
-    photo_url: req.body.photo_url,
-    notes: req.body.notes,
+    photo_url: req.body.photo_url
   };
 
   const result = await updateUserService({ ...payload });

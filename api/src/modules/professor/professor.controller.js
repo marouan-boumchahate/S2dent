@@ -20,21 +20,30 @@ const createProfessorController = async (req, res) => {
 
     return created(res, result, 'Professor registered successfully');
 };
-
 const updateProfessorController = async (req, res) => {
+    const { rid } = req.user;
+    const { bio } = req.body;
+
+    const result = await updateProfessorService({
+        professor_id: rid,
+        bio
+    });
+    
+    return ok(res, result, 'Professor updated successfully');
+};
+const updateProfessorByAdminController = async (req, res) => {
     const { id } = req.params;
-    const { rank, employment_type, office_location, office_hours, bio } = req.body;
+    const { rank, employment_type, office_location, office_hours } = req.body;
 
     const result = await updateProfessorService({
         professor_id: id,
         rank,
         employment_type,
         office_location,
-        office_hours,
-        bio
+        office_hours
     });
     
     return ok(res, result, 'Professor updated successfully');
 };
 
-export { createProfessorController, updateProfessorController };
+export { createProfessorController, updateProfessorController, updateProfessorByAdminController };

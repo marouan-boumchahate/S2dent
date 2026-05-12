@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const SEED_EMAIL = 'seed.student.update@seed.internal';
 const SEED_WALLET = '0xf1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1';
@@ -12,6 +13,13 @@ let ACADEMY_ID;
 let DEPARTMENT_ID;
 let USER_ID;
 let STUDENT_ID;
+let ACADEMY_TOKEN;
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: SEED_WALLET.toLowerCase(), role: 'academy', ...payload },
+  undefined,
+  true,
+).accessToken;
 
 let userColumnCache = null;
 
@@ -130,7 +138,6 @@ const seedUser = async () => {
     'email',
     'phone',
     'photo_url',
-    'notes',
   ];
   const insertVals = [
     'Student',
@@ -143,12 +150,16 @@ const seedUser = async () => {
     'student.update.001@studentcases.test',
     '+905551234567',
     null,
-    null,
   ];
 
   if (columns.has('nationality')) {
     insertCols.push('nationality');
     insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
   }
 
   const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -261,6 +272,7 @@ const teardownSeed = async () => {
 before(async () => {
   ACADEMY_ID = await seedAcademy();
   DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
 });
 
 beforeEach(async () => {
@@ -288,6 +300,7 @@ describe('PUT /api/students/:id', () => {
 
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send(body);
 
     // The controller oddly returns 'created' (201) for update
@@ -303,6 +316,7 @@ describe('PUT /api/students/:id', () => {
   it('returns 422 when cgpa is out of range (too high)', async () => {
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 5.01 });
 
     assert.equal(res.status, 422);
@@ -312,6 +326,7 @@ describe('PUT /api/students/:id', () => {
   it('returns 422 when cgpa is out of range (too low)', async () => {
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: -0.01 });
 
     assert.equal(res.status, 422);
@@ -321,6 +336,7 @@ describe('PUT /api/students/:id', () => {
   it('returns 403 STUDENT_NOT_FOUND when student does not exist', async () => {
     const res = await request(app)
       .put(`${endpoint}/00000000-0000-0000-0000-000000000000`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 3.5 });
 
     assert.equal(res.status, 403);
@@ -332,6 +348,7 @@ describe('PUT /api/students/:id', () => {
 
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 3.5 });
 
     assert.equal(res.status, 403);
@@ -347,6 +364,7 @@ describe('PUT /api/students/:id', () => {
 
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 3.5 });
 
     assert.equal(res.status, 500);

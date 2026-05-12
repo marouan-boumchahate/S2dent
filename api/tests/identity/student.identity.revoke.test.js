@@ -3,6 +3,7 @@ import request from 'supertest';
 import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
 const STUDENT_WALLET = ethers.getAddress('0x8fa1b2c3d4e5f67890123456789abcdefabcdef0');
@@ -110,7 +111,6 @@ const seedStudentUser = async ({
         'email',
         'phone',
         'photo_url',
-        'notes',
     ];
     const insertVals = [
         first_name,
@@ -123,7 +123,6 @@ const seedStudentUser = async ({
         email,
         null,
         null,
-        null,
     ];
 
     if (columns.has('nationality')) {
@@ -134,6 +133,11 @@ const seedStudentUser = async ({
     if (columns.has('is_active')) {
         insertCols.push('is_active');
         insertVals.push(true);
+    }
+
+    if (columns.has('notes')) {
+        insertCols.push('notes');
+        insertVals.push(null);
     }
 
     const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -258,6 +262,12 @@ const DEFAULT_BLOCKCHAIN_IMPL = {
     getStudentIdentity: async () => null,
 };
 
+const issueAccessToken = (payload = {}) => signTokens(
+    { sub: ACADEMY_WALLET, role: 'academy', ...payload },
+    undefined,
+    true,
+).accessToken;
+
 const makeApp = async (
     blockchainImpl = {},
     listenerImpl = { listenOnTransaction: () => {} },
@@ -294,10 +304,13 @@ describe('POST /api/identity/students/revoke', function () {
         await seedStudentIdentity({ user_id: user.id });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const academyToken = issueAccessToken();
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
@@ -325,15 +338,18 @@ describe('POST /api/identity/students/revoke', function () {
                 return FAKE_TX;
             },
         });
+        const academyToken = issueAccessToken({ sub: ACADEMY_WALLET_UPPER });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET_UPPER, student_address: STUDENT_WALLET_UPPER });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET_UPPER })
+            .send({ student_address: STUDENT_WALLET_UPPER });
 
         assert.equal(res.status, 200);
         assert.equal(calls.length, 1);
         assert.equal(calls[0].studentWallet, STUDENT_WALLET);
-        assert.equal(calls[0].academyWallet, ACADEMY_WALLET_LOWER);
+        assert.equal(calls[0].academyWallet, ACADEMY_WALLET);
     });
 
     it('inserts a pending_transaction row after successful submission', async () => {
@@ -345,10 +361,13 @@ describe('POST /api/identity/students/revoke', function () {
         await seedStudentIdentity({ user_id: user.id });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const academyToken = issueAccessToken();
 
         await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -377,10 +396,13 @@ describe('POST /api/identity/students/revoke', function () {
             { revokeStudentIdentity: async () => FAKE_TX },
             { listenOnTransaction: (tx) => listenerCalls.push(tx) },
         );
+        const academyToken = issueAccessToken();
 
         await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         assert.equal(listenerCalls.length, 1);
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
@@ -394,10 +416,13 @@ describe('POST /api/identity/students/revoke', function () {
         });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const academyToken = issueAccessToken();
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
@@ -419,10 +444,13 @@ describe('POST /api/identity/students/revoke', function () {
                 throw err;
             },
         });
+        const academyToken = issueAccessToken();
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
@@ -444,10 +472,13 @@ describe('POST /api/identity/students/revoke', function () {
                 throw err;
             },
         });
+        const academyToken = issueAccessToken();
 
         await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -456,25 +487,24 @@ describe('POST /api/identity/students/revoke', function () {
         assert.equal(rows.length, 0);
     });
 
-    it('returns 422 VALIDATION_ERROR when academy_address is missing', async () => {
+    it('returns 401 when token is missing', async () => {
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
             .send({ student_address: STUDENT_WALLET });
 
-        assert.equal(res.status, 422);
-        assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find((e) => e.field === 'academy_address');
-        assert.ok(field, 'errors should contain an academy_address entry');
+        assert.equal(res.status, 401);
     });
 
     it('returns 422 VALIDATION_ERROR when student_address is missing', async () => {
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const academyToken = issueAccessToken();
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .send({});
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -482,24 +512,28 @@ describe('POST /api/identity/students/revoke', function () {
         assert.ok(field, 'errors should contain a student_address entry');
     });
 
-    it('returns 422 VALIDATION_ERROR for an invalid academy_address format', async () => {
+    it('returns 403 when role is not academy', async () => {
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const studentToken = issueAccessToken({ role: 'student' });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: 'not-a-wallet', student_address: STUDENT_WALLET });
+            .set('Authorization', `Bearer ${studentToken}`)
+            .query({ student_address: STUDENT_WALLET })
+            .send({ student_address: STUDENT_WALLET });
 
-        assert.equal(res.status, 422);
-        const field = res.body.errors.find((e) => e.field === 'academy_address');
-        assert.ok(field, 'errors should contain an academy_address entry');
+        assert.equal(res.status, 403);
+        assert.equal(res.body.code, 'FORBIDDEN');
     });
 
     it('returns 422 VALIDATION_ERROR for an invalid student_address format', async () => {
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
+        const academyToken = issueAccessToken();
 
         const res = await request(app)
             .post(endpoint)
-            .send({ academy_address: ACADEMY_WALLET, student_address: 'not-a-wallet' });
+            .set('Authorization', `Bearer ${academyToken}`)
+            .send({ student_address: 'not-a-wallet' });
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find((e) => e.field === 'student_address');

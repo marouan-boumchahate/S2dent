@@ -71,7 +71,6 @@ const seedUser = async ({
         'email',
         'phone',
         'photo_url',
-        'notes',
     ];
     const insertVals = [
         first_name,
@@ -82,7 +81,6 @@ const seedUser = async ({
         gender,
         national_id,
         email,
-        null,
         null,
         null,
     ];
@@ -103,6 +101,11 @@ const seedUser = async ({
     if (columns.has('is_identity_issued')) {
         insertCols.push('is_identity_issued');
         insertVals.push(is_identity_issued);
+    }
+
+    if (columns.has('notes')) {
+        insertCols.push('notes');
+        insertVals.push(null);
     }
 
     const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');

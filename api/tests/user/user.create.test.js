@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/users';
 
@@ -42,9 +43,21 @@ const validBody = (overrides = {}) => ({
   email: 'user.001@usercases.edu',
   phone: '+905551234567',
   photo_url: 'https://example.com/photo.png',
-  notes: 'Seed user',
   ...overrides,
 });
+
+const issueAccessToken = (payload = {}) => signTokens(
+  { sub: '0x0000000000000000000000000000000000000001', ...payload },
+  undefined,
+  true,
+).accessToken;
+
+const academyToken = issueAccessToken({ role: 'academy' });
+
+const postUser = (body) => request(app)
+  .post(endpoint)
+  .set('Authorization', `Bearer ${academyToken}`)
+  .send(body);
 
 beforeEach(async () => {
   await cleanupUsers();
@@ -58,9 +71,7 @@ describe('POST /api/users', () => {
   it('returns 201 and the user DTO on valid input', async () => {
     const body = validBody();
 
-    const res = await request(app)
-      .post(endpoint)
-      .send(body);
+    const res = await postUser(body);
 
     assert.equal(res.status, 201);
     assert.equal(res.body.success, true);
@@ -79,12 +90,9 @@ describe('POST /api/users', () => {
       middle_name: undefined,
       phone: undefined,
       photo_url: undefined,
-      notes: undefined,
     });
 
-    const res = await request(app)
-      .post(endpoint)
-      .send(body);
+    const res = await postUser(body);
 
     assert.equal(res.status, 201);
 
@@ -94,35 +102,25 @@ describe('POST /api/users', () => {
   });
 
   it('returns 409 EMAIL_DUPLICATE when email already exists', async () => {
-    await request(app)
-      .post(endpoint)
-      .send(validBody());
+    await postUser(validBody());
 
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({ national_id: 'USER-TEST-002' }));
+    const res = await postUser(validBody({ national_id: 'USER-TEST-002' }));
 
     assert.equal(res.status, 409);
     assert.equal(res.body.code, 'USER_NOT_UNIQUE');
   });
 
   it('returns 409 USER_NATIONAL_ID_DUPLICATE when national_id already exists', async () => {
-    await request(app)
-      .post(endpoint)
-      .send(validBody());
+    await postUser(validBody());
 
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({ email: 'user.002@usercases.edu' }));
+    const res = await postUser(validBody({ email: 'user.002@usercases.edu' }));
 
     assert.equal(res.status, 409);
     assert.equal(res.body.code, 'USER_NOT_UNIQUE');
   });
 
   it('returns 422 when body is empty', async () => {
-    const res = await request(app)
-      .post(endpoint)
-      .send({});
+    const res = await postUser({});
 
     assert.equal(res.status, 422);
     assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -131,9 +129,7 @@ describe('POST /api/users', () => {
   });
 
   it('returns 422 for an invalid phone format', async () => {
-    const res = await request(app)
-      .post(endpoint)
-      .send(validBody({ phone: '05551234567' }));
+    const res = await postUser(validBody({ phone: '05551234567' }));
 
     assert.equal(res.status, 422);
 
