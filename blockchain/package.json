@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "deploy:local": "npx hardhat ignition deploy ignition/modules/StudentIdentity.ts --network localhost",
+    "deploy:local": "npx hardhat ignition deploy ignition/modules/Credential.ts --network localhost",
     "check:student": "npx hardhat run scripts/checkStudent.ts --network localhost",
     "check:professor": "npx hardhat run scripts/checkProfessor.ts --network localhost",
     "check:academy": "npx hardhat run scripts/checkAcademy.ts --network localhost",
-    "copy:abis": "cp artifacts/contracts/StudentIdentity.sol/StudentIdentity.json ../api/src/blockchain/contracts/S2dent.json"
+    "copy:abis": "cp artifacts/contracts/Credential.sol/Credential.json ../api/src/blockchain/contracts/S2dent.json"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.6",
