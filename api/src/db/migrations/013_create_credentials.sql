@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS credentials (
     issuer_wallet VARCHAR(42) NOT NULL,
 
     student_wallet  VARCHAR(42) NOT NULL,
+    credential_index INTEGER,
 
     issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     status credential_status NOT NULL DEFAULT 'pending',
