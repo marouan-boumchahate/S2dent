@@ -70,6 +70,7 @@ contract AcademyIdentity is S2dent {
         uint64 revokedAt;
         address issuer;
         address revoker;
+        string revocationReason;
     }
 
     struct Academy {
@@ -89,27 +90,27 @@ contract AcademyIdentity is S2dent {
 
     // Events
     event AcademyIssued(
-        address indexed wallet,
+        bytes indexed academyPublicKey,
         address indexed issuer,
         bytes32 academyIdHash,
         uint64 issuedAt
     );
     event AcademyRevoked(
-        address indexed wallet,
+        bytes indexed academyPublicKey,
         address indexed revoker,
         uint64 revokedAt
     );
 
     // Mappers
-    mapping(address => Academy) public academies;
+    mapping(bytes => Academy) public academies;
 
     // Uniqueness indexes (no loops)
-    mapping(bytes32 => address) private academyByIdHash;
-    mapping(bytes32 => address) private academyByNameShortHash;
-    mapping(bytes32 => address) private academyByLegalBundleHash;
+    mapping(bytes32 => bytes) private academyByIdHash;
+    mapping(bytes32 => bytes) private academyByNameShortHash;
+    mapping(bytes32 => bytes) private academyByLegalBundleHash;
 
     // Modifiers
-    modifier onlyAcademy(address _caller) {
+    modifier onlyAcademy(bytes calldata _caller) {
         AcademyStatusData memory s = academies[_caller].status;
         require(
             s.issuer != address(0) && s.isNotRevoked, 
@@ -149,8 +150,8 @@ contract AcademyIdentity is S2dent {
         _validateStringIsNotEmpty(p.billingEmail, "Invalid proofs: billingEmail is required.");
     }
 
-    function _validateAcademyIssue(address _walletAddress, AcademyIssueArgs calldata a) internal pure {
-        _validateWalletAddressSet(_walletAddress);
+    function _validateAcademyIssue(bytes calldata _publicKey, AcademyIssueArgs calldata a) internal pure {
+        _validatePublicKeySet(_publicKey);
 
         _validateAcademyInfos(a.infos);
         _validateAcademyProofs(a.proofs);
@@ -164,11 +165,11 @@ contract AcademyIdentity is S2dent {
 
     // External Functions
     function issueAcademyIdentity(
-        address _walletAddress,
+        bytes calldata _publicKey,
         AcademyIssueArgs calldata args
     ) public onlyOwner {
-        _validateAcademyIssue(_walletAddress, args);
-        if (academies[_walletAddress].status.issuer != address(0)) {
+        _validateAcademyIssue(_publicKey, args);
+        if (academies[_publicKey].status.issuer != address(0)) {
             revert AcademyIdentityAlreadyIssued();
         }
 
@@ -184,11 +185,11 @@ contract AcademyIdentity is S2dent {
             )
         );
 
-        if (academyByIdHash[academyIdHash] != address(0)) revert AcademyIdAlreadyUsed();
-        if (academyByNameShortHash[nameShortHash] != address(0)) revert AcademyNameShortNameAlreadyUsed();
-        if (academyByLegalBundleHash[legalBundleHash] != address(0)) revert AcademyLegalBundleAlreadyUsed();
+        if (academyByIdHash[academyIdHash].length != 0) revert AcademyIdAlreadyUsed();
+        if (academyByNameShortHash[nameShortHash].length != 0) revert AcademyNameShortNameAlreadyUsed();
+        if (academyByLegalBundleHash[legalBundleHash].length != 0) revert AcademyLegalBundleAlreadyUsed();
 
-        academies[_walletAddress] = Academy({
+        academies[_publicKey] = Academy({
             identity: AcademyIdentityData({
                 academyIdHash: academyIdHash,
                 name: args.infos.name,
@@ -213,31 +214,34 @@ contract AcademyIdentity is S2dent {
                 issuedAt: uint64(block.timestamp),
                 revokedAt: 0,
                 issuer: msg.sender,
-                revoker: address(0)
+                revoker: address(0),
+                revocationReason: ""
             })
         });
 
         // set indexes for checks
-        academyByIdHash[academyIdHash] = _walletAddress;
-        academyByNameShortHash[nameShortHash] = _walletAddress;
-        academyByLegalBundleHash[legalBundleHash] = _walletAddress;
+        academyByIdHash[academyIdHash] = _publicKey;
+        academyByNameShortHash[nameShortHash] = _publicKey;
+        academyByLegalBundleHash[legalBundleHash] = _publicKey;
 
-        emit AcademyIssued(_walletAddress, msg.sender, academyIdHash, uint64(block.timestamp));
+        emit AcademyIssued(_publicKey, msg.sender, academyIdHash, uint64(block.timestamp));
     }
 
     function revokeAcademyIdentity(
-        address _walletAddress
+        bytes calldata _publicKey,
+        string calldata _reason
     ) public onlyOwner {
-        _validateWalletAddressSet(_walletAddress);
+        _validatePublicKeySet(_publicKey);
 
-        AcademyStatusData storage s = academies[_walletAddress].status;
+        AcademyStatusData storage s = academies[_publicKey].status;
         if (s.issuer == address(0)) revert AcademyIdentityNotIssued();
         if (!s.isNotRevoked) revert AcademyIdentityAlreadyRevoked();
 
         s.isNotRevoked = false;
         s.revokedAt = uint64(block.timestamp);
         s.revoker = msg.sender;
+        s.revocationReason = _reason;
 
-        emit AcademyRevoked(_walletAddress, msg.sender, s.revokedAt);
+        emit AcademyRevoked(_publicKey, msg.sender, s.revokedAt);
     }
 }

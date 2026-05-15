@@ -22,6 +22,14 @@ describe("StudentIdentity", () => {
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
+    // Public keys (64 bytes hex strings) for entity identification
+    const ACADEMY_PK = "0x" + "a1".repeat(64);
+    const SECOND_ACADEMY_PK = "0x" + "a2".repeat(64);
+    const FAKE_ACADEMY_PK = "0x" + "ff".repeat(64);
+    const STUDENT_PK = "0x" + "c1".repeat(64);
+    const SECOND_STUDENT_PK = "0x" + "c2".repeat(64);
+    const EMPTY_PK = "0x";
+
 
     async function deployFixture() {
         const { ethers } = await hre.network.connect();
@@ -37,7 +45,7 @@ describe("StudentIdentity", () => {
         const instance = await StudentIdentity.deploy();
         await instance.waitForDeployment();
 
-        await instance.issueAcademyIdentity(academy.address, {
+        await instance.issueAcademyIdentity(ACADEMY_PK, {
             infos: {
                 academyId: ACADEMY_ID,
                 name: ACADEMY_NAME,
@@ -76,8 +84,8 @@ describe("StudentIdentity", () => {
         const { instance, owner, academy, student } = base;
 
         await instance.connect(owner).issueStudentIdentity(
-            student.address,
-            academy.address,
+            STUDENT_PK,
+            ACADEMY_PK,
             {
                 studentId: STUDENT_ID,
                 fullName: STUDENT_NAME,
@@ -101,8 +109,8 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                student.address,
-                academy.address,
+                STUDENT_PK,
+                ACADEMY_PK,
                 {
                     studentId: STUDENT_ID,
                     fullName: STUDENT_NAME,
@@ -114,7 +122,7 @@ describe("StudentIdentity", () => {
                 }
             );
 
-            const record = await instance.students(student.address);
+            const record = await instance.students(STUDENT_PK);
 
             expect(record.identity.fullName).to.equal(STUDENT_NAME);
             expect(record.identity.nationality).to.equal(STUDENT_NATIONALITY);
@@ -124,9 +132,10 @@ describe("StudentIdentity", () => {
 
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.revokedAt).to.equal(0);
-            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(ACADEMY_PK);
             expect(record.status.issuedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(ethers.ZeroAddress);
+            expect(record.status.revoker).to.equal("0x");
+            expect(record.status.revocationReason).to.equal("");
         });
 
         it("Should store studentIdHash as keccak256 of the provided student ID", async () => {
@@ -135,8 +144,8 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                student.address,
-                academy.address,
+                STUDENT_PK,
+                ACADEMY_PK,
                 {
                     studentId: STUDENT_ID,
                     fullName: STUDENT_NAME,
@@ -148,7 +157,7 @@ describe("StudentIdentity", () => {
                 }
             );
 
-            const record = await instance.students(student.address);
+            const record = await instance.students(STUDENT_PK);
             const expectedHash = ethers.keccak256(ethers.toUtf8Bytes(STUDENT_ID));
 
             expect(record.identity.studentIdHash).to.equal(expectedHash);
@@ -160,8 +169,8 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                student.address,
-                academy.address,
+                STUDENT_PK,
+                ACADEMY_PK,
                 {
                     studentId: STUDENT_ID,
                     fullName: STUDENT_NAME,
@@ -173,7 +182,7 @@ describe("StudentIdentity", () => {
                 }
             );
 
-            const record = await instance.students(student.address);
+            const record = await instance.students(STUDENT_PK);
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
         });
 
@@ -184,8 +193,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(academy).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -208,8 +217,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    fakeAcademy.address,
+                    STUDENT_PK,
+                    FAKE_ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -233,8 +242,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: "Renamed Student",
@@ -255,8 +264,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    secondStudent.address,
-                    academy.address,
+                    SECOND_STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: "Second Student",
@@ -277,8 +286,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    secondStudent.address,
-                    academy.address,
+                    SECOND_STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: "STD-2067613",
                         fullName: "Second Student",
@@ -295,15 +304,15 @@ describe("StudentIdentity", () => {
 
     describe("Input validation", () => {
 
-        it("Should revert on zero student wallet address", async () => {
+        it("Should revert on zero student public key", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    ethers.ZeroAddress,
-                    academy.address,
+                    EMPTY_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -314,7 +323,7 @@ describe("StudentIdentity", () => {
                         enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
-            ).to.be.revertedWithCustomError(instance, "InvalidAddress").withArgs("Address must not be zero.");
+            ).to.be.revertedWithCustomError(instance, "InvalidPublicKey").withArgs("Public key must be 64 bytes.");
         });
 
         it("Should revert on empty student ID", async () => {
@@ -324,8 +333,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: "",
                         fullName: STUDENT_NAME,
@@ -346,8 +355,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: "AB",
                         fullName: STUDENT_NAME,
@@ -368,8 +377,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: "STU_ID_THAT_IS_TOO_LONG_456",
                         fullName: STUDENT_NAME,
@@ -390,8 +399,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: "",
@@ -414,8 +423,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: tooLongName,
@@ -436,8 +445,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -458,8 +467,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -482,8 +491,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -504,8 +513,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -528,8 +537,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -550,8 +559,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -574,8 +583,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -598,8 +607,8 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    student.address,
-                    academy.address,
+                    STUDENT_PK,
+                    ACADEMY_PK,
                     {
                         studentId: STUDENT_ID,
                         fullName: STUDENT_NAME,
@@ -616,8 +625,8 @@ describe("StudentIdentity", () => {
     });
 
     describe("revokeStudentIdentity", () => {
-        async function issueSecondAcademy(instance: any, owner: any, wallet: string, now: number) {
-            await instance.connect(owner).issueAcademyIdentity(wallet, {
+        async function issueSecondAcademy(instance: any, owner: any, publicKey: string, now: number) {
+            await instance.connect(owner).issueAcademyIdentity(publicKey, {
                 infos: {
                     academyId: "ACADEMY002",
                     name: "Second University",
@@ -645,14 +654,15 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeStudentIdentity(student.address, academy.address);
+            await instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason");
 
-            const record = await instance.students(student.address);
+            const record = await instance.students(STUDENT_PK);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(academy.address);
-            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.revoker).to.equal(ACADEMY_PK);
+            expect(record.status.issuer).to.equal(ACADEMY_PK);
             expect(record.status.issuedAt).to.be.gt(0);
+            expect(record.status.revocationReason).to.equal("Reason");
         });
 
         it("Should revert when called by a non-owner account", async () => {
@@ -661,30 +671,29 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(academy).revokeStudentIdentity(student.address, academy.address)
+                instance.connect(academy).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
 
-        it("Should revert when _revokerAddress is not a registered academy", async () => {
+        it("Should revert when _revokerPublicKey is not a registered academy", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, owner, fakeAcademy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(student.address, fakeAcademy.address)
+                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, FAKE_ACADEMY_PK, "Reason")
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("Should revert when _revokerAddress is a different registered academy", async () => {
-            const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, student, now } =
+        it("Should revert when _revokerPublicKey is a different registered academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, now } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            const [, , , , , secondAcademy] = await ethers.getSigners();
-            await issueSecondAcademy(instance, owner, secondAcademy.address, now);
+            await issueSecondAcademy(instance, owner, SECOND_ACADEMY_PK, now);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(student.address, secondAcademy.address)
+                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, SECOND_ACADEMY_PK, "Reason")
             ).to.be.revertedWith("Invalid revoker: must be the issuing academy.");
         });
 
@@ -693,23 +702,23 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(academy.address);
+            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(student.address, academy.address)
+                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("Should revert on zero student wallet address", async () => {
+        it("Should revert on zero student public key", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(ethers.ZeroAddress, academy.address)
+                instance.connect(owner).revokeStudentIdentity(EMPTY_PK, ACADEMY_PK, "Reason")
             )
-                .to.be.revertedWithCustomError(instance, "InvalidAddress")
-                .withArgs("Address must not be zero.");
+                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
+                .withArgs("Public key must be 64 bytes.");
         });
 
         it("Should revert when the student was never issued", async () => {
@@ -718,7 +727,7 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(student.address, academy.address)
+                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
             ).to.be.revertedWithCustomError(instance, "StudentIdentityNotIssued");
         });
 
@@ -727,10 +736,10 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeStudentIdentity(student.address, academy.address);
+            await instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason");
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(student.address, academy.address)
+                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
             ).to.be.revertedWithCustomError(instance, "StudentIdentityAlreadyRevoked");
         });
     });

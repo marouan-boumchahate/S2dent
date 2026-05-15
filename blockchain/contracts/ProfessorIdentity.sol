@@ -47,8 +47,9 @@ contract ProfessorIdentity is AcademyIdentity {
         bool isNotRevoked;
         uint64 issuedAt;
         uint64 revokedAt;
-        address issuer;
-        address revoker;
+        bytes issuer;
+        bytes revoker;
+        string revocationReason;
     }
     struct Professor {
         ProfessorIdentityData identity;
@@ -64,23 +65,23 @@ contract ProfessorIdentity is AcademyIdentity {
 
     // Events
     event ProfessorIssued(
-        address indexed wallet,
-        address indexed academy,
+        bytes indexed professorPublicKey,
+        bytes indexed issuerPublicKey,
         bytes32 employeeIdHash,
         uint64 issuedAt
     );
     event ProfessorRevoked(
-        address indexed wallet,
-        address indexed revoker,
+        bytes indexed professorPublicKey,
+        bytes indexed revokerPublicKey,
         uint64 revokedAt
     );
 
     // Mappers
-    mapping(address => Professor) public professors;
+    mapping(bytes => Professor) public professors;
 
     // Uniqueness indexes
-    mapping(bytes32 => address) private professorByEmployeeInAcademyHash;
-    mapping(bytes32 => address) private professorByNationalIdHash;
+    mapping(bytes32 => bytes) private professorByEmployeeInAcademyHash;
+    mapping(bytes32 => bytes) private professorByNationalIdHash;
 
     // Validations
     function _validateProfessorInfos(ProfessorIssueArgs calldata i, uint256 currentTime) internal pure {
@@ -100,41 +101,41 @@ contract ProfessorIdentity is AcademyIdentity {
         _validateTime1BeforeTime2(i.hireDate, currentTime, "Invalid professor: hireDate is in the future.");
     }
     function _validateProfessorIssue(
-        address _walletAddress,
-        address _academyAddress,
+        bytes calldata _publicKey,
+        bytes calldata _academyPublicKey,
         ProfessorIssueArgs calldata args,
         uint256 currentTime
     ) internal pure {
-        _validateWalletAddressSet(_walletAddress);
-        _validateWalletAddressSet(_academyAddress);
+        _validatePublicKeySet(_publicKey);
+        _validatePublicKeySet(_academyPublicKey);
 
         _validateProfessorInfos(args, currentTime);
     }
 
     // External Functions
     function issueProfessorIdentity(
-        address _walletAddress,
-        address _academyAddress,
+        bytes calldata _publicKey,
+        bytes calldata _academyPublicKey,
         ProfessorIssueArgs calldata args
-    ) public onlyOwner onlyAcademy(_academyAddress) {
-        _validateProfessorIssue(_walletAddress, _academyAddress, args, block.timestamp);
+    ) public onlyOwner onlyAcademy(_academyPublicKey) {
+        _validateProfessorIssue(_publicKey, _academyPublicKey, args, block.timestamp);
 
-        if (professors[_walletAddress].status.issuer != address(0)) {
+        if (professors[_publicKey].status.issuer.length != 0) {
             revert ProfessorIdentityAlreadyIssued();
         }
 
         bytes32 employeeIdHash = keccak256(abi.encodePacked(args.employeeId));
         bytes32 nationalIdHash = keccak256(abi.encodePacked(args.nationalId));
-        bytes32 employeeInAcademyHash = keccak256(abi.encodePacked(_academyAddress, employeeIdHash));
+        bytes32 employeeInAcademyHash = keccak256(abi.encodePacked(_academyPublicKey, employeeIdHash));
 
-        if (professorByEmployeeInAcademyHash[employeeInAcademyHash] != address(0)) {
+        if (professorByEmployeeInAcademyHash[employeeInAcademyHash].length != 0) {
             revert ProfessorEmployeeIdAlreadyUsed();
         }
-        if (professorByNationalIdHash[nationalIdHash] != address(0)) {
+        if (professorByNationalIdHash[nationalIdHash].length != 0) {
             revert ProfessorNationalIdAlreadyUsed();
         }
 
-        professors[_walletAddress] = Professor({
+        professors[_publicKey] = Professor({
             identity: ProfessorIdentityData({
                 employeeIdHash: employeeIdHash,
                 nationalIdHash: nationalIdHash,
@@ -147,36 +148,39 @@ contract ProfessorIdentity is AcademyIdentity {
                 isNotRevoked: true,
                 issuedAt: uint64(block.timestamp),
                 revokedAt: 0,
-                issuer: _academyAddress,
-                revoker: address(0)
+                issuer: _academyPublicKey,
+                revoker: "",
+                revocationReason: ""
             })
         });
 
-        professorByEmployeeInAcademyHash[employeeInAcademyHash] = _walletAddress;
-        professorByNationalIdHash[nationalIdHash] = _walletAddress;
+        professorByEmployeeInAcademyHash[employeeInAcademyHash] = _publicKey;
+        professorByNationalIdHash[nationalIdHash] = _publicKey;
 
-        emit ProfessorIssued(_walletAddress, _academyAddress, employeeIdHash, uint64(block.timestamp));
+        emit ProfessorIssued(_publicKey, _academyPublicKey, employeeIdHash, uint64(block.timestamp));
     }
 
     function revokeProfessorIdentity(
-        address _walletAddress,
-        address _revokerAddress
-    ) public onlyOwner onlyAcademy(_revokerAddress) {
-        _validateWalletAddressSet(_walletAddress);
+        bytes calldata _publicKey,
+        bytes calldata _revokerPublicKey,
+        string calldata _reason
+    ) public onlyOwner onlyAcademy(_revokerPublicKey) {
+        _validatePublicKeySet(_publicKey);
 
-        ProfessorStatusData storage s = professors[_walletAddress].status;
-        if (s.issuer == address(0)) revert ProfessorIdentityNotIssued();
+        ProfessorStatusData storage s = professors[_publicKey].status;
+        if (s.issuer.length == 0) revert ProfessorIdentityNotIssued();
         if (!s.isNotRevoked) revert ProfessorIdentityAlreadyRevoked();
 
         require(
-            _revokerAddress == s.issuer,
+            _publicKeysEqual(_revokerPublicKey, s.issuer),
             "Invalid revoker: must be the issuing academy."
         );
 
         s.isNotRevoked = false;
         s.revokedAt = uint64(block.timestamp);
-        s.revoker = _revokerAddress;
+        s.revoker = _revokerPublicKey;
+        s.revocationReason = _reason;
 
-        emit ProfessorRevoked(_walletAddress, _revokerAddress, s.revokedAt);
+        emit ProfessorRevoked(_publicKey, _revokerPublicKey, s.revokedAt);
     }
 }

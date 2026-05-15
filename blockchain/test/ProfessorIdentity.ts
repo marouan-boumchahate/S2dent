@@ -10,6 +10,14 @@ describe("ProfessorIdentity", () => {
     const ONE_DAY_SECS = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
+    // Public keys (64 bytes hex strings) for entity identification
+    const ACADEMY_PK = "0x" + "a1".repeat(64);
+    const SECOND_ACADEMY_PK = "0x" + "a2".repeat(64);
+    const FAKE_ACADEMY_PK = "0x" + "ff".repeat(64);
+    const PROFESSOR_PK = "0x" + "b1".repeat(64);
+    const PROFESSOR2_PK = "0x" + "b2".repeat(64);
+    const EMPTY_PK = "0x";
+
     function academyIssueArgs() {
         return {
             legalName: "Fenerbahçe University A.Ş.",
@@ -51,7 +59,7 @@ describe("ProfessorIdentity", () => {
 
         const a = academyIssueArgs();
 
-        await instance.connect(owner).issueAcademyIdentity(academy.address, {
+        await instance.connect(owner).issueAcademyIdentity(ACADEMY_PK, {
             infos: {
                 academyId: ACADEMY_NUMBER,
                 name: ACADEMY_NAME,
@@ -92,8 +100,8 @@ describe("ProfessorIdentity", () => {
         const { instance, owner, academy, professor } = base;
 
         await instance.connect(owner).issueProfessorIdentity(
-            professor.address,
-            academy.address,
+            PROFESSOR_PK,
+            ACADEMY_PK,
             professorIssueArgs(),
         );
 
@@ -107,9 +115,9 @@ describe("ProfessorIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             const args = professorIssueArgs();
-            await instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args);
+            await instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args);
 
-            const record = await instance.professors(professor.address);
+            const record = await instance.professors(PROFESSOR_PK);
 
             expect(record.identity.employeeIdHash).to.equal(
                 ethers.keccak256(ethers.toUtf8Bytes(args.employeeId)),
@@ -123,9 +131,10 @@ describe("ProfessorIdentity", () => {
             expect(record.identity.hireDate).to.equal(BigInt(args.hireDate));
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.revokedAt).to.equal(0);
-            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(ACADEMY_PK);
             expect(record.status.issuedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(ethers.ZeroAddress);
+            expect(record.status.revoker).to.equal("0x");
+            expect(record.status.revocationReason).to.equal("");
         });
 
         it("reverts when the academy is not registered", async () => {
@@ -135,8 +144,8 @@ describe("ProfessorIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    fakeAcademy.address,
+                    PROFESSOR_PK,
+                    FAKE_ACADEMY_PK,
                     professorIssueArgs(),
                 ),
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
@@ -149,8 +158,8 @@ describe("ProfessorIdentity", () => {
 
             await expect(
                 instance.connect(academy).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
+                    PROFESSOR_PK,
+                    ACADEMY_PK,
                     professorIssueArgs(),
                 ),
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
@@ -163,8 +172,8 @@ describe("ProfessorIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
-                    professor.address,
-                    academy.address,
+                    PROFESSOR_PK,
+                    ACADEMY_PK,
                     professorIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "ProfessorIdentityAlreadyIssued");
@@ -176,8 +185,8 @@ describe("ProfessorIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueProfessorIdentity(
-                professor.address,
-                academy.address,
+                PROFESSOR_PK,
+                ACADEMY_PK,
                 professorIssueArgs(),
             );
 
@@ -185,8 +194,8 @@ describe("ProfessorIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
-                    professor2.address,
-                    academy.address,
+                    PROFESSOR2_PK,
+                    ACADEMY_PK,
                     args2,
                 ),
             ).to.be.revertedWithCustomError(instance, "ProfessorEmployeeIdAlreadyUsed");
@@ -198,8 +207,8 @@ describe("ProfessorIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueProfessorIdentity(
-                professor.address,
-                academy.address,
+                PROFESSOR_PK,
+                ACADEMY_PK,
                 professorIssueArgs(),
             );
 
@@ -207,8 +216,8 @@ describe("ProfessorIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
-                    professor2.address,
-                    academy.address,
+                    PROFESSOR2_PK,
+                    ACADEMY_PK,
                     args2,
                 ),
             ).to.be.revertedWithCustomError(instance, "ProfessorNationalIdAlreadyUsed");
@@ -216,20 +225,20 @@ describe("ProfessorIdentity", () => {
     });
 
     describe("Input validation", () => {
-        it("reverts on zero professor wallet", async () => {
+        it("reverts on zero professor public key", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
-                    ethers.ZeroAddress,
-                    academy.address,
+                    EMPTY_PK,
+                    ACADEMY_PK,
                     professorIssueArgs(),
                 ),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidAddress")
-                .withArgs("Address must not be zero.");
+                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
+                .withArgs("Public key must be 64 bytes.");
         });
 
         it("reverts when employeeId is too short", async () => {
@@ -240,7 +249,7 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ employeeId: "AB" });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: employeeId is too short.");
         });
 
@@ -252,7 +261,7 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ rank: 9 });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: rank out of range.");
         });
 
@@ -264,7 +273,7 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ employmentType: 99 });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: employmentType out of range.");
         });
 
@@ -276,7 +285,7 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ nationalId: "" });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: nationalId is required.");
         });
 
@@ -288,7 +297,7 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ fullName: "" });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: fullName is required.");
         });
 
@@ -301,15 +310,15 @@ describe("ProfessorIdentity", () => {
             const args = professorIssueArgs({ hireDate: futureHireDate });
 
             await expect(
-                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+                instance.connect(owner).issueProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, args),
             ).to.be.revertedWith("Invalid professor: hireDate is in the future.");
         });
     });
 
     describe("revokeProfessorIdentity", () => {
-        async function issueSecondAcademy(instance: any, owner: any, wallet: string, notBefore: number, notAfter: number) {
+        async function issueSecondAcademy(instance: any, owner: any, publicKey: string, notBefore: number, notAfter: number) {
             const a = academyIssueArgs();
-            await instance.connect(owner).issueAcademyIdentity(wallet, {
+            await instance.connect(owner).issueAcademyIdentity(publicKey, {
                 infos: {
                     academyId: "ACD_PROF_TST02",
                     name: "Second University",
@@ -337,14 +346,15 @@ describe("ProfessorIdentity", () => {
             const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
-            await instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address);
+            await instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason");
 
-            const record = await instance.professors(professor.address);
+            const record = await instance.professors(PROFESSOR_PK);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(academy.address);
-            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.revoker).to.equal(ACADEMY_PK);
+            expect(record.status.issuer).to.equal(ACADEMY_PK);
             expect(record.status.issuedAt).to.be.gt(0);
+            expect(record.status.revocationReason).to.equal("Reason");
         });
 
         it("reverts when called by a non-owner", async () => {
@@ -353,30 +363,29 @@ describe("ProfessorIdentity", () => {
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
             await expect(
-                instance.connect(academy).revokeProfessorIdentity(professor.address, academy.address),
+                instance.connect(academy).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason"),
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
 
-        it("reverts when _revokerAddress is not a registered academy", async () => {
+        it("reverts when _revokerPublicKey is not a registered academy", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, owner, fakeAcademy, professor } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(professor.address, fakeAcademy.address),
+                instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, FAKE_ACADEMY_PK, "Reason"),
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("reverts when _revokerAddress is a different registered academy", async () => {
-            const { networkHelpers, ethers } = await hre.network.connect();
-            const { instance, owner, professor, notBefore, notAfter } =
+        it("reverts when _revokerPublicKey is a different registered academy", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
-            const [, , , , , secondAcademy] = await ethers.getSigners();
-            await issueSecondAcademy(instance, owner, secondAcademy.address, notBefore, notAfter);
+            await issueSecondAcademy(instance, owner, SECOND_ACADEMY_PK, notBefore, notAfter);
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(professor.address, secondAcademy.address),
+                instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, SECOND_ACADEMY_PK, "Reason"),
             ).to.be.revertedWith("Invalid revoker: must be the issuing academy.");
         });
 
@@ -385,23 +394,23 @@ describe("ProfessorIdentity", () => {
             const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(academy.address);
+            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+                instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason"),
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("reverts on zero professor wallet address", async () => {
+        it("reverts on zero professor public key", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(ethers.ZeroAddress, academy.address),
+                instance.connect(owner).revokeProfessorIdentity(EMPTY_PK, ACADEMY_PK, "Reason"),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidAddress")
-                .withArgs("Address must not be zero.");
+                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
+                .withArgs("Public key must be 64 bytes.");
         });
 
         it("reverts when the professor was never issued", async () => {
@@ -410,7 +419,7 @@ describe("ProfessorIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+                instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason"),
             ).to.be.revertedWithCustomError(instance, "ProfessorIdentityNotIssued");
         });
 
@@ -419,10 +428,10 @@ describe("ProfessorIdentity", () => {
             const { instance, owner, academy, professor } =
                 await networkHelpers.loadFixture(deployWithProfessorFixture);
 
-            await instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address);
+            await instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason");
 
             await expect(
-                instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address),
+                instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason"),
             ).to.be.revertedWithCustomError(instance, "ProfessorIdentityAlreadyRevoked");
         });
     });
