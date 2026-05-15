@@ -147,7 +147,6 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
           EditibleTextfield(
             label: "Address Line 1",
             controller: _addressLine1Controller,
-            validator: _validateRequired,
           ),
           EditibleTextfield(
             label: "Address Line 2",
@@ -167,10 +166,15 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
             controller: _postalCodeController,
             keyboardType: TextInputType.number,
           ),
-          EditibleTextfield(label: "City", controller: _cityController),
+          EditibleTextfield(
+            label: "City",
+            controller: _cityController,
+            validator: ProfileUpdateData.validateCity,
+          ),
           EditibleTextfield(
             label: "Country",
             controller: _countryController,
+            validator: ProfileUpdateData.validateCountry,
           ),
           const SizedBox(height: 12),
           PrimaryButton(
@@ -184,8 +188,4 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
     );
   }
 
-  String? _validateRequired(String? value) {
-    if ((value?.trim() ?? "").isEmpty) return "This field is required.";
-    return null;
-  }
 }

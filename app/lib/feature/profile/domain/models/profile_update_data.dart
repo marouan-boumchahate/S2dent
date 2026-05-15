@@ -44,6 +44,16 @@ class ProfileUpdateData {
     return null;
   }
 
+  static String? validateCity(String? value) {
+    if ((value?.trim() ?? "").isEmpty) return "City is required.";
+    return null;
+  }
+
+  static String? validateCountry(String? value) {
+    if ((value?.trim() ?? "").isEmpty) return "Country is required.";
+    return null;
+  }
+
   bool get userChanged =>
       phone != null || email != null || photoUrl != null;
 
@@ -70,6 +80,16 @@ class ProfileUpdateData {
     final updatedEmail = email;
     if (updatedEmail != null) {
       final error = validateEmail(updatedEmail);
+      if (error != null) return error;
+    }
+    final updatedCity = city;
+    if (updatedCity != null) {
+      final error = validateCity(updatedCity);
+      if (error != null) return error;
+    }
+    final updatedCountry = country;
+    if (updatedCountry != null) {
+      final error = validateCountry(updatedCountry);
       if (error != null) return error;
     }
     return null;

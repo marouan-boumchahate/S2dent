@@ -27,31 +27,42 @@ class AddressSection extends StatelessWidget {
           onTap: onTap,
         ),
         widgets: [
-          InfoTile(
-            label: "Address Line 1",
-            trailing: Text(address?.addressLine1 ?? ""),
-            icon: Icons.location_on_outlined,
-          ),
-          InfoTile(
-            label: "Street",
-            trailing: Text(address?.street ?? ""),
-            icon: Icons.signpost_outlined,
-          ),
-          InfoTile(
-            label: "Postal Code",
-            trailing: Text(address?.postalCode ?? ""),
-            icon: Icons.local_post_office_outlined,
-          ),
-          InfoTile(
-            label: "City",
-            trailing: Text(address?.city ?? ""),
-            icon: Icons.apartment,
-          ),
-          InfoTile(
-            label: "Country",
-            trailing: Text(address?.country ?? ""),
-            icon: Icons.public,
-          ),
+          address?.addressLine1 == null || address!.addressLine1.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Address Line 1",
+                  trailing: Text(address.addressLine1),
+                  icon: Icons.location_on_outlined,
+                ),
+          address?.street == null || address!.street.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Street",
+                  trailing: Text(address.street),
+                  icon: Icons.signpost_outlined,
+                ),
+          address?.postalCode == null || address!.postalCode.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Postal Code",
+                  trailing: Text(address.postalCode),
+                  icon: Icons.local_post_office_outlined,
+                ),
+          //REQUIRED FIELDS, BUT FOR EXTRA SAFETY
+          address?.city == null || address!.city.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "City",
+                  trailing: Text(address.city),
+                  icon: Icons.apartment,
+                ),
+          address?.country == null || address!.country.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Country",
+                  trailing: Text(address.country),
+                  icon: Icons.public,
+                ),
         ],
       ),
     );
