@@ -3,7 +3,7 @@ import 'package:app/feature/profile/data/datasources/address_datasource.dart';
 import 'package:app/feature/profile/data/datasources/department_datasource.dart';
 import 'package:app/feature/profile/data/datasources/identity_datasource.dart';
 import 'package:app/feature/profile/data/datasources/user_datasource.dart';
-import 'package:app/feature/profile/data/repos/profile_repo_impl.dart';
+import 'package:app/feature/profile/data/repos_impl/profile_repo_impl.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/repos/profile_repository.dart';

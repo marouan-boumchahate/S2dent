@@ -30,31 +30,41 @@ class UserSection extends StatelessWidget {
           onTap: onTap,
         ),
         widgets: [
-          InfoTile(
-            label: "Email",
-            trailing: Text(user?.email ?? ""),
-            icon: Icons.email_outlined,
-          ),
-          InfoTile(
-            label: "Phone Number",
-            trailing: Text(student.user?.phone ?? ""),
-            icon: Icons.phone,
-          ),
-          InfoTile(
-            label: "Date of Birth",
-            trailing: Text(dateFormatter(user?.dateOfBirth)),
-            icon: Icons.date_range_outlined,
-          ),
-          InfoTile(
-            label: "Nationality",
-            trailing: Text(user?.nationalId ?? ""),
-            icon: Icons.trip_origin,
-          ),
-          InfoTile(
-            label: "Gender",
-            trailing: Text(user?.gender.name.capitalize ?? ""),
-            icon: user?.gender == Gender.male ? Icons.male : Icons.female,
-          )
+          user?.email == null || user!.email.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Email",
+                  trailing: Text(user.email),
+                  icon: Icons.email_outlined,
+                ),
+          user?.phone == null || user!.phone.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Phone Number",
+                  trailing: Text(user.phone),
+                  icon: Icons.phone,
+                ),
+          user?.dateOfBirth == null
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Date of Birth",
+                  trailing: Text(dateFormatter(user?.dateOfBirth)),
+                  icon: Icons.date_range_outlined,
+                ),
+          user?.nationalId == null || user!.nationalId.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Nationality",
+                  trailing: Text(user.nationalId),
+                  icon: Icons.trip_origin,
+                ),
+          user?.gender.name == null || user!.gender.name.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Gender",
+                  trailing: Text(user.gender.name.capitalize),
+                  icon: user.gender == Gender.male ? Icons.male : Icons.female,
+                )
         ],
       ),
     );

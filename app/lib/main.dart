@@ -1,6 +1,8 @@
-﻿import 'package:app/feature/role_selection/presentation/pages/role_selection.dart';
-import 'package:app/core/theme/theme_provider.dart';
+﻿import 'package:app/core/navigation/shell_page.dart';
 import 'package:app/core/theme/flex_color_scheme.dart';
+import 'package:app/core/theme/theme_provider.dart';
+import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
+import 'package:app/feature/role_selection/presentation/pages/role_selection.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,11 +27,19 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(themeProvider);
+    final session = ref.watch(hasSessionProvider);
+
     return MaterialApp(
       themeMode: theme,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      home: RoleSelectionPage(),
+      home: session.when(
+        data: (hasSession) =>
+            hasSession ? const ShellPage() : RoleSelectionPage(),
+        loading: () =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (error, stackTrace) => RoleSelectionPage(),
+      ),
     );
   }
 }
