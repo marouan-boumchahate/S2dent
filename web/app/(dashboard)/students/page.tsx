@@ -9,15 +9,16 @@ export default function StudentsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
 
-  // reseting the list avrery time open the page 
   useEffect(() => {
     setStudents([...store.students]);
   }, []);
 
   const total = students.length;
-  const active = students.filter(s => s.enrollmentStatus === 'active').length;
-  const graduated = students.filter(s => s.enrollmentStatus === 'graduated').length;
   const departments = new Set(students.map(s => s.department).filter(Boolean)).size;
+
+  // TODO: replace with the API for blockchain status
+  const verifiedOnChain = 0;
+  const pending = 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -27,10 +28,10 @@ export default function StudentsPage() {
 
         {/* stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Students" value={total} sub="+0 this week" />
-          <StatCard label="Active" value={active} sub={total ? `${Math.round(active / total * 100)}%` : '0%'} subColor="text-mint" />
-          <StatCard label="Graduated" value={graduated} sub="completed" />
-          <StatCard label="Departments" value={departments} sub="active" />
+          <StatCard label="Total Students" value={total} sub="+0 this week" subColor="text-purple-500"/>
+          <StatCard label="Verified on-chain" value={verifiedOnChain} sub={total ? `${Math.round(verifiedOnChain / total * 100)}%` : '0%'} subColor="text-mint" />
+          <StatCard label="Pending" value={pending} sub="awaiting wallet" subColor="text-yellow-500" />
+          <StatCard label="Departments" value={departments} sub="active" subColor="text-mint"/>
         </div>
 
         {/* table */}
@@ -67,7 +68,7 @@ export default function StudentsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{s.currentLevel || '—'}</td>
                       <td className="px-6 py-4">
                         {/* TODO: replace with the API for status */}
-                        <StatusBadge status="verified" />
+                        <StatusBadge status="pending" />
                       </td>
                       <td className="px-6 py-4">
                         <button className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-electric px-3 py-1 rounded-lg transition">
@@ -93,21 +94,6 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
       <p className="text-textLight text-3xl font-bold">{value}</p>
       <p className={`text-sm mt-1 ${subColor}`}>{sub}</p>
     </div>
-  );
-}
-
-// enrollment
-function EnrollmentBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: 'bg-green-100 text-green-600 border border-green-200',
-    inactive: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
-    graduated: 'bg-blue-100 text-blue-600 border border-blue-200',
-  };
-  const cls = map[status?.toLowerCase()] || 'bg-yellow-100 text-yellow-600 border border-yellow-200';
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${cls}`}>
-      {status || 'inactive'}
-    </span>
   );
 }
 
