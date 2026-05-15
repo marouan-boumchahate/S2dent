@@ -64,9 +64,8 @@ export default function ProfessorsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{p.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.rank || '—'}</td>
                       <td className="px-6 py-4">
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400">
-                          Professor
-                        </span>
+                        {/* TODO: replace with the API for status */}
+                        <StatusBadge status="verified" />
                       </td>
                       <td className="px-6 py-4">
                         <button className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-electric px-3 py-1 rounded-lg transition">
@@ -94,3 +93,19 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
     </div>
   );
 }
+
+// blockchain status will set by API
+function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
+  const map = {
+    verified: 'bg-green-100 text-green-600 border border-green-200',
+    pending:  'bg-yellow-100 text-yellow-600 border border-yellow-200',
+    failed:   'bg-red-100 text-red-500 border border-red-200',
+  };
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>
+      {status}
+    </span>
+  );
+}
+
+
