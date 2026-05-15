@@ -137,7 +137,6 @@ const payloadSchemas = {
 
 export const createCredentialSchema = Joi.object({
     title: Joi.string().max(255).required(),
-    code: Joi.string().max(100).required(),
     credential_type: Joi.string().valid(...credentialTypes).required(),
     description: Joi.string().optional(),
     student_wallet: Joi.string().pattern(ETH_ADDRESS).required()
