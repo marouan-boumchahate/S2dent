@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS credentials (
     revoke_tx_hash VARCHAR(66),
 
     payload JSONB NOT NULL,
-    payload_hash VARCHAR(66) NOT NULL,
+    payload_hash VARCHAR(66),
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
