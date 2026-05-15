@@ -1,4 +1,4 @@
-// temprary until i get the API
+// temporary until the API is ready
 
 export type Student = {
   id: string;
@@ -60,6 +60,10 @@ export const store = {
     return newStudent;
   },
 
+  removeStudent(id: string) {
+    this.students = this.students.filter(s => s.id !== id);
+  },
+
   addProfessor(p: Omit<Professor, 'id' | 'createdAt'>) {
     const newProfessor: Professor = {
       ...p,
@@ -68,5 +72,9 @@ export const store = {
     };
     this.professors.unshift(newProfessor);
     return newProfessor;
+  },
+
+  removeProfessor(id: string) {
+    this.professors = this.professors.filter(p => p.id !== id);
   },
 };
