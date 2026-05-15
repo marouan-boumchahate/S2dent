@@ -4,21 +4,19 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 
 const ADMIN_GROUPS = [
-  { label: 'Students', href: '/students' },
-  { label: 'Professors', href: '/professors' },
-  { label: 'Certificates', href: '/certificates' },
-  { label: 'Credentials', href: '/credentials' },
-  { label: 'Departments', href: '/departments' },
-  { label: 'Settings', href: '/settings' },
+  { label: 'Students', href: '/students', icon: '/student_1.png' },
+  { label: 'Professors', href: '/professors', icon: '/professor.png' },
+  { label: 'Certificates', href: '/certificates', icon: '/certificate.png' },
+  { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
+  { label: 'Departments', href: '/departments', icon: '/corporation.png' },
+  { label: 'Settings', href: '/settings', icon: '/setting_1.png' },
 ];
 
 const PROFESSOR_GROUPS = [
-  { label: 'Credentials', href: '/credentials' },
-  { label: 'Certificates', href: '/certificates' },
-  { label: 'Settings', href: '/settings' },
+  { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
+  { label: 'Certificates', href: '/certificates', icon: '/certificate.png' },
+  { label: 'Settings', href: '/settings', icon: '/setting.png' },
 ];
-
-const activeColor = 'bg-mint text-navy shadow-lg shadow-mint/20';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -63,6 +61,7 @@ export default function Sidebar() {
         lg:translate-x-0
       `}>
 
+        {/* Logo */}
         <div className="p-6 border-b border-borderLine flex flex-col items-center text-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(false)}
@@ -79,28 +78,48 @@ export default function Sidebar() {
           </div>
         </div>
 
+        {/* Nav */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {groups.map((group) => (
-            <div key={group.label}>
-              <div className="flex items-center justify-between rounded-lg hover:bg-surface transition">
-                <button
-                  onClick={() => router.push(group.href)}
-                  className={`flex-1 text-left p-3 font-bold transition rounded-lg
-                    ${pathname === group.href ? activeColor : 'text-textLight'}
-                  `}
-                >
-                  {group.label}
-                </button>
-              </div>
-            </div>
-          ))}
+          {groups.map((group) => {
+            const isActive = pathname === group.href;
+            return (
+              <button
+                key={group.label}
+                onClick={() => { router.push(group.href); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl text-base font-bold transition-all duration-200
+                  ${isActive
+                    ? 'bg-mint text-navy shadow-lg shadow-mint/20'
+                    : 'text-textLight hover:bg-surface'
+                  }`}
+              >
+                <Image
+                  src={group.icon}
+                  alt={group.label}
+                  width={26}
+                  height={26}
+                  className={`object-contain transition-all duration-200
+                    ${isActive ? 'brightness-0' : 'opacity-70'}`}
+                />
+                {group.label}
+              </button>
+            );
+          })}
         </nav>
 
+        {/* Sign out */}
         <div className="p-4 border-t border-borderLine">
           <button
             onClick={handleSignOut}
-            className="w-full p-3 rounded-lg text-red-500 hover:bg-red-500/10 transition text-left font-semibold"
+            className="w-full flex items-center gap-3 p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition font-semibold text-base"
           >
+            <Image
+              src="/logout.png"
+              alt="Sign Out"
+              width={25}
+              height={25}
+              className="object-contain opacity-40"
+              style={{ filter: 'invert(27%) sepia(90%) saturate(600%) hue-rotate(330deg) brightness(90%)' }}
+            />
             Sign Out
           </button>
         </div>
