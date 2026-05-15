@@ -1,33 +1,21 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const SIDEBAR_GROUPS = [
-  {
-    label: 'Students',
-    href: '/students',
-  },
-  {
-    label: 'Professors',
-    href: '/professors',
-  },
-  {
-    label: 'Certificates',
-    href: '/certificates',
-  },
-  {
-    label: 'Credentials',
-    href: '/credentials',
-  },
-  {
-    label: 'Departments',
-    href: '/departments',
-  },
-  {
-    label: 'Settings',
-    href: '/settings',
-  },
+const ADMIN_GROUPS = [
+  { label: 'Students', href: '/students' },
+  { label: 'Professors', href: '/professors' },
+  { label: 'Certificates', href: '/certificates' },
+  { label: 'Credentials', href: '/credentials' },
+  { label: 'Departments', href: '/departments' },
+  { label: 'Settings', href: '/settings' },
+];
+
+const PROFESSOR_GROUPS = [
+  { label: 'Credentials', href: '/credentials' },
+  { label: 'Certificates', href: '/certificates' },
+  { label: 'Settings', href: '/settings' },
 ];
 
 const activeColor = 'bg-mint text-navy shadow-lg shadow-mint/20';
@@ -36,6 +24,20 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [role, setRole] = useState<'admin' | 'professor'>('admin');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userRole') as 'admin' | 'professor' | null;
+    if (stored) setRole(stored);
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('userRole');
+    router.push('/createLogin');
+  };
+
+  const groups = role === 'professor' ? PROFESSOR_GROUPS : ADMIN_GROUPS;
+  const roleLabel = role === 'professor' ? 'Professor Page' : 'Admin Page';
 
   return (
     <>
@@ -73,14 +75,13 @@ export default function Sidebar() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-textLight">S2dent</h2>
-            <p className="text-xs text-textMuted mt-0.5">Admin Page</p>
+            <p className="text-xs text-textMuted mt-0.5">{roleLabel}</p>
           </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {SIDEBAR_GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label}>
-              {/* group header - clickable link */}
               <div className="flex items-center justify-between rounded-lg hover:bg-surface transition">
                 <button
                   onClick={() => router.push(group.href)}
@@ -97,8 +98,8 @@ export default function Sidebar() {
 
         <div className="p-4 border-t border-borderLine">
           <button
-            onClick={() => router.push('/createLogin')}
-            className="w-full p-3 rounded-lg text-red-500 hover:bg-red-50 transition text-left"
+            onClick={handleSignOut}
+            className="w-full p-3 rounded-lg text-red-500 hover:bg-red-500/10 transition text-left font-semibold"
           >
             Sign Out
           </button>
