@@ -1,5 +1,5 @@
 ﻿import 'package:app/feature/credentials/data/datasources/credential_datasource.dart';
-import 'package:app/feature/credentials/data/repos/credential_repo_impl.dart';
+import 'package:app/feature/credentials/data/repos_impl/credential_repo_impl.dart';
 import 'package:app/feature/credentials/domain/models/credential.dart';
 import 'package:app/feature/credentials/domain/repos/credential_repo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

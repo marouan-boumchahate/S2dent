@@ -1,12 +1,16 @@
+import 'package:app/core/config/app_config.dart';
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/navigation/shell_page.dart';
+import 'package:app/core/providers/appkit_provider.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
+import 'package:app/feature/auth/presentation/pages/verify_email.dart';
+import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/feature/auth/presentation/widgets/secondary_button.dart';
-
-import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/auth/presentation/pages/verify_email.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reown_appkit/reown_appkit.dart'
+    hide PrimaryButton, SecondaryButton;
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +22,36 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   bool isDark = true;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAppKit());
+  }
+
+  Future<void> _initAppKit() async {
+    try {
+      final modal = ReownAppKitModal(
+        context: context,
+        projectId: AppConfig.projectId,
+        metadata: const PairingMetadata(
+          name: 'S2dent',
+          description: 'Student Identity Wallet',
+          url: 'https://s2dent.app',
+          icons: ['https://s2dent.app/icon.png'],
+        ),
+        includedWalletIds: const {
+          'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
+        },
+      );
+      await modal.init();
+      if (mounted) {
+        ref.read(appKitModalProvider.notifier).state = modal;
+      }
+    } catch (e) {
+      debugPrint('AppKit init failed: $e');
+    }
+  }
+
   void onTapVerify() {
     Navigator.push(
       context,
@@ -28,34 +62,51 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void onTapSignIn() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (ctx) => ShellPage(),
-      ),
-      (route) => false,
-    );
+    ref.read(authControllerProvider.notifier).signIn();
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+
+    ref.listen(authControllerProvider, (previous, next) {
+      next.whenOrNull(
+        data: (token) {
+          if (token != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (ctx) => const ShellPage()),
+            );
+          }
+        },
+        error: (error, stackTrace) {
+          final message = error is ReownAppKitModalException
+              ? error.message.toString()
+              : error.toString();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        },
+      );
+    });
+
     final icon = Theme.brightnessOf(context) == Brightness.dark
         ? "assets/logos/s2dent_dark.png"
         : "assets/logos/s2dent_light.png";
     return AuthLayout(
       children: [
         _headerSection(context, icon),
-        _actions(context),
+        _actions(context, authState.isLoading),
       ],
     );
   }
 
-  Column _actions(BuildContext context) {
+  Column _actions(BuildContext context, bool isLoading) {
     return Column(
       children: [
         PrimaryButton(
-          onTap: onTapSignIn,
-          label: "SIGN IN WITH A WALLET",
+          onTap: isLoading ? null : onTapSignIn,
+          label: isLoading ? "Connecting..." : "SIGN IN WITH A WALLET",
         ),
         _dividerSection(context),
         SecondaryButton(onTap: onTapVerify, label: "Verify Identity"),
