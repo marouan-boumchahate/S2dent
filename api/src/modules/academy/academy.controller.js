@@ -3,7 +3,6 @@ import { created } from '../../utils/response.js';
 
 const createAcademyController = async (req, res) => {
     const payload = {
-        wallet_address: req.body.wallet_address,
         email: req.body.email,
         name: req.body.name,
         short_name: req.body.short_name,

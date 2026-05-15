@@ -14,21 +14,21 @@ const setTransactionStatus = async (txHash, status) => {
     return { payload }
 }
 
-const saveIdentityOffChain = async ({ wallet_address, role, user_id, identity_tx_hash: issue_identity_tx_hash }) => {
+const saveIdentityOffChain = async ({ wallet, role, user_id, identity_tx_hash: issue_identity_tx_hash, public_key }) => {
     await db.query(
         `INSERT INTO identities 
-            (wallet_address, role, user_id, issue_identity_tx_hash, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
-        [wallet_address, role, user_id ?? null, issue_identity_tx_hash]
+            (wallet, role, user_id, issue_identity_tx_hash, public_key, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [wallet, role, user_id ?? null, issue_identity_tx_hash, public_key]
     )
 }
 
-const revokeIdentityOffChain = async ({ wallet_address, revoke_identity_tx_hash }) => {
+const revokeIdentityOffChain = async ({ wallet, revoke_identity_tx_hash }) => {
     await db.query(
         `UPDATE identities
             SET is_active = FALSE, revoke_identity_tx_hash = $2, updated_at = NOW()
-            WHERE wallet_address = $1`,
-        [wallet_address, revoke_identity_tx_hash]
+            WHERE wallet = $1`,
+        [wallet, revoke_identity_tx_hash]
     )
 }
 
@@ -36,7 +36,8 @@ const performAction = async (payload, tx_hash) => {
     switch(payload.action) {
         case 'issue':
             await saveIdentityOffChain({
-                wallet_address: payload.wallet_address,
+                wallet: payload.wallet,
+                public_key: payload.public_key,
                 role: payload.role,
                 user_id: payload.user_id,
                 issue_identity_tx_hash: tx_hash
@@ -44,7 +45,7 @@ const performAction = async (payload, tx_hash) => {
             break
         case 'revoke':
              await revokeIdentityOffChain({
-                wallet_address: payload.wallet_address,
+                wallet: payload.wallet,
                 revoke_identity_tx_hash: tx_hash
             })
             break
@@ -68,7 +69,7 @@ export const listenOnTransaction = (tx) => {
             
             await performAction(payload, tx.hash)
 
-            emitToUser(payload.wallet_address, 'identity:confirmed', {
+            emitToUser(payload.wallet, 'identity:confirmed', {
                 tx_hash: tx.hash,
                 status: 'confirmed'
             })
@@ -81,7 +82,7 @@ export const listenOnTransaction = (tx) => {
         .catch(async (err) => {
             const { payload } = await setTransactionStatus(tx.hash, 'failed')
 
-            emitToUser(payload.wallet_address, 'identity:failed', {
+            emitToUser(payload.wallet, 'identity:failed', {
                 tx_hash: tx.hash,
                 status: 'failed',
                 reason: err.message

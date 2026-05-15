@@ -80,34 +80,20 @@ const ensureProfessorExists = async (professor_id) => {
 };
 const ensureAcademyExists = async (academy_id) => {
   const { rows: [academy] } = await db.query(
-    'SELECT id, wallet_address FROM academies WHERE id = $1 LIMIT 1',
+    `SELECT id 
+     FROM identities 
+     WHERE academy_id = $1 LIMIT 1`,
     [academy_id],
   );
 
   if (!academy) {
-    const err = new Error('Academy not found');
+    const err = new Error('Academy has no active identity');
     err.statusCode = 404;
     err.code = 'ACADEMY_NOT_FOUND';
     throw err;
   }
-
-  const { rows } = await db.query(
-    `SELECT 1
-      FROM identities
-      WHERE wallet_address = $1
-        AND role = 'academy'
-        AND is_active = TRUE
-      LIMIT 1`,
-    [academy.wallet_address],
-  );
-
-  if (rows.length === 0) {
-    const err = new Error('Academy has no active identity');
-    err.statusCode = 403;
-    err.code = 'ACADEMY_IDENTITY_INACTIVE';
-    throw err;
-  }
 };
+
 const generateRandomEmployeeId = async () => {
   const result = await db.query(`SELECT nextval('employee_seq')`);
   const seq = result.rows[0].nextval;
@@ -230,19 +216,7 @@ const createProfessorService = async (payload) => {
     employee_number: employeeNumber,
   });
 
-  return {
-    professor: {
-      id: professor.id,
-      user_id: professor.user_id,
-      academy_id: professor.academy_id,
-      department_id: professor.department_id,
-      employee_number: professor.employee_number,
-      title: professor.title,
-      rank: professor.rank,
-      employment_type: professor.employment_type,
-      hire_date: professor.hire_date
-    },
-  };
+  return { professor: toProfessorDto(professor) };
 };
 const updateProfessorService = async (payload) => {
   const { professor_id } = payload;

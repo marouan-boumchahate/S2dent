@@ -22,12 +22,14 @@ const getStudentIdentityPayload = async (email) => {
     const { rows: [student] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, u.nationality, u.gender,
                 s.student_number, s.enrollment_date,
-                a.wallet_address AS academy_wallet_address, a.name AS academy_name,
+                i.wallet_address AS academy_wallet_address, i.public_key AS academy_public_key, 
+                a.name AS academy_name,
                 addr.country,
                 d.is_active AS is_department_active, d.name AS department_name
          FROM users u
          JOIN students s ON u.id = s.user_id
          JOIN academies a ON s.academy_id = a.id
+         JOIN identities i ON i.academy_id = a.id
          LEFT JOIN addresses addr ON addr.user_id = u.id
          LEFT JOIN departments d ON d.academy_id = a.id
          WHERE u.email = $1`,
@@ -38,6 +40,13 @@ const getStudentIdentityPayload = async (email) => {
         const err = new Error('Student not found')
         err.statusCode = 404
         err.code = 'STUDENT_NOT_FOUND'
+        throw err
+    }
+
+    if(!student.academy_public_key) {
+        const err = new Error('Associated academy does not have a registered identity')
+        err.statusCode = 400
+        err.code = 'ACADEMY_IDENTITY_NOT_FOUND'
         throw err
     }
 
@@ -61,13 +70,16 @@ const getStudentRevokePayload = async (academyAddress, studentAddress) => {
     const { rows: [student] } = await db.query(
         `SELECT u.email, u.full_name, u.gender,
                 s.student_number,
-                a.wallet_address AS academy_wallet_address, a.name AS academy_name
+                ai.public_key AS academy_public_key,
+                i.public_key AS student_public_key,
+                a.name AS academy_name
          FROM identities i
          JOIN users u ON u.id = i.user_id
          JOIN students s ON u.id = s.user_id
          JOIN academies a ON s.academy_id = a.id
+         JOIN identities ai ON ai.academy_id = a.id AND ai.role = 'academy'
          WHERE i.wallet_address = $1
-           AND a.wallet_address = $2
+           AND ai.wallet_address = $2
            AND i.role = 'student'`,
         [studentAddress, academyAddress]
     )
@@ -79,7 +91,7 @@ const getStudentRevokePayload = async (academyAddress, studentAddress) => {
         throw err
     }
 
-    if(!student.academy_wallet_address) {
+    if(!student.academy_public_key) {
         const err = new Error('Academy not found for the student')
         err.statusCode = 404
         err.code = 'ACADEMY_NOT_FOUND'
@@ -88,10 +100,10 @@ const getStudentRevokePayload = async (academyAddress, studentAddress) => {
 
     return student;
 }
-const ensureWalletAddressUnique = async (walletAddress) => {
+const ensureWalletAddressUnique = async (wallet) => {
     const { rows } = await db.query(
         `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
-        [walletAddress]
+        [wallet]
     );
 
     if(rows.length > 0) {
@@ -112,6 +124,12 @@ const saveTransaction = async (txHash, payloadObj) => {
 }
 
 
+const getRandomPublicKey = () => {
+    const randomWallet = ethers.Wallet.createRandom()
+    return randomWallet.signingKey.publicKey
+}
+
+
 // Issuance
 // --------
 const ON_SUCCESS = (title, name, academyName) => ({
@@ -123,15 +141,18 @@ const ON_FAILURE = (title, name) => ({
     message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
 })
 
-export const issueStudentIdentityService = async ({ wallet_address, email }) => {
-    const studentWallet = ethers.getAddress(wallet_address)
+export const issueStudentIdentityService = async ({ wallet, email }) => {
+    const studentWallet = ethers.getAddress(wallet)
 
     await ensureWalletAddressUnique(studentWallet)
     const student = await getStudentIdentityPayload(email)
 
+    const studentPublicKey = getRandomPublicKey()
+    const academyPublicKey = student.academy_public_key
+
     const tx = await issueStudentIdentity({
-        studentWallet,
-        academyWallet: student.academy_wallet_address,
+        studentPublicKey,
+        academyPublicKey,
 
         studentId: student.student_number,
         fullName: student.full_name,
@@ -147,7 +168,8 @@ export const issueStudentIdentityService = async ({ wallet_address, email }) => 
     const payload = {
         action: 'issue',
 
-        wallet_address: studentWallet,
+        wallet: studentWallet,
+        public_key: studentPublicKey,
         user_id: student.user_id,
         student_number: student.student_number,
         name: student.full_name,
@@ -184,18 +206,21 @@ const REVOKE_ON_FAILURE = (title, name) => ({
 })
 
 export const revokeStudentIdentityService = async ({ academy_address, student_address }) => {
-    const studentWallet = ethers.getAddress(student_address)
-    const academyWallet = ethers.getAddress(academy_address)
+    const studentWallet = ethers.getAddress(academy_address)
+    const academyWallet = ethers.getAddress(student_address)
 
     const student = await getStudentRevokePayload(academyWallet, studentWallet)
 
-    const tx = await revokeStudentIdentity({ studentWallet, academyWallet})
+    const tx = await revokeStudentIdentity({ 
+        studentPublicKey: student.student_public_key, 
+        academyPublicKey: student.academy_public_key 
+    })
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
     const payload = {
         action: 'revoke',
 
-        wallet_address: studentWallet,
+        wallet: studentWallet,
         student_number: student.student_number,
         name: student.full_name,
 
