@@ -57,8 +57,8 @@ const issueProfessorIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            professorWallet,
-            academyWallet,
+            professorPublicKey,
+            academyPublicKey,
             
             employeeId,
             nationalId,
@@ -78,7 +78,7 @@ const issueProfessorIdentity = async (payload) => {
             employmentType: EMPLOYMENT_TYPE_TO_UINT8[employmentType.toLowerCase()] ?? EMPLOYMENT_TYPE_TO_UINT8.other
         }
 
-        const params = [professorWallet, academyWallet, args]
+        const params = [professorPublicKey, academyPublicKey, args]
 
         const gasLimit = await getGasLimit(contract, 'issueProfessorIdentity', params)
 
@@ -100,11 +100,11 @@ const revokeProfessorIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            professorWallet,
-            academyWallet
+            professorPublicKey,
+            academyPublicKey
         } = payload
 
-        const params = [professorWallet, academyWallet]
+        const params = [professorPublicKey, academyPublicKey]
 
         const gasLimit = await getGasLimit(contract, 'revokeProfessorIdentity', params)
 
@@ -121,11 +121,11 @@ const revokeProfessorIdentity = async (payload) => {
         throw wrapped
     }
 }
-const getProfessorIdentity = async (walletAddress) => {
+const getProfessorIdentity = async (publicKey) => {
     try {
         const contract = getContract()
 
-        const [identity, status] = await contract.professors(walletAddress)
+        const [identity, status] = await contract.professors(publicKey)
 
         if (status.issuedAt === 0n) {
             return null

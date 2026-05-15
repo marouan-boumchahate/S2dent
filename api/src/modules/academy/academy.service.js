@@ -2,50 +2,70 @@ import db from '../../config/db.js';
 import { ethers } from 'ethers';
 
 
+// DTOs
+const academyDto = (academy) => ({
+  id: academy.id,
+  academy_number: academy.academy_number,
+  email: academy.email,
+  name: academy.name,
+  short_name: academy.short_name,
+  type: academy.type,
+  description: academy.description,
+  website: academy.website,
+  logo_url: academy.logo_url,
+  phone: academy.phone,
+  legal_name: academy.legal_name,
+  registration_number: academy.registration_number,
+  tax_id: academy.tax_id,
+  billing_email: academy.billing_email,
+});
+
+
 // Helpers
 const ensureAcademyUnique = async (
-  wallet_address,
   email,
   name,
   short_name
 ) => {
-  const [walletExists, emailExists, nameExists, shortNameExists] = await Promise.all([
-    db.query('SELECT id FROM academies WHERE wallet_address = $1 LIMIT 1', [wallet_address]),
-    db.query('SELECT id FROM academies WHERE email = $1 LIMIT 1', [email]),
-    db.query('SELECT id FROM academies WHERE name = $1 LIMIT 1', [name]),
-    db.query('SELECT id FROM academies WHERE short_name = $1 LIMIT 1', [short_name.toUpperCase()]),
-  ]);
+  const { rows } = await db.query(
+    `SELECT
+       CASE
+         WHEN email = $1 THEN 'email'
+         WHEN name = $2 THEN 'name'
+         WHEN short_name = $3 THEN 'short_name'
+       END AS conflict
+     FROM academies
+     WHERE email = $1 OR name = $2 OR short_name = $3
+     LIMIT 1`,
+    [email, name, short_name.toUpperCase()],
+  );
 
-  if (walletExists.rows.length > 0) {
-    const err = new Error('An academy with this wallet address already exists');
-    err.statusCode = 409;
-    err.code = 'ACADEMY_WALLET_DUPLICATE';
-    throw err;
-  }
+  if (rows.length > 0) {
+    const conflict = rows[0].conflict;
 
-  if (emailExists.rows.length > 0) {
-    const err = new Error('An academy with this email already exists');
-    err.statusCode = 409;
-    err.code = 'ACADEMY_EMAIL_DUPLICATE';
-    throw err;
-  }
+    if (conflict === 'email') {
+      const err = new Error('An academy with this email already exists');
+      err.statusCode = 409;
+      err.code = 'ACADEMY_EMAIL_DUPLICATE';
+      throw err;
+    }
 
-  if (nameExists.rows.length > 0) {
-    const err = new Error('An academy with this name already exists');
-    err.statusCode = 409;
-    err.code = 'ACADEMY_DUPLICATE';
-    throw err;
-  }
+    if (conflict === 'name') {
+      const err = new Error('An academy with this name already exists');
+      err.statusCode = 409;
+      err.code = 'ACADEMY_DUPLICATE';
+      throw err;
+    }
 
-  if (shortNameExists.rows.length > 0) {
-    const err = new Error('An academy with this short name already exists');
-    err.statusCode = 409;
-    err.code = 'ACADEMY_SHORT_NAME_DUPLICATE';
-    throw err;
+    if (conflict === 'short_name') {
+      const err = new Error('An academy with this short name already exists');
+      err.statusCode = 409;
+      err.code = 'ACADEMY_SHORT_NAME_DUPLICATE';
+      throw err;
+    }
   }
 }
 const insertAcademyToDB = async ({
-  wallet_address,
   email,
   academy_number,
   name,
@@ -62,7 +82,6 @@ const insertAcademyToDB = async ({
 }) => {
   const { rows: [academy] } = await db.query(
     `INSERT INTO academies (
-        wallet_address,
         email,
         academy_number,
         name,
@@ -84,7 +103,6 @@ const insertAcademyToDB = async ({
       )
       RETURNING
         id,
-        wallet_address,
         email,
         academy_number,
         name,
@@ -99,7 +117,6 @@ const insertAcademyToDB = async ({
         tax_id,
         billing_email`,
     [
-      wallet_address,
       email,
       academy_number,
       name,
@@ -134,7 +151,6 @@ const generateRandomAcademyNumber = async () => {
 // Services
 const createAcademyService = async (payload) => {
   const {
-    wallet_address,
     email,
     name,
     short_name,
@@ -149,36 +165,12 @@ const createAcademyService = async (payload) => {
     billing_email,
   } = payload;
 
-  const checksumAddr = ethers.getAddress(wallet_address);
-
-  await ensureAcademyUnique(checksumAddr, email, name, short_name);
+  await ensureAcademyUnique(email, name, short_name);
   const academy_number = await generateRandomAcademyNumber();
 
-  const { rows: [academy] } = await insertAcademyToDB({
-    ...payload,
-    academy_number,
-    wallet_address: checksumAddr,
-  });
+  const { rows: [academy] } = await insertAcademyToDB({ ...payload, academy_number });
 
-  return {
-    academy: {
-      id: academy.id,
-      wallet_address: academy.wallet_address,
-      academy_number: academy.academy_number,
-      email: academy.email,
-      name: academy.name,
-      short_name: academy.short_name,
-      type: academy.type,
-      description: academy.description,
-      website: academy.website,
-      logo_url: academy.logo_url,
-      phone: academy.phone,
-      legal_name: academy.legal_name,
-      registration_number: academy.registration_number,
-      tax_id: academy.tax_id,
-      billing_email: academy.billing_email,
-    },
-  };
+  return { academy: academyDto(academy) };
 };
 
 export { createAcademyService };

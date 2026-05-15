@@ -14,8 +14,6 @@ END $$;
 CREATE TABLE IF NOT EXISTS academies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    wallet_address VARCHAR(42) UNIQUE NOT NULL,
-
     academy_number VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) UNIQUE NOT NULL,
     short_name VARCHAR(50) UNIQUE NOT NULL,
@@ -36,7 +34,6 @@ CREATE TABLE IF NOT EXISTS academies (
     CONSTRAINT chk_academies_short_name_uppercase CHECK (short_name = upper(short_name))
 );
 
-CREATE INDEX IF NOT EXISTS idx_academies_wallet_address ON academies(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_academies_academy_number ON academies(academy_number);
 CREATE INDEX IF NOT EXISTS idx_academies_email ON academies(email);
 CREATE INDEX IF NOT EXISTS idx_academies_name ON academies(name);

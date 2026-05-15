@@ -2,17 +2,17 @@ import { issueAcademyIdentity, revokeAcademyIdentity } from './academy.identity.
 import { ok } from '../../../utils/response.js'
 
 export const issueIdentity = async (req, res) => {
-  const { wallet_address } = req.body
+  const { wallet, email } = req.body
 
-  const result = await issueAcademyIdentity({ wallet_address })
+  const result = await issueAcademyIdentity({ wallet, email })
 
   return ok(res, result, 'Academy identity issuance request submitted successfully')
 }
 
 export const revokeIdentity = async (req, res) => {
-  const { wallet_address } = req.body
+  const { wallet } = req.body
 
-  const result = await revokeAcademyIdentity({ wallet_address: wallet_address.toLowerCase() })
+  const result = await revokeAcademyIdentity({ wallet })
 
   return ok(res, result, 'Academy identity revocation request submitted successfully')
 }

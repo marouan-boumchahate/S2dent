@@ -47,31 +47,16 @@ const ensureUserExists = async (user_id) => {
 };
 const ensureAcademyExists = async (academy_id) => {
   const { rows: [academy] } = await db.query(
-    'SELECT id, wallet_address FROM academies WHERE id = $1 LIMIT 1',
+    `SELECT id 
+     FROM identities 
+     WHERE academy_id = $1 LIMIT 1`,
     [academy_id],
   );
 
   if (!academy) {
-    const err = new Error('Academy not found');
+    const err = new Error('Academy has no active identity');
     err.statusCode = 404;
     err.code = 'ACADEMY_NOT_FOUND';
-    throw err;
-  }
-
-  const { rows } = await db.query(
-    `SELECT 1
-      FROM identities
-      WHERE wallet_address = $1
-        AND role = 'academy'
-        AND is_active = TRUE
-      LIMIT 1`,
-    [academy.wallet_address],
-  );
-
-  if (rows.length === 0) {
-    const err = new Error('Academy has no active identity');
-    err.statusCode = 403;
-    err.code = 'ACADEMY_IDENTITY_INACTIVE';
     throw err;
   }
 };

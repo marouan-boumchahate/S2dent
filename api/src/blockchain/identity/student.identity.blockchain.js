@@ -36,8 +36,8 @@ const issueStudentIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            studentWallet,
-            academyWallet,
+            studentPublicKey,
+            academyPublicKey,
             
             studentId,
             nationalId,
@@ -60,7 +60,7 @@ const issueStudentIdentity = async (payload) => {
         }
         
         
-        const params = [studentWallet, academyWallet, args]
+        const params = [studentPublicKey, academyPublicKey, args]
         
         const gasLimit = await getGasLimit(contract, 'issueStudentIdentity', params)
         
@@ -85,11 +85,11 @@ const revokeStudentIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            studentWallet,
-            academyWallet
+            studentPublicKey,
+            academyPublicKey
         } = payload
 
-        const params = [studentWallet, academyWallet]
+        const params = [studentPublicKey, academyPublicKey]
 
         const gasLimit = await getGasLimit(contract, 'revokeStudentIdentity', params)
 
@@ -109,11 +109,11 @@ const revokeStudentIdentity = async (payload) => {
     }
 }
 
-const getStudentIdentity = async (walletAddress) => {
+const getStudentIdentity = async (publicKey) => {
     try {
         const contract = getContract()
 
-        const [identity, status] = await contract.students(walletAddress)
+        const [identity, status] = await contract.students(publicKey)
 
         if (status.issuedAt === 0n) {
             return null

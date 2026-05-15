@@ -49,7 +49,7 @@ const issueAcademyIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            walletAddress,
+            publicKey,
 
             academyNumber,
             name,
@@ -91,7 +91,7 @@ const issueAcademyIdentity = async (payload) => {
             },
         }
 
-        const params = [walletAddress, args] // Conrtract Parameters
+        const params = [publicKey, args] // Conrtract Parameters
 
         const gasLimit = await getGasLimit(contract, 'issueAcademyIdentity', params)
         // console.log('Estimated gas limit (with margin):', gasLimit.toString())
@@ -102,7 +102,7 @@ const issueAcademyIdentity = async (payload) => {
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
-        console.log('Blockchain error in issueAcademyIdentity:', err)
+        // console.log('Blockchain error in issueAcademyIdentity:', err)
 
         const wrapped = new Error(`issueAcademyIdentity failed: ${reason}`)
         wrapped.statusCode = 502
@@ -115,9 +115,9 @@ const revokeAcademyIdentity = async (payload) => {
     try {
         const contract = getContract()
 
-        const { walletAddress } = payload
+        const { publicKey } = payload
 
-        const params = [walletAddress] // Conrtract Parameters
+        const params = [publicKey] // Conrtract Parameters
 
         const gasLimit = await getGasLimit(contract, 'revokeAcademyIdentity', params)
         // console.log('Estimated gas limit (with margin):', gasLimit.toString())
@@ -135,11 +135,11 @@ const revokeAcademyIdentity = async (payload) => {
         throw wrapped
     }
 }
-const getAcademyIdentity = async (walletAddress) => {
+const getAcademyIdentity = async (publicKey) => {
     try {
         const contract = getContract()
 
-        const [identity, proofs, cert, status] = await contract.academies(walletAddress)
+        const [identity, proofs, cert, status] = await contract.academies(publicKey)
 
         if (status.issuedAt === 0n) return null
 
