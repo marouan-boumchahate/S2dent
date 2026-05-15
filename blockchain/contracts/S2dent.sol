@@ -16,14 +16,24 @@ contract S2dent {
         _;
     }
 
+    // Constants
+    uint256 internal constant PUBLIC_KEY_LENGTH = 64;
+
     // Errors
     error InvalidAddress(string reason);
+    error InvalidPublicKey(string reason);
     error InvalidString(string reason);
     error InvalidNumber(string reason);
 
     // validations
-    function _validateWalletAddressSet(address _address) internal pure {
-        if (_address == address(0)) revert InvalidAddress("Address must not be zero.");
+    function _validatePublicKeySet(bytes memory _publicKey) internal pure {
+        if (_publicKey.length != PUBLIC_KEY_LENGTH) {
+            revert InvalidPublicKey("Public key must be 64 bytes.");
+        }
+    }
+
+    function _publicKeysEqual(bytes memory a, bytes memory b) internal pure returns (bool) {
+        return keccak256(a) == keccak256(b);
     }
 
     function _validateStringIsNotEmpty(
