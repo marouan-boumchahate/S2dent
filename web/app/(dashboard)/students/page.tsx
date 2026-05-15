@@ -66,7 +66,8 @@ export default function StudentsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{s.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.currentLevel || '—'}</td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={s.enrollmentStatus} />
+                        {/* TODO: replace with the API for status */}
+                        <StatusBadge status="verified" />
                       </td>
                       <td className="px-6 py-4">
                         <button className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-electric px-3 py-1 rounded-lg transition">
@@ -95,18 +96,31 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+// enrollment
+function EnrollmentBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    active: 'bg-mint/20 text-mint',
-    graduated: 'bg-blue-500/20 text-blue-400',
-    inactive: 'bg-gray-500/20 text-gray-400',
-    suspended: 'bg-red-500/20 text-red-400',
-    withdrawn: 'bg-orange-500/20 text-orange-400',
+    active: 'bg-green-100 text-green-600 border border-green-200',
+    inactive: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
+    graduated: 'bg-blue-100 text-blue-600 border border-blue-200',
   };
-  const cls = map[status] || 'bg-yellow-500/20 text-yellow-400';
+  const cls = map[status?.toLowerCase()] || 'bg-yellow-100 text-yellow-600 border border-yellow-200';
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${cls}`}>
-      {status || 'Pending'}
+      {status || 'inactive'}
+    </span>
+  );
+}
+
+// blockchain status will set by API
+function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
+  const map = {
+    verified: 'bg-green-100 text-green-600 border border-green-200',
+    pending:  'bg-yellow-100 text-yellow-600 border border-yellow-200',
+    failed:   'bg-red-100 text-red-500 border border-red-200',
+  };
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>
+      {status}
     </span>
   );
 }

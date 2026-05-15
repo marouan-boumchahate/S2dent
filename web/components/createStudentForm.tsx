@@ -88,7 +88,7 @@ router.push('/students');
               label="Enrollment Status"
               value={enrollmentStatus}
               onChange={setEnrollmentStatus}
-              options={['', 'active', 'inactive', 'suspended', 'withdrawn', 'graduated']}
+              options={['', 'active', 'inactive', 'graduated']}
             />
             <FormField
               label="Enrollment Date"
