@@ -15,7 +15,9 @@ export default function ProfessorsPage() {
 
   const total = professors.length;
   const departments = new Set(professors.map(p => p.department).filter(Boolean)).size;
-  const withTitle = professors.filter(p => p.title).length;
+
+  // TODO: replace with the API for blockchain status
+  const verified = 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -25,9 +27,9 @@ export default function ProfessorsPage() {
 
         {/* stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Professors" value={total} sub="+0 this month" />
-          <StatCard label="With Title" value={withTitle} sub={total ? `${Math.round(withTitle / total * 100)}%` : '0%'} subColor="text-mint" />
-          <StatCard label="Departments" value={departments} sub="active" />
+          <StatCard label="Total Professors" value={total} sub="+0 this month" subColor="text-purple-500" />
+          <StatCard label="Verified" value={verified} sub={total ? `${Math.round(verified / total * 100)}%` : '0%'} subColor="text-mint" />
+          <StatCard label="Departments" value={departments} sub="active" subColor="text-orange-400" />
           <StatCard label="Certs Issued" value={0} sub="total" subColor="text-blue-400" />
         </div>
 
@@ -65,7 +67,7 @@ export default function ProfessorsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{p.rank || '—'}</td>
                       <td className="px-6 py-4">
                         {/* TODO: replace with the API for status */}
-                        <StatusBadge status="verified" />
+                        <StatusBadge status="pending" />
                       </td>
                       <td className="px-6 py-4">
                         <button className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-electric px-3 py-1 rounded-lg transition">
@@ -107,5 +109,3 @@ function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) 
     </span>
   );
 }
-
-
