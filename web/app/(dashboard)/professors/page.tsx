@@ -70,7 +70,10 @@ export default function ProfessorsPage() {
                         <StatusBadge status="pending" />
                       </td>
                       <td className="px-6 py-4">
-                        <button className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-electric px-3 py-1 rounded-lg transition">
+                        <button
+                          onClick={() => router.push(`/professors/${p.id}`)}
+                          className="text-sm border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition"
+                        >
                           View
                         </button>
                       </td>
@@ -96,7 +99,7 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
   );
 }
 
-// blockchain status will set by API
+// blockchain status will be set by API
 function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
