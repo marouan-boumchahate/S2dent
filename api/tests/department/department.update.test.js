@@ -22,13 +22,13 @@ const issueAccessToken = (payload = {}) => signTokens(
 ).accessToken;
 
 const seedAcademy = async () => {
-  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+  const identifiers = [SEED_EMAIL, SEED_ACADEMY_NUMBER];
 
   await db.query(
     `DELETE FROM students
      WHERE academy_id IN (
        SELECT id FROM academies
-       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+       WHERE email = $1 OR academy_number = $2
      )`,
     identifiers,
   );
@@ -37,7 +37,7 @@ const seedAcademy = async () => {
     `DELETE FROM professors
      WHERE academy_id IN (
        SELECT id FROM academies
-       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+       WHERE email = $1 OR academy_number = $2
      )`,
     identifiers,
   );
@@ -47,8 +47,7 @@ const seedAcademy = async () => {
      WHERE academy_id IN (
        SELECT id FROM academies
        WHERE email = $1
-          OR wallet_address = $2
-          OR academy_number = $3
+        OR academy_number = $2
      )`,
     identifiers,
   );
@@ -56,14 +55,12 @@ const seedAcademy = async () => {
   await db.query(
     `DELETE FROM academies
      WHERE email = $1
-        OR wallet_address = $2
-        OR academy_number = $3`,
+        OR academy_number = $2`,
     identifiers,
   );
 
   const { rows: [academy] } = await db.query(
     `INSERT INTO academies (
-        wallet_address,
         email,
         academy_number,
         name,
@@ -74,12 +71,11 @@ const seedAcademy = async () => {
         tax_id
      )
      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8, $9
+        $1, $2, $3, $4,
+        $5, $6, $7, $8
      )
      RETURNING id`,
     [
-      SEED_WALLET,
       SEED_EMAIL,
       SEED_ACADEMY_NUMBER,
       'Update Dept Academy',
@@ -89,6 +85,13 @@ const seedAcademy = async () => {
       'REG-UPDATE-001',
       'TAX-UPDATE-001',
     ],
+  );
+
+  await db.query(
+    `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+     VALUES ($1, $2, $3, 'academy', TRUE)
+     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+    [academy.id, SEED_WALLET, '0x04f05fef58' + 'a'.repeat(120)],
   );
 
   return academy.id;
@@ -102,13 +105,22 @@ const cleanupDepartments = async (academyId) => {
 };
 
 const teardownSeed = async () => {
-  const identifiers = [SEED_EMAIL, SEED_WALLET.toLowerCase(), SEED_ACADEMY_NUMBER];
+  const identifiers = [SEED_EMAIL, SEED_ACADEMY_NUMBER];
+
+  await db.query(
+    `DELETE FROM identities
+     WHERE academy_id IN (
+       SELECT id FROM academies
+       WHERE email = $1 OR academy_number = $2
+     )`,
+    identifiers,
+  );
 
   await db.query(
     `DELETE FROM students
      WHERE academy_id IN (
        SELECT id FROM academies
-       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+       WHERE email = $1 OR academy_number = $2
      )`,
     identifiers,
   );
@@ -117,7 +129,7 @@ const teardownSeed = async () => {
     `DELETE FROM professors
      WHERE academy_id IN (
        SELECT id FROM academies
-       WHERE email = $1 OR wallet_address = $2 OR academy_number = $3
+       WHERE email = $1 OR academy_number = $2
      )`,
     identifiers,
   );
@@ -127,8 +139,7 @@ const teardownSeed = async () => {
      WHERE academy_id IN (
        SELECT id FROM academies
        WHERE email = $1
-          OR wallet_address = $2
-          OR academy_number = $3
+        OR academy_number = $2
      )`,
     identifiers,
   );
@@ -136,8 +147,7 @@ const teardownSeed = async () => {
   await db.query(
     `DELETE FROM academies
      WHERE email = $1
-        OR wallet_address = $2
-        OR academy_number = $3`,
+        OR academy_number = $2`,
     identifiers,
   );
 };

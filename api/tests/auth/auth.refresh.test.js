@@ -59,8 +59,9 @@ const TEST_UA = 'test-agent/1.0';
 
 // Default cache stubs treat any refresh token as present in cache for the
 // (TEST_IP, TEST_UA) tuple, so the refresh flow advances past the cache check.
+// Service does JSON.parse on the cached value, so the stub must return a JSON string.
 const makeCacheStubs = (overrides = {}) => ({
-    getCache: sinon.stub().resolves({ ip: TEST_IP, device: TEST_UA }),
+    getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: TEST_UA })),
     setCache: sinon.stub().resolves(),
     delCache: sinon.stub().resolves(),
     ...overrides,
@@ -109,7 +110,53 @@ const refreshReq = (app, refreshToken) =>
         .post('/api/auth/refresh')
         .set('User-Agent', TEST_UA)
         .set('X-Forwarded-For', TEST_IP)
-        .send({ refreshToken });
+        .send({ refresh_token: refreshToken });
+
+
+// Seed an identity row so refreshTokenService.fetchIdentityByAddress(sub) succeeds.
+import db from '../../src/config/db.js';
+
+const seedIdentityForAddress = async (walletAddress, role) => {
+    await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
+    const publicKey = '0x04' + crypto.randomBytes(64).toString('hex');
+    if (role === 'academy') {
+        const suffix = crypto.randomBytes(4).toString('hex');
+        const { rows: [academy] } = await db.query(
+            `INSERT INTO academies (academy_number, email, name, short_name, type, legal_name, registration_number, tax_id)
+             VALUES ($1, $2, $3, $4, 'university', $5, $6, $7)
+             RETURNING id`,
+            [`ACR-${suffix}`, `refresh-${suffix}@seed.test`, `Refresh Academy ${suffix}`, `RA${suffix.slice(0,4).toUpperCase()}`, `Refresh Academy ${suffix} Legal`, `REG-RFR-${suffix}`, `TAX-RFR-${suffix}`],
+        );
+        await db.query(
+            `INSERT INTO identities (wallet_address, public_key, role, academy_id, is_active)
+             VALUES ($1, $2, 'academy', $3, TRUE)`,
+            [walletAddress, publicKey, academy.id],
+        );
+        return { academy_id: academy.id };
+    }
+    const suffix = crypto.randomBytes(4).toString('hex');
+    const { rows: [user] } = await db.query(
+        `INSERT INTO users (first_name, middle_name, last_name, full_name, date_of_birth, gender, national_id, nationality, email)
+         VALUES ($1, NULL, $2, $3, '1990-01-01', 'male', $4, 'Testland', $5)
+         RETURNING id`,
+        ['Refresh', `User${suffix}`, `Refresh User ${suffix}`, `NID-RFR-${suffix}`, `refresh-user-${suffix}@seed.test`],
+    );
+    await db.query(
+        `INSERT INTO identities (wallet_address, public_key, role, user_id, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)`,
+        [walletAddress, publicKey, role === 'system_admin' ? 'system_admin' : role, user.id],
+    );
+    return { user_id: user.id };
+};
+
+const cleanupSeed = async (walletAddress) => {
+    const { rows } = await db.query(`SELECT academy_id, user_id FROM identities WHERE wallet_address = $1`, [walletAddress]);
+    await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
+    for (const r of rows) {
+        if (r.academy_id) await db.query(`DELETE FROM academies WHERE id = $1`, [r.academy_id]);
+        if (r.user_id)    await db.query(`DELETE FROM users WHERE id = $1`,     [r.user_id]);
+    }
+};
 
 
 describe('POST /api/auth/refresh', function () {
@@ -117,8 +164,16 @@ describe('POST /api/auth/refresh', function () {
 
     let address;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         address = ethers.Wallet.createRandom().address;
+        // Seed a generic identity row so fetchIdentityByAddress(sub) succeeds.
+        // The seeded role is irrelevant for the refresh service: it uses the role
+        // claim from the token, not the DB row.
+        await seedIdentityForAddress(address, 'professor');
+    });
+
+    afterEach(async () => {
+        await cleanupSeed(address);
     });
 
     it('returns 201 with a new accessToken and the same refreshToken on a valid input (professor)', async () => {
@@ -131,11 +186,11 @@ describe('POST /api/auth/refresh', function () {
         assert.equal(res.body.success, true);
         assert.equal(res.body.message, 'Token refreshed successfully');
 
-        assert.ok(res.body.data.accessToken,   'response must contain accessToken');
-        assert.equal(res.body.data.refreshToken, refreshToken,
+        assert.ok(res.body.data.access_token,   'response must contain accessToken');
+        assert.equal(res.body.data.refresh_token, refreshToken,
             'response must echo the same refreshToken back');
 
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.sub, address);
         assert.equal(accessPayload.role,    'professor');
     });
@@ -150,7 +205,7 @@ describe('POST /api/auth/refresh', function () {
 
         assert.equal(res.status, 201);
 
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.uid, uid);
         assert.equal(accessPayload.rid, rid);
         assert.equal(accessPayload.role, 'student');
@@ -164,7 +219,7 @@ describe('POST /api/auth/refresh', function () {
 
         assert.equal(res.status, 201);
 
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.uid, null);
         assert.equal(accessPayload.rid, null);
         assert.equal(accessPayload.role, 'academy');
@@ -189,7 +244,7 @@ describe('POST /api/auth/refresh', function () {
         assert.equal(calls.professor, 0);
         assert.equal(calls.academy, 0);
 
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.role, 'student');
     });
 
@@ -226,7 +281,7 @@ describe('POST /api/auth/refresh', function () {
         assert.equal(res.body.code, 'VALIDATION_ERROR');
         assert.ok(Array.isArray(res.body.errors));
 
-        const found = res.body.errors.find(e => e.field === 'refreshToken');
+        const found = res.body.errors.find(e => e.field === 'refresh_token');
         assert.ok(found, 'errors must contain a refreshToken entry');
     });
 
@@ -235,12 +290,12 @@ describe('POST /api/auth/refresh', function () {
 
         const res = await request(app)
             .post('/api/auth/refresh')
-            .send({ refreshToken: '' });
+            .send({ refresh_token: '' });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
 
-        const found = res.body.errors.find(e => e.field === 'refreshToken');
+        const found = res.body.errors.find(e => e.field === 'refresh_token');
         assert.ok(found, 'errors must contain a refreshToken entry');
     });
 
@@ -249,12 +304,12 @@ describe('POST /api/auth/refresh', function () {
 
         const res = await request(app)
             .post('/api/auth/refresh')
-            .send({ refreshToken: 12345 });
+            .send({ refresh_token: 12345 });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
 
-        const found = res.body.errors.find(e => e.field === 'refreshToken');
+        const found = res.body.errors.find(e => e.field === 'refresh_token');
         assert.ok(found);
     });
 
@@ -275,7 +330,7 @@ describe('POST /api/auth/refresh', function () {
         const refreshToken = issueRefreshToken(address, 'professor');
         const { app } = await makeApp({
             cache: makeCacheStubs({
-                getCache: sinon.stub().resolves({ ip: '8.8.8.8', device: TEST_UA }),
+                getCache: sinon.stub().resolves(JSON.stringify({ ip: '8.8.8.8', device: TEST_UA })),
             }),
         });
 
@@ -289,7 +344,7 @@ describe('POST /api/auth/refresh', function () {
         const refreshToken = issueRefreshToken(address, 'professor');
         const { app } = await makeApp({
             cache: makeCacheStubs({
-                getCache: sinon.stub().resolves({ ip: TEST_IP, device: 'other-agent' }),
+                getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: 'other-agent' })),
             }),
         });
 
@@ -383,7 +438,7 @@ describe('POST /api/auth/refresh', function () {
             const res = await refreshReq(app, refreshToken);
 
             assert.equal(res.status, 201);
-            assert.equal(res.body.data.refreshToken, refreshToken,
+            assert.equal(res.body.data.refresh_token, refreshToken,
                 'refresh service must echo the same refreshToken back (no rotation)');
             assert.equal(cache.setCache.called, false, 'setCache must not be called on refresh');
             assert.equal(cache.delCache.called, false, 'delCache must not be called on refresh');

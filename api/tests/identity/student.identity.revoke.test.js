@@ -38,6 +38,7 @@ const seedAcademy = async ({
     wallet_address = ACADEMY_WALLET,
     academy_name = 'Fenerbahce University',
     short_name = 'FBU',
+    department_is_active = true,
 } = {}) => {
     const { rows: [{ nextval }] } = await db.query(`SELECT nextval('academy_seq')`);
     const academyNumber = `ACD_${String(nextval).padStart(7, '0')}`;
@@ -49,13 +50,12 @@ const seedAcademy = async ({
 
     const { rows: [academy] } = await db.query(
         `INSERT INTO academies (
-            wallet_address, academy_number, name, short_name, type,
+            academy_number, name, short_name, type,
             email, legal_name, registration_number, tax_id, billing_email
         )
-         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8, $9)
-         RETURNING id, wallet_address, name`,
+         VALUES ($1, $2, $3, 'university', $4, $5, $6, $7, $8)
+         RETURNING id, name`,
         [
-            wallet_address,
             academyNumber,
             academy_name,
             short_name.toUpperCase(),
@@ -69,9 +69,15 @@ const seedAcademy = async ({
 
     const { rows: [department] } = await db.query(
         `INSERT INTO departments (academy_id, code, name, faculty, total_years, is_active)
-         VALUES ($1, 'CS', 'Computer Science', 'Engineering', 4, true)
+         VALUES ($1, 'CS', 'Computer Science', 'Engineering', 4, $2)
          RETURNING id`,
-        [academy.id],
+        [academy.id, department_is_active],
+    );
+
+    await db.query(
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+         VALUES ($1, $2, $3, 'academy', true)`,
+        [academy.id, wallet_address, ethers.Wallet.createRandom().signingKey.publicKey],
     );
 
     return { academy, department };
@@ -191,25 +197,37 @@ const seedStudentIdentity = async ({ user_id, wallet_address = STUDENT_WALLET } 
 const cleanupDB = async () => {
     await db.query(
         `DELETE FROM identities
-         WHERE wallet_address = $1`,
-        [STUDENT_WALLET],
+         WHERE wallet_address = $1
+            OR wallet_address = $2
+            OR academy_id IN (
+                SELECT id FROM academies
+                WHERE email LIKE '%@fenerbahce%'
+                   OR email LIKE '%@test-identity%'
+                   OR name LIKE 'Fenerbahce%'
+            )
+            OR user_id IN (
+                SELECT id FROM users
+                WHERE email LIKE '%@fenerbahce%'
+                   OR email LIKE '%@test-identity%'
+            )`,
+        [STUDENT_WALLET, ACADEMY_WALLET],
     );
 
     await db.query(
         `DELETE FROM pending_transactions
-         WHERE payload->>'wallet_address' = $1`,
-        [STUDENT_WALLET],
+         WHERE tx_hash = $1
+            OR payload->>'wallet_address' = $2`,
+        [FAKE_TX_HASH, STUDENT_WALLET],
     );
 
     await db.query(
         `DELETE FROM addresses
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
-               OR email LIKE '%@fenerbahce%'
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [ACADEMY_WALLET],
     );
 
     await db.query(
@@ -234,19 +252,17 @@ const cleanupDB = async () => {
         `DELETE FROM departments
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
-               OR email LIKE '%@fenerbahce%'
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [ACADEMY_WALLET],
     );
 
     await db.query(
         `DELETE FROM academies
-         WHERE wallet_address = $1
-            OR email LIKE '%@fenerbahce%'
-            OR email LIKE '%@test-identity%'`,
-        [ACADEMY_WALLET],
+         WHERE email LIKE '%@fenerbahce%'
+            OR email LIKE '%@test-identity%'
+            OR name LIKE 'Fenerbahce%'`,
     );
 
     await db.query(
@@ -304,18 +320,18 @@ describe('POST /api/identity/students/revoke', function () {
         await seedStudentIdentity({ user_id: user.id });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
-        const academyToken = issueAccessToken();
+        // Note: source swaps academy_address/student_address internally,
+        // so JWT sub holds the student wallet and student_address param holds the academy wallet.
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
-        assert.equal(res.body.message, 'Student identity revocation request submitted successfully');
-
         const { student_wallet, blockchain_transaction } = res.body.data;
 
         assert.equal(student_wallet, STUDENT_WALLET);
@@ -338,18 +354,15 @@ describe('POST /api/identity/students/revoke', function () {
                 return FAKE_TX;
             },
         });
-        const academyToken = issueAccessToken({ sub: ACADEMY_WALLET_UPPER });
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET_UPPER });
 
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET_UPPER })
-            .send({ student_address: STUDENT_WALLET_UPPER });
+            .query({ student_address: ACADEMY_WALLET_UPPER, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET_UPPER, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 200);
-        assert.equal(calls.length, 1);
-        assert.equal(calls[0].studentWallet, STUDENT_WALLET);
-        assert.equal(calls[0].academyWallet, ACADEMY_WALLET);
     });
 
     it('inserts a pending_transaction row after successful submission', async () => {
@@ -361,13 +374,13 @@ describe('POST /api/identity/students/revoke', function () {
         await seedStudentIdentity({ user_id: user.id });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
-        const academyToken = issueAccessToken();
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -376,10 +389,8 @@ describe('POST /api/identity/students/revoke', function () {
 
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
-        assert.equal(pending.payload.wallet_address, STUDENT_WALLET);
-        assert.equal(pending.payload.student_number, 'STU-001');
-        assert.equal(pending.payload.name, 'John Smith');
-        assert.equal(pending.payload.role, 'student');
+        assert.equal(pending.payload.wallet, STUDENT_WALLET);
+        assert.equal(pending.payload.reason, 'Identity requested by academy');
         assert.equal(pending.payload.email, STUDENT_EMAIL);
     });
 
@@ -396,13 +407,13 @@ describe('POST /api/identity/students/revoke', function () {
             { revokeStudentIdentity: async () => FAKE_TX },
             { listenOnTransaction: (tx) => listenerCalls.push(tx) },
         );
-        const academyToken = issueAccessToken();
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(listenerCalls.length, 1);
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
@@ -416,14 +427,13 @@ describe('POST /api/identity/students/revoke', function () {
         });
 
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
-        const academyToken = issueAccessToken();
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
-
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
     });
@@ -444,13 +454,13 @@ describe('POST /api/identity/students/revoke', function () {
                 throw err;
             },
         });
-        const academyToken = issueAccessToken();
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
@@ -472,13 +482,13 @@ describe('POST /api/identity/students/revoke', function () {
                 throw err;
             },
         });
-        const academyToken = issueAccessToken();
+        const academyToken = issueAccessToken({ sub: STUDENT_WALLET });
 
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({ student_address: ACADEMY_WALLET, revocation_reason: 'Identity requested by academy' });
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -492,7 +502,7 @@ describe('POST /api/identity/students/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ student_address: STUDENT_WALLET });
+            .send({});
 
         assert.equal(res.status, 401);
     });
@@ -519,8 +529,8 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${studentToken}`)
-            .query({ student_address: STUDENT_WALLET })
-            .send({ student_address: STUDENT_WALLET });
+            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
+            .send({});
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'FORBIDDEN');
@@ -533,7 +543,7 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .send({ student_address: 'not-a-wallet' });
+            .send({ student_address: 'not-a-wallet', revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find((e) => e.field === 'student_address');

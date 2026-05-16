@@ -53,17 +53,17 @@ const seedAcademy = async () => {
     [SEED_ACADEMY_EMAIL],
   );
 
+  await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [SEED_WALLET]);
   await db.query(`DELETE FROM academies WHERE email = $1`, [SEED_ACADEMY_EMAIL]);
 
   const { rows: [academy] } = await db.query(
     `INSERT INTO academies (
-       wallet_address, academy_number, name, short_name, type,
+       academy_number, name, short_name, type,
        email, legal_name, registration_number, tax_id
      )
-     VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8)
-     RETURNING id, wallet_address`,
+     VALUES ($1, $2, $3, 'university', $4, $5, $6, $7)
+     RETURNING id`,
     [
-      SEED_WALLET,
       SEED_ACADEMY_NUMBER,
       'Seed Professor Update University',
       'SPUU',
@@ -75,10 +75,10 @@ const seedAcademy = async () => {
   );
 
   await db.query(
-    `INSERT INTO identities (wallet_address, role, is_active)
-     VALUES ($1, 'academy', TRUE)
-     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE`,
-    [academy.wallet_address],
+    `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+     VALUES ($1, $2, $3, 'academy', TRUE)
+     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+    [academy.id, SEED_WALLET, '0x04profupd' + 'a'.repeat(121)],
   );
 
   return academy.id;
@@ -225,10 +225,11 @@ beforeEach(async () => {
   TUSER_ID = await seedTUser();
 
   // Seed identity for professor
+  const profPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
   await db.query(
-    `INSERT INTO identities (user_id, role, is_active)
-     VALUES ($1, 'professor', TRUE)`,
-    [TUSER_ID]
+    `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
+     VALUES ($1, $2, $3, 'professor', TRUE)`,
+    [TUSER_ID, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
   );
 
   PROFESSOR_ID = (await createProfessor()).id;

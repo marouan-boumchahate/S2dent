@@ -4,7 +4,14 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 
 const getNonce = (byteLength = 32) => crypto.randomBytes(byteLength).toString('hex');
-const recoverSigner = (message, signature) => ethers.verifyMessage(message, signature);
+const recoverSigner = (message, signature) => {
+    const msgHash = ethers.hashMessage(message);
+
+    const signerPublicKey = ethers.SigningKey.recoverPublicKey(msgHash, signature);
+    const signerAddress = ethers.computeAddress(signerPublicKey);
+
+    return { signerPublicKey, signerAddress };
+};
 const hash = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 const encrypt = (text, SECRET) => {

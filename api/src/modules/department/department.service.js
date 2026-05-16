@@ -17,12 +17,12 @@ const toDepartmentDto = (department) => ({
 // Helpers
 const ensureAcademyExists = async (academyId) => {
   const { rows } = await db.query(
-    'SELECT id FROM academies WHERE id = $1 LIMIT 1',
+    'SELECT id FROM identities WHERE academy_id = $1 AND is_active = TRUE LIMIT 1',
     [academyId],
   );
 
   if (rows.length === 0) {
-    const err = new Error('Academy not found for the given academy_id');
+    const err = new Error('Academy is not registered or inactive');
     err.statusCode = 404;
     err.code = 'ACADEMY_NOT_FOUND';
     throw err;
@@ -75,6 +75,41 @@ const ensureDepartmentExists = async (department_id) => {
 
   if (!department) {
     const err = new Error('Department not found');
+    err.statusCode = 404;
+    err.code = 'DEPARTMENT_NOT_FOUND';
+    throw err;
+  }
+
+  return department;
+};
+const getUserDepartment = async (userId, role) => {
+  let result;
+
+  if(role === 'student') {
+    result = await db.query(
+      `SELECT d.*
+       FROM departments as d
+       JOIN students s ON s.department_id = d.id
+       WHERE s.user_id = $1
+       LIMIT 1`,
+      [userId],
+    );
+  }
+  else{
+    result = await db.query(
+      `SELECT d.*
+      FROM departments as d
+      JOIN professors p ON p.department_id = d.id
+      WHERE p.user_id = $1
+      LIMIT 1`,
+      [userId],
+    );
+  }
+
+  const department = result.rows[0];
+
+  if(!department) {
+    const err = new Error('Department not found for the user');
     err.statusCode = 404;
     err.code = 'DEPARTMENT_NOT_FOUND';
     throw err;
@@ -252,12 +287,9 @@ const listDepartmentsService = async (academy_id) => {
     departments: rows.map(toDepartmentDto),
   };
 };
-const getDepartmentByIdService = async (department_id) => {
-  const department = await ensureDepartmentExists(department_id);
-
-  return {
-    department: toDepartmentDto(department),
-  };
+const getUserDepartmentService = async (user_id, role) => {
+  const department = await getUserDepartment(user_id, role);
+  return { department: toDepartmentDto(department) };
 };
 const updateDepartmentService = async (payload) => {
   const { department_id } = payload;
@@ -287,7 +319,7 @@ const deleteDepartmentService = async (department_id) => {
 export {
   createDepartmentService,
   listDepartmentsService,
-  getDepartmentByIdService,
+  getUserDepartmentService,
   updateDepartmentService,
   deleteDepartmentService,
 };

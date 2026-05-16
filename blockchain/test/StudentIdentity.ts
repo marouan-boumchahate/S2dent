@@ -22,13 +22,13 @@ describe("StudentIdentity", () => {
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (64 bytes hex strings) for entity identification
-    const ACADEMY_PK = "0x" + "a1".repeat(64);
-    const SECOND_ACADEMY_PK = "0x" + "a2".repeat(64);
-    const FAKE_ACADEMY_PK = "0x" + "ff".repeat(64);
-    const STUDENT_PK = "0x" + "c1".repeat(64);
-    const SECOND_STUDENT_PK = "0x" + "c2".repeat(64);
-    const EMPTY_PK = "0x";
+    // Public keys (65 bytes hex strings) for entity identification
+    const ACADEMY_PK = "0x04" + "a1".repeat(64);
+    const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
+    const FAKE_ACADEMY_PK = "0x04" + "ff".repeat(64);
+    const STUDENT_PK = "0x04" + "c1".repeat(64);
+    const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
+    const EMPTY_PK = "0x04";
 
 
     async function deployFixture() {
@@ -323,7 +323,7 @@ describe("StudentIdentity", () => {
                         enrollmentDate: STUDENT_ENROLLMENT_DATE,
                     }
                 )
-            ).to.be.revertedWithCustomError(instance, "InvalidPublicKey").withArgs("Public key must be 64 bytes.");
+            ).to.be.revertedWithCustomError(instance, "InvalidPublicKey").withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert on empty student ID", async () => {
@@ -718,7 +718,7 @@ describe("StudentIdentity", () => {
                 instance.connect(owner).revokeStudentIdentity(EMPTY_PK, ACADEMY_PK, "Reason")
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert when the student was never issued", async () => {

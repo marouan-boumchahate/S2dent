@@ -1,3 +1,6 @@
-const refreshToken = (tokenHash) => `refresh:${tokenHash}`;
+import { hash } from '../utils/crypto.js';
 
-export { refreshToken };
+const refreshTokenKey = (token) => `refresh:${hash(token)}`;
+const otpKey = (email, otp) => `otp:${hash(`${email}:${otp}`)}`;
+
+export { refreshTokenKey, otpKey };

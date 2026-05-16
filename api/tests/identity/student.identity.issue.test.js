@@ -1,6 +1,7 @@
 import esmock from 'esmock';
 import request from 'supertest';
 import { strict as assert } from 'assert';
+import crypto from 'crypto';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
 
@@ -12,10 +13,29 @@ const STUDENT_EMAIL = 'student.smith@fenerbahce.edu.tr';
 const ACADEMY_WALLET = ethers.getAddress('0xa111111111111111111111111111111111111111');
 const ACADEMY_WALLET_LOWER = ACADEMY_WALLET.toLowerCase();
 
+const ISSUE_OTP = 'ABC123';
+const ISSUE_MESSAGE = 'student-identity-otp-challenge';
+const ISSUE_SIGNER = ethers.Wallet.createRandom();
+const ISSUE_SIGNER_ADDRESS = ethers.getAddress(ISSUE_SIGNER.address);
+const ACADEMY_PUBLIC_KEY = ethers.Wallet.createRandom().signingKey.publicKey;
+const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
+
 const FAKE_TX = {
     hash: FAKE_TX_HASH,
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
+
+const buildCachePayload = ({ id, role = 'student', message = ISSUE_MESSAGE }) => JSON.stringify({
+    id,
+    role,
+    message,
+});
+
+const buildIssueBody = async (email) => ({
+    email,
+    otp: ISSUE_OTP,
+    signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE),
+});
 
 let userColumnCache = null;
 
@@ -49,13 +69,12 @@ const seedAcademy = async ({
 
     const { rows: [academy] } = await db.query(
         `INSERT INTO academies (
-            wallet_address, academy_number, name, short_name, type,
+            academy_number, name, short_name, type,
             email, legal_name, registration_number, tax_id, billing_email
         )
-         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8, $9)
-         RETURNING id, wallet_address, name`,
+         VALUES ($1, $2, $3, 'university', $4, $5, $6, $7, $8)
+         RETURNING id, name`,
         [
-            wallet_address,
             academyNumber,
             academy_name,
             short_name.toUpperCase(),
@@ -67,6 +86,12 @@ const seedAcademy = async ({
         ],
     );
 
+    await db.query(
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+         VALUES ($1, $2, $3, 'academy', true)`,
+        [academy.id, wallet_address, ACADEMY_PUBLIC_KEY],
+    );
+
     const { rows: [department] } = await db.query(
         `INSERT INTO departments (academy_id, code, name, faculty, total_years, is_active)
          VALUES ($1, 'CS', 'Computer Science', 'Engineering', 4, $2)
@@ -74,7 +99,7 @@ const seedAcademy = async ({
         [academy.id, department_is_active],
     );
 
-    return { academy, department };
+    return { academy, department, academyPublicKey: ACADEMY_PUBLIC_KEY };
 };
 
 const seedStudentUser = async ({
@@ -149,14 +174,16 @@ const seedStudentUser = async ({
         insertVals,
     );
 
+    let student = null;
     if (create_student_row && academy_id && department_id) {
-        await db.query(
+        const { rows: [studentRow] } = await db.query(
             `INSERT INTO students (
                 user_id, academy_id, department_id,
                 student_number,
                 enrollment_status, enrollment_date, expected_graduation_date
             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id`,
             [
                 user.id,
                 academy_id,
@@ -167,6 +194,7 @@ const seedStudentUser = async ({
                 expected_graduation_date,
             ],
         );
+        student = studentRow;
     }
 
     if (create_address) {
@@ -177,37 +205,52 @@ const seedStudentUser = async ({
         );
     }
 
-    return user;
+    return { ...user, student_id: student?.id ?? null };
 };
 
 const cleanupDB = async () => {
     await db.query(
         `DELETE FROM identities
-         WHERE wallet_address = $1`,
-        [STUDENT_WALLET],
+         WHERE wallet_address = $1
+            OR wallet_address = $2
+            OR wallet_address = $3
+            OR academy_id IN (
+                SELECT id FROM academies
+                WHERE email LIKE '%@fenerbahce%'
+                   OR email LIKE '%@test-identity%'
+                   OR name LIKE 'Fenerbahce%'
+            )
+            OR user_id IN (
+                SELECT id FROM users
+                WHERE email LIKE '%@fenerbahce%'
+                   OR email LIKE '%@test-identity%'
+            )`,
+        [STUDENT_WALLET, ACADEMY_WALLET, ISSUE_SIGNER_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM identity_certificates
-         WHERE wallet_address = $1`,
-        [STUDENT_WALLET],
+         WHERE wallet_address = $1
+            OR wallet_address = $2`,
+        [STUDENT_WALLET, ISSUE_SIGNER_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM pending_transactions
-         WHERE payload->>'wallet_address' = $1`,
-        [STUDENT_WALLET],
+         WHERE tx_hash = $1
+            OR payload->>'wallet_address' = $2
+            OR payload->>'wallet_address' = $3`,
+        [FAKE_TX_HASH, STUDENT_WALLET, ISSUE_SIGNER_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM addresses
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
-               OR email LIKE '%@fenerbahce%'
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [ACADEMY_WALLET],
     );
 
     await db.query(
@@ -232,19 +275,17 @@ const cleanupDB = async () => {
         `DELETE FROM departments
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
-               OR email LIKE '%@fenerbahce%'
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [ACADEMY_WALLET],
     );
 
     await db.query(
         `DELETE FROM academies
-         WHERE wallet_address = $1
-            OR email LIKE '%@fenerbahce%'
-            OR email LIKE '%@test-identity%'`,
-        [ACADEMY_WALLET],
+         WHERE email LIKE '%@fenerbahce%'
+            OR email LIKE '%@test-identity%'
+            OR name LIKE 'Fenerbahce%'`,
     );
 
     await db.query(
@@ -260,9 +301,16 @@ const DEFAULT_BLOCKCHAIN_IMPL = {
     getStudentIdentity: async () => null,
 };
 
+const DEFAULT_CACHE_IMPL = {
+    getCache: async () => null,
+    setCache: async () => {},
+    delCache: async () => {},
+};
+
 const makeApp = async (
     blockchainImpl = {},
     listenerImpl = { listenOnTransaction: () => {} },
+    cacheImpl = {},
 ) => {
     const { default: app } = await esmock.strict(
         '../../src/app.js',
@@ -271,6 +319,7 @@ const makeApp = async (
         {
             '../../src/blockchain/identity/student.identity.blockchain.js': { ...DEFAULT_BLOCKCHAIN_IMPL, ...blockchainImpl },
             '../../src/blockchain/listener.js': listenerImpl,
+            '../../src/cache/cache.client.js': { ...DEFAULT_CACHE_IMPL, ...cacheImpl },
         },
     );
 
@@ -281,21 +330,25 @@ const endpoint = '/api/identity/students/issue';
 
 describe('POST /api/identity/students/issue', function () {
     this.timeout(10000);
+
     beforeEach(async () => { await cleanupDB(); });
     afterEach(async () => { await cleanupDB(); });
 
     it('returns 200 with student_wallet and blockchain_transaction on valid input', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({
+        const user = await seedStudentUser({
             academy_id: academy.id,
             department_id: department.id,
         });
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
+        });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
@@ -303,7 +356,7 @@ describe('POST /api/identity/students/issue', function () {
 
         const { student_wallet, blockchain_transaction } = res.body.data;
 
-        assert.equal(student_wallet, STUDENT_WALLET);
+        assert.equal(student_wallet, ISSUE_SIGNER_ADDRESS);
         assert.equal(blockchain_transaction.tx_hash, FAKE_TX_HASH);
         assert.equal(blockchain_transaction.status, 'pending');
         assert.equal(
@@ -314,32 +367,35 @@ describe('POST /api/identity/students/issue', function () {
 
     it('normalizes wallet_address and email to lowercase before processing', async () => {
         const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
-        await seedStudentUser({
+        const user = await seedStudentUser({
             academy_id: academy.id,
             department_id: department.id,
         });
 
-        const calls = [];
+        const cacheCalls = [];
         const app = await makeApp({
-            issueStudentIdentity: async (payload) => {
-                calls.push(payload);
-                return FAKE_TX;
+            issueStudentIdentity: async () => FAKE_TX,
+        }, { listenOnTransaction: () => {} }, {
+            getCache: async (key) => {
+                cacheCalls.push(key);
+                return buildCachePayload({ id: user.student_id });
             },
         });
 
+        const body = await buildIssueBody(STUDENT_EMAIL.toUpperCase());
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL.toUpperCase(), wallet_address: STUDENT_WALLET_UPPER });
+            .send(body);
 
         assert.equal(res.status, 200);
-        assert.equal(calls.length, 1);
-        assert.equal(calls[0].studentWallet, STUDENT_WALLET, 'wallet must be lowercased');
-        assert.equal(calls[0].academyWallet, ACADEMY_WALLET, 'academy wallet must be normalized');
+        assert.equal(cacheCalls.length, 1);
+        const expectedKey = `otp:${crypto.createHash('sha256').update(`${STUDENT_EMAIL.toLowerCase()}:${ISSUE_OTP}`).digest('hex')}`;
+        assert.equal(cacheCalls[0], expectedKey);
     });
 
     it('passes the correct payload to issueStudentIdentity', async () => {
         const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
-        await seedStudentUser({
+        const user = await seedStudentUser({
             academy_id: academy.id,
             department_id: department.id,
             full_name: 'John Smith',
@@ -356,17 +412,21 @@ describe('POST /api/identity/students/issue', function () {
                 calls.push(payload);
                 return FAKE_TX;
             },
+        }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
         });
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(calls.length, 1);
 
         const call = calls[0];
-        assert.equal(call.studentWallet, STUDENT_WALLET, 'wallet must be normalised');
-        assert.equal(call.academyWallet, ACADEMY_WALLET, 'academy wallet must be passed');
+        assert.equal(call.studentPublicKey, ISSUE_SIGNER.signingKey.publicKey, 'student public key must be passed');
+        assert.equal(call.academyPublicKey, ACADEMY_PUBLIC_KEY, 'academy public key must be passed');
         assert.equal(call.studentId, 'STU-001', 'studentId must match');
         assert.equal(call.fullName, 'John Smith', 'fullName must match');
         assert.equal(call.nationalId, 'NID-12345678', 'nationalId must match');
@@ -378,13 +438,17 @@ describe('POST /api/identity/students/issue', function () {
 
     it('inserts a pending_transaction row after successful submission', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({ academy_id: academy.id, department_id: department.id });
+        const user = await seedStudentUser({ academy_id: academy.id, department_id: department.id });
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
+        });
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -393,9 +457,9 @@ describe('POST /api/identity/students/issue', function () {
 
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
-        assert.equal(pending.payload.wallet_address, STUDENT_WALLET);
-        assert.equal(pending.payload.student_number, 'STU-001');
-        assert.equal(pending.payload.name, 'John Smith');
+        assert.equal(pending.payload.wallet_address, ISSUE_SIGNER_ADDRESS);
+        assert.equal(pending.payload.public_key, ISSUE_SIGNER.signingKey.publicKey);
+        assert.equal(pending.payload.entity_id, user.id);
         assert.equal(pending.payload.role, 'student');
         assert.equal(pending.payload.email, STUDENT_EMAIL);
         assert.equal(pending.payload.onSuccess.subject, 'Identity Issuance Confirmed');
@@ -404,28 +468,35 @@ describe('POST /api/identity/students/issue', function () {
 
     it('fires listenOnTransaction in the background after submission', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({ academy_id: academy.id, department_id: department.id });
+        const user = await seedStudentUser({ academy_id: academy.id, department_id: department.id });
 
         const listenerCalls = [];
         const app = await makeApp(
             { issueStudentIdentity: async () => FAKE_TX },
             { listenOnTransaction: (tx) => listenerCalls.push(tx) },
+            { getCache: async () => buildCachePayload({ id: user.student_id }) },
         );
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(listenerCalls.length, 1);
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
     });
 
     it('returns 404 STUDENT_NOT_FOUND when email does not exist in DB', async () => {
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: NON_EXISTENT_ID }),
+        });
+
+        const body = await buildIssueBody('ghost@test-identity.edu');
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: 'ghost@test-identity.edu', wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
@@ -438,11 +509,16 @@ describe('POST /api/identity/students/issue', function () {
             create_address: true,
         });
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        await seedAcademy();
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: NON_EXISTENT_ID }),
+        });
+
+        const body = await buildIssueBody('orphan@test-identity.edu');
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: 'orphan@test-identity.edu', wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
@@ -450,13 +526,17 @@ describe('POST /api/identity/students/issue', function () {
 
     it('returns 403 DEPARTMENT_INACTIVE when linked department is inactive', async () => {
         const { academy, department } = await seedAcademy({ department_is_active: false });
-        await seedStudentUser({ academy_id: academy.id, department_id: department.id });
+        const user = await seedStudentUser({ academy_id: academy.id, department_id: department.id });
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
+        });
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'DEPARTMENT_INACTIVE');
@@ -464,18 +544,22 @@ describe('POST /api/identity/students/issue', function () {
 
     it('returns 400 ADDRESS_NOT_FOUND when student has no address row', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({
+        const user = await seedStudentUser({
             academy_id: academy.id,
             department_id: department.id,
             create_address: false,
             email: 'no-address@test-identity.edu',
         });
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
+        });
+
+        const body = await buildIssueBody('no-address@test-identity.edu');
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: 'no-address@test-identity.edu', wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'ADDRESS_NOT_FOUND');
@@ -483,18 +567,22 @@ describe('POST /api/identity/students/issue', function () {
 
     it('returns 400 ADDRESS_NOT_FOUND when student address has empty country', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({
+        const user = await seedStudentUser({
             academy_id: academy.id,
             department_id: department.id,
             address_country: '',
             email: 'empty-country@test-identity.edu',
         });
 
-        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
+        const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
+        });
+
+        const body = await buildIssueBody('empty-country@test-identity.edu');
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: 'empty-country@test-identity.edu', wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'ADDRESS_NOT_FOUND');
@@ -502,7 +590,7 @@ describe('POST /api/identity/students/issue', function () {
 
     it('returns 502 BLOCKCHAIN_ERROR when the blockchain call fails', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({ academy_id: academy.id, department_id: department.id });
+        const user = await seedStudentUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({
             issueStudentIdentity: async () => {
@@ -511,11 +599,15 @@ describe('POST /api/identity/students/issue', function () {
                 err.code = 'BLOCKCHAIN_ERROR';
                 throw err;
             },
+        }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
         });
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
@@ -523,7 +615,7 @@ describe('POST /api/identity/students/issue', function () {
 
     it('does not insert a pending_transaction when blockchain submission fails', async () => {
         const { academy, department } = await seedAcademy();
-        await seedStudentUser({ academy_id: academy.id, department_id: department.id });
+        const user = await seedStudentUser({ academy_id: academy.id, department_id: department.id });
 
         const app = await makeApp({
             issueStudentIdentity: async () => {
@@ -532,11 +624,15 @@ describe('POST /api/identity/students/issue', function () {
                 err.code = 'BLOCKCHAIN_ERROR';
                 throw err;
             },
+        }, { listenOnTransaction: () => {} }, {
+            getCache: async () => buildCachePayload({ id: user.student_id }),
         });
+
+        const body = await buildIssueBody(STUDENT_EMAIL);
 
         await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: STUDENT_WALLET });
+            .send(body);
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -545,17 +641,17 @@ describe('POST /api/identity/students/issue', function () {
         assert.equal(rows.length, 0);
     });
 
-    it('returns 422 VALIDATION_ERROR when wallet_address is missing', async () => {
+    it('returns 422 VALIDATION_ERROR when otp is missing', async () => {
         const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL });
+            .send({ email: STUDENT_EMAIL, signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find((e) => e.field === 'wallet_address');
-        assert.ok(field, 'errors should contain a wallet_address entry');
+        const field = res.body.errors.find((e) => e.field === 'otp');
+        assert.ok(field, 'errors should contain an otp entry');
     });
 
     it('returns 422 VALIDATION_ERROR when email is missing', async () => {
@@ -563,7 +659,7 @@ describe('POST /api/identity/students/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: STUDENT_WALLET });
+            .send({ otp: ISSUE_OTP, signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -571,27 +667,27 @@ describe('POST /api/identity/students/issue', function () {
         assert.ok(field, 'errors should contain an email entry');
     });
 
-    it('returns 422 VALIDATION_ERROR for an invalid wallet_address format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid otp format', async () => {
         const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: STUDENT_EMAIL, wallet_address: 'not-a-wallet' });
+            .send({ email: STUDENT_EMAIL, otp: '12', signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 422);
-        const field = res.body.errors.find((e) => e.field === 'wallet_address');
-        assert.ok(field, 'errors should contain a wallet_address entry');
+        const field = res.body.errors.find((e) => e.field === 'otp');
+        assert.ok(field, 'errors should contain an otp entry');
     });
 
-    it('returns 422 VALIDATION_ERROR for an invalid email format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid signature format', async () => {
         const app = await makeApp({ issueStudentIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: 'not-an-email', wallet_address: STUDENT_WALLET });
+            .send({ email: STUDENT_EMAIL, otp: ISSUE_OTP, signature: 'not-a-signature' });
 
         assert.equal(res.status, 422);
-        const field = res.body.errors.find((e) => e.field === 'email');
-        assert.ok(field, 'errors should contain an email entry');
+        const field = res.body.errors.find((e) => e.field === 'signature');
+        assert.ok(field, 'errors should contain a signature entry');
     });
 });

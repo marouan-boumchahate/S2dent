@@ -1,18 +1,24 @@
-import { generateNonceService, verifySignatureService, refreshTokenService, logoutService } from './auth.service.js';
+import { 
+  generateNonceService, 
+  verifySignatureService, 
+  refreshTokenService, 
+  logoutService,
+  sendOtpService
+} from './auth.service.js';
 import { created, ok } from '../../utils/response.js';
 
 const generateNonceController = async (req, res) => {
-  const { address } = req.query;
+  const { wallet_address } = req.query;
 
-  const result = await generateNonceService(address);
+  const result = await generateNonceService(wallet_address);
 
   return ok(res, result, 'Nonce expires in 5 minutes');
 }
 const verifySignatureController = async (req, res) => { 
-  const { address, signature } = req.body;
+  const { wallet_address, signature } = req.body;
   const { ip, headers } = req;
 
-  const result = await verifySignatureService(address, signature, {
+  const result = await verifySignatureService(wallet_address, signature, {
     ip: ip || headers['x-forwarded-for'],
     device: headers['user-agent'],
   });
@@ -20,10 +26,10 @@ const verifySignatureController = async (req, res) => {
   return created(res, result, 'User authenticated successfully');
 }
 const refreshTokenController = async (req, res) => {
-  const { refreshToken } = req.body;
+  const { refresh_token } = req.body;
   const { ip, headers } = req;
 
-  const result = await refreshTokenService(refreshToken, {
+  const result = await refreshTokenService(refresh_token, {
     ip: ip || headers['x-forwarded-for'],
     device: headers['user-agent'],
   });
@@ -31,15 +37,28 @@ const refreshTokenController = async (req, res) => {
   return created(res, result, 'Token refreshed successfully');
 }
 const logoutController = async (req, res) => {
-  const { refreshToken } = req.body;
+  const { refresh_token } = req.body;
   const { ip, headers } = req;
 
-  await logoutService(refreshToken, {
+  await logoutService(refresh_token, {
     ip: ip || headers['x-forwarded-for'],
     device: headers['user-agent'],
   });
 
   return ok(res, null, 'Logged out successfully');
 }
+const sendOtpController = async (req, res) => {
+  const { email } = req.body;
 
-export { generateNonceController, verifySignatureController, refreshTokenController, logoutController };
+  const result = await sendOtpService(email);
+
+  return created(res, result, 'check your email for the OTP code');
+}
+
+export { 
+  generateNonceController, 
+  verifySignatureController, 
+  refreshTokenController, 
+  logoutController, 
+  sendOtpController 
+};

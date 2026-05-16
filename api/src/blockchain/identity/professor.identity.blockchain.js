@@ -101,10 +101,11 @@ const revokeProfessorIdentity = async (payload) => {
 
         const {
             professorPublicKey,
-            academyPublicKey
+            academyPublicKey,
+            reason
         } = payload
 
-        const params = [professorPublicKey, academyPublicKey]
+        const params = [professorPublicKey, academyPublicKey, reason]
 
         const gasLimit = await getGasLimit(contract, 'revokeProfessorIdentity', params)
 

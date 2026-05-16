@@ -52,17 +52,17 @@ const seedAcademy = async () => {
       [SEED_ACADEMY_EMAIL],
     );
 
+    await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [SEED_WALLET]);
     await db.query(`DELETE FROM academies WHERE email = $1`, [SEED_ACADEMY_EMAIL]);
 
     const { rows: [academy] } = await db.query(
       `INSERT INTO academies (
-         wallet_address, academy_number, name, short_name, type,
+         academy_number, name, short_name, type,
          email, legal_name, registration_number, tax_id
        )
-       VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8)
-       RETURNING id, wallet_address`,
+       VALUES ($1, $2, $3, 'university', $4, $5, $6, $7)
+       RETURNING id`,
       [
-        SEED_WALLET,
         SEED_ACADEMY_NUMBER,
         'Seed Professor University',
         'SPU',
@@ -74,10 +74,10 @@ const seedAcademy = async () => {
     );
 
     await db.query(
-      `INSERT INTO identities (wallet_address, role, is_active)
-       VALUES ($1, 'academy', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE`,
-      [academy.wallet_address],
+      `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+       VALUES ($1, $2, $3, 'academy', TRUE)
+       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+      [academy.id, SEED_WALLET, '0x04prof01' + 'a'.repeat(122)],
     );
 
     return academy.id;
@@ -173,6 +173,7 @@ const cleanupProfessors = async () => {
 const teardownSeed = async () => {
   await db.query(`DELETE FROM professors WHERE academy_id = $1`, [ACADEMY_ID]);
   await db.query(`DELETE FROM departments WHERE academy_id = $1`, [ACADEMY_ID]);
+  await db.query(`DELETE FROM identities WHERE academy_id = $1`, [ACADEMY_ID]);
   await db.query(`DELETE FROM academies WHERE id = $1`, [ACADEMY_ID]);
 };
 
@@ -256,21 +257,22 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 404 DEPARTMENT_NOT_FOUND when department is not in the academy', async () => {
-      const OTHER_WALLET = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
       const OTHER_EMAIL = 'other.academy@seed.internal';
-      
-      await db.query(`DELETE FROM departments WHERE academy_id IN (SELECT id FROM academies WHERE email = $1 OR wallet_address = $2)`, [OTHER_EMAIL, OTHER_WALLET]);
-      await db.query(`DELETE FROM academies WHERE email = $1 OR wallet_address = $2`, [OTHER_EMAIL, OTHER_WALLET]);
+
+      await db.query(
+        `DELETE FROM departments WHERE academy_id IN (SELECT id FROM academies WHERE email = $1)`,
+        [OTHER_EMAIL],
+      );
+      await db.query(`DELETE FROM academies WHERE email = $1`, [OTHER_EMAIL]);
 
       const otherAcademy = await db.query(
         `INSERT INTO academies (
-           wallet_address, academy_number, name, short_name, type,
+           academy_number, name, short_name, type,
            email, legal_name, registration_number, tax_id
          )
-         VALUES ($1,$2,$3,$4,'university',$5,$6,$7,$8)
+         VALUES ($1,$2,$3,'university',$4,$5,$6,$7)
          RETURNING id`,
         [
-          OTHER_WALLET,
           'ACD_PROF_0002',
           'Other Academy',
           'OAC',

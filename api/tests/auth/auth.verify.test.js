@@ -6,7 +6,7 @@ import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
 import { verifyAccessToken, verifyRefreshToken } from '../../src/utils/jwt.js';
-import { ACADEMY_REFRESH_TOKEN, STUDENT_REFRESH_TOKEN } from '../../src/cache/cache.ttl.js';
+import { ACADEMY_REFRESH_TOKEN_TTL, STUDENT_REFRESH_TOKEN_TTL } from '../../src/cache/cache.ttl.js';
 
 
 const buildIdentity = (overrides = {}) => ({
@@ -75,12 +75,10 @@ const uniqueSuffix = () => crypto.randomBytes(6).toString('hex');
 
 const seedAcademy = async ({ walletAddress } = {}) => {
     const suffix = uniqueSuffix();
-    const resolvedWalletAddress = walletAddress ?? ethers.Wallet.createRandom().address;
     const shortName = `AC${suffix.slice(0, 4).toUpperCase()}`;
 
     const { rows: [academy] } = await db.query(
         `INSERT INTO academies (
-            wallet_address,
             email,
             academy_number,
             name,
@@ -90,10 +88,9 @@ const seedAcademy = async ({ walletAddress } = {}) => {
             registration_number,
             tax_id
         )
-         VALUES ($1, $2, $3, $4, $5, 'university', $6, $7, $8)
+         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7)
          RETURNING id`,
         [
-            resolvedWalletAddress,
             `academy-${suffix}@example.test`,
             `AC-${suffix}`,
             `Seed Academy ${suffix}`,
@@ -223,13 +220,35 @@ const seedIdentity = async (
         nonce_expires_at = new Date(Date.now() + 5 * 60 * 1000),
         is_active = true,
         user_id = null,
+        academy_id = null,
     } = {},
 ) => {
     await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
+
+    let resolvedUserId = user_id;
+    let resolvedAcademyId = academy_id;
+    let createdUserId = null;
+    let createdAcademyId = null;
+
+    if (role === 'academy') {
+        if (!resolvedAcademyId) {
+            createdAcademyId = await seedAcademy();
+            resolvedAcademyId = createdAcademyId;
+        }
+        resolvedUserId = null;
+    } else {
+        if (!resolvedUserId) {
+            createdUserId = await seedUser();
+            resolvedUserId = createdUserId;
+        }
+        resolvedAcademyId = null;
+    }
+
+    const publicKey = '0x04' + crypto.randomBytes(64).toString('hex');
     await db.query(
-        `INSERT INTO identities (wallet_address, role, user_id, nonce, nonce_expires_at, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [walletAddress, role, user_id, nonce, nonce_expires_at, is_active],
+        `INSERT INTO identities (wallet_address, public_key, role, user_id, academy_id, nonce, nonce_expires_at, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [walletAddress, publicKey, role, resolvedUserId, resolvedAcademyId, nonce, nonce_expires_at, is_active],
     );
     return nonce;
 };
@@ -270,18 +289,18 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature });
+            .send({ wallet_address: address, signature });
 
         assert.equal(res.status, 201);
         assert.equal(res.body.success, true);
         assert.equal(res.body.message, 'User authenticated successfully');
 
-        assert.ok(res.body.data.accessToken,  'response must contain accessToken');
-        assert.ok(res.body.data.refreshToken, 'response must contain refreshToken');
+        assert.ok(res.body.data.access_token,  'response must contain accessToken');
+        assert.ok(res.body.data.refresh_token, 'response must contain refreshToken');
 
         // Tokens are encrypted JWTs - verify they decrypt and carry the right payload
-        const accessPayload  = verifyAccessToken(res.body.data.accessToken);
-        const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+        const accessPayload  = verifyAccessToken(res.body.data.access_token);
+        const refreshPayload = verifyRefreshToken(res.body.data.refresh_token);
 
         assert.equal(accessPayload.sub,  address);
         assert.equal(accessPayload.role,     'professor');
@@ -297,10 +316,10 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature });
+            .send({ wallet_address: address, signature });
 
         assert.equal(res.status, 201);
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.role, 'student');
     });
 
@@ -312,10 +331,10 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature });
+            .send({ wallet_address: address, signature });
 
         assert.equal(res.status, 201);
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.role, 'academy');
     });
 
@@ -337,12 +356,12 @@ describe('POST /api/auth/verify', function () {
 
             const res = await request(app)
                 .post('/api/auth/verify')
-                .send({ address, signature });
+                .send({ wallet_address: address, signature });
 
             assert.equal(res.status, 201);
 
-            const accessPayload = verifyAccessToken(res.body.data.accessToken);
-            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+            const accessPayload = verifyAccessToken(res.body.data.access_token);
+            const refreshPayload = verifyRefreshToken(res.body.data.refresh_token);
 
             assert.equal(accessPayload.uid, userId);
             assert.equal(accessPayload.rid, studentId);
@@ -376,12 +395,12 @@ describe('POST /api/auth/verify', function () {
 
             const res = await request(app)
                 .post('/api/auth/verify')
-                .send({ address, signature });
+                .send({ wallet_address: address, signature });
 
             assert.equal(res.status, 201);
 
-            const accessPayload = verifyAccessToken(res.body.data.accessToken);
-            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+            const accessPayload = verifyAccessToken(res.body.data.access_token);
+            const refreshPayload = verifyRefreshToken(res.body.data.refresh_token);
 
             assert.equal(accessPayload.uid, userId);
             assert.equal(accessPayload.rid, professorId);
@@ -397,31 +416,33 @@ describe('POST /api/auth/verify', function () {
         }
     });
 
-    it('sets uid to null and rid to academy_id when role is academy', async () => {
+    it('sets uid and rid to academy_id when role is academy', async () => {
         let academyId;
 
         try {
-            academyId = await seedAcademy({ walletAddress: address });
+            academyId = await seedAcademy();
 
-            const nonce = await seedIdentity(address, 'academy', { user_id: null });
+            const nonce = await seedIdentity(address, 'academy', { academy_id: academyId });
             const signature = await signNonce(wallet, nonce);
 
             const app = await makeApp();
 
             const res = await request(app)
                 .post('/api/auth/verify')
-                .send({ address, signature });
+                .send({ wallet_address: address, signature });
 
             assert.equal(res.status, 201);
 
-            const accessPayload = verifyAccessToken(res.body.data.accessToken);
-            const refreshPayload = verifyRefreshToken(res.body.data.refreshToken);
+            const accessPayload = verifyAccessToken(res.body.data.access_token);
+            const refreshPayload = verifyRefreshToken(res.body.data.refresh_token);
 
-            assert.equal(accessPayload.uid, null);
+            assert.equal(accessPayload.uid, academyId);
             assert.equal(accessPayload.rid, academyId);
-            assert.equal(refreshPayload.uid, null);
+            assert.equal(refreshPayload.uid, academyId);
             assert.equal(refreshPayload.rid, academyId);
         } finally {
+            await cleanupIdentity(address);
+            await cleanupIdentity(address.toLowerCase());
             if (academyId) await db.query(`DELETE FROM academies WHERE id = $1`, [academyId]);
         }
     });
@@ -434,7 +455,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature });
+            .send({ wallet_address: address, signature });
 
         assert.equal(res.status, 201);
 
@@ -454,10 +475,10 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address: address.toLowerCase(), signature });
+            .send({ wallet_address: address.toLowerCase(), signature });
 
         assert.equal(res.status, 201);
-        const accessPayload = verifyAccessToken(res.body.data.accessToken);
+        const accessPayload = verifyAccessToken(res.body.data.access_token);
         assert.equal(accessPayload.sub, address, 'accessToken must carry the checksummed address in sub');
     });
 
@@ -474,7 +495,7 @@ describe('POST /api/auth/verify', function () {
         assert.equal(res.body.code, 'VALIDATION_ERROR');
         assert.ok(Array.isArray(res.body.errors));
 
-        const found = res.body.errors.find(e => e.field === 'address');
+        const found = res.body.errors.find(e => e.field === 'wallet_address');
         assert.ok(found, 'errors must contain an address entry');
     });
 
@@ -483,7 +504,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address });
+            .send({ wallet_address: address });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -497,12 +518,12 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address: 'not-an-address', signature: FILLER_SIGNATURE });
+            .send({ wallet_address: 'not-an-address', signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
 
-        const found = res.body.errors.find(e => e.field === 'address');
+        const found = res.body.errors.find(e => e.field === 'wallet_address');
         assert.ok(found, 'errors must contain an address entry');
     });
 
@@ -511,10 +532,10 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address: '0x' + 'a'.repeat(39), signature: FILLER_SIGNATURE });
+            .send({ wallet_address: '0x' + 'a'.repeat(39), signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 422);
-        const found = res.body.errors.find(e => e.field === 'address');
+        const found = res.body.errors.find(e => e.field === 'wallet_address');
         assert.ok(found);
     });
 
@@ -523,7 +544,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: '0x' + '11'.repeat(64) }); // 130 chars
+            .send({ wallet_address: address, signature: '0x' + '11'.repeat(64) }); // 130 chars
 
         assert.equal(res.status, 422);
         const found = res.body.errors.find(e => e.field === 'signature');
@@ -535,7 +556,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: '0x' + '11'.repeat(66) }); // 134 chars
+            .send({ wallet_address: address, signature: '0x' + '11'.repeat(66) }); // 134 chars
 
         assert.equal(res.status, 422);
         const found = res.body.errors.find(e => e.field === 'signature');
@@ -548,7 +569,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'IDENTITY_NOT_FOUND');
@@ -563,7 +584,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'IDENTITY_NOT_FOUND');
@@ -577,7 +598,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'IDENTITY_REVOKED');
@@ -590,7 +611,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'INVALID_ROLE');
@@ -604,7 +625,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'INVALID_NONCE');
@@ -620,7 +641,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'INVALID_NONCE');
@@ -635,7 +656,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: FILLER_SIGNATURE });
+            .send({ wallet_address: address, signature: FILLER_SIGNATURE });
 
         assert.equal(res.status, 400);
 
@@ -656,7 +677,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: wrongSignature });
+            .send({ wallet_address: address, signature: wrongSignature });
 
         assert.equal(res.status, 401);
         assert.equal(res.body.code, 'INVALID_SIGNATURE');
@@ -671,7 +692,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: wrongSignature });
+            .send({ wallet_address: address, signature: wrongSignature });
 
         assert.equal(res.status, 401);
         assert.equal(res.body.code, 'INVALID_SIGNATURE');
@@ -686,7 +707,7 @@ describe('POST /api/auth/verify', function () {
 
         const res = await request(app)
             .post('/api/auth/verify')
-            .send({ address, signature: wrongSignature });
+            .send({ wallet_address: address, signature: wrongSignature });
 
         assert.equal(res.status, 401);
 
@@ -716,7 +737,7 @@ describe('POST /api/auth/verify', function () {
                 .post('/api/auth/verify')
                 .set('User-Agent', TEST_UA)
                 .set('X-Forwarded-For', TEST_IP)
-                .send({ address: addr, signature: sig });
+                .send({ wallet_address: addr, signature: sig });
 
         it('saves the refresh token in cache under key `refresh:{sha256(token)}`', async () => {
             const nonce = await seedIdentity(address, 'professor');
@@ -728,7 +749,7 @@ describe('POST /api/auth/verify', function () {
 
             assert.equal(res.status, 201);
             assert.equal(cache.setCache.calledOnce, true, 'setCache must be called exactly once');
-            assert.equal(cache.setCache.firstCall.args[0], cacheKeyFor(res.body.data.refreshToken));
+            assert.equal(cache.setCache.firstCall.args[0], cacheKeyFor(res.body.data.refresh_token));
         });
 
         it('saves the payload { ip, device } where device is the request user-agent', async () => {
@@ -740,10 +761,10 @@ describe('POST /api/auth/verify', function () {
             const res = await verifyReq(app, address, signature);
 
             assert.equal(res.status, 201);
-            assert.deepEqual(cache.setCache.firstCall.args[1], { ip: TEST_IP, device: TEST_UA });
+            assert.equal(cache.setCache.firstCall.args[1], JSON.stringify({ ip: TEST_IP, device: TEST_UA }));
         });
 
-        it('uses STUDENT_REFRESH_TOKEN as TTL for the student role', async () => {
+        it('uses STUDENT_REFRESH_TOKEN_TTL as TTL for the student role', async () => {
             const nonce = await seedIdentity(address, 'student');
             const signature = await signNonce(wallet, nonce);
             const cache = makeCacheStubs();
@@ -752,10 +773,10 @@ describe('POST /api/auth/verify', function () {
             const res = await verifyReq(app, address, signature);
 
             assert.equal(res.status, 201);
-            assert.equal(cache.setCache.firstCall.args[2], STUDENT_REFRESH_TOKEN);
+            assert.equal(cache.setCache.firstCall.args[2], STUDENT_REFRESH_TOKEN_TTL);
         });
 
-        it('uses ACADEMY_REFRESH_TOKEN as TTL for the professor role', async () => {
+        it('uses ACADEMY_REFRESH_TOKEN_TTL as TTL for the professor role', async () => {
             const nonce = await seedIdentity(address, 'professor');
             const signature = await signNonce(wallet, nonce);
             const cache = makeCacheStubs();
@@ -764,10 +785,10 @@ describe('POST /api/auth/verify', function () {
             const res = await verifyReq(app, address, signature);
 
             assert.equal(res.status, 201);
-            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN);
+            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN_TTL);
         });
 
-        it('uses ACADEMY_REFRESH_TOKEN as TTL for the academy role', async () => {
+        it('uses ACADEMY_REFRESH_TOKEN_TTL as TTL for the academy role', async () => {
             const nonce = await seedIdentity(address, 'academy');
             const signature = await signNonce(wallet, nonce);
             const cache = makeCacheStubs();
@@ -776,7 +797,7 @@ describe('POST /api/auth/verify', function () {
             const res = await verifyReq(app, address, signature);
 
             assert.equal(res.status, 201);
-            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN);
+            assert.equal(cache.setCache.firstCall.args[2], ACADEMY_REFRESH_TOKEN_TTL);
         });
 
         it('does not call setCache when verification fails (invalid signature)', async () => {

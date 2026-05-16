@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS identities (
     user_id UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
     academy_id UUID NULL REFERENCES academies(id) ON DELETE RESTRICT,
 
-    wallet VARCHAR(42) UNIQUE,
+    wallet_address VARCHAR(42) UNIQUE,
     public_key VARCHAR(132) UNIQUE,
     role user_role NOT NULL,
     
@@ -38,5 +38,5 @@ CREATE TABLE IF NOT EXISTS identities (
 );
 
 CREATE INDEX IF NOT EXISTS idx_identities_user_id ON identities(user_id);
-CREATE INDEX IF NOT EXISTS idx_identities_wallet ON identities(wallet);
+CREATE INDEX IF NOT EXISTS idx_identities_wallet_address ON identities(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_identities_role ON identities(role);

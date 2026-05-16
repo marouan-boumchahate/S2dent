@@ -13,6 +13,9 @@ const FAKE_TX = {
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
 
+const REVOCATION_REASON = 'Identity requested by academy';
+const ACADEMY_IDENTITY_PUBLIC_KEY = ethers.Wallet.createRandom().signingKey.publicKey;
+
 const DEFAULT_CA_ATTRS = {
     getAcademyCertificateAttrs: () => ({ fake: 'attrs' }),
 };
@@ -36,13 +39,12 @@ const seedAcademy = async ({
 
     const { rows: [academy] } = await db.query(
         `INSERT INTO academies (
-            wallet_address, academy_number, name, short_name, type,
+            academy_number, name, short_name, type,
             email, legal_name, registration_number, tax_id, billing_email
         )
-         VALUES ($1, $2, $3, $4, 'university', $5, $6, $7, $8, $9)
-         RETURNING id, wallet_address, name`,
+         VALUES ($1, $2, $3, 'university', $4, $5, $6, $7, $8)
+         RETURNING id, name`,
         [
-            wallet_address,
             academyNumber,
             academy_name,
             short_name.toUpperCase(),
@@ -54,13 +56,25 @@ const seedAcademy = async ({
         ],
     );
 
+    await db.query(
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
+         VALUES ($1, $2, $3, 'academy', true)`,
+        [academy.id, wallet_address, ACADEMY_IDENTITY_PUBLIC_KEY],
+    );
+
     return academy;
 };
 
 const cleanupDB = async () => {
     await db.query(
         `DELETE FROM identities
-         WHERE wallet_address = $1`,
+         WHERE wallet_address = $1
+            OR academy_id IN (
+                SELECT id FROM academies
+                WHERE email LIKE '%@fenerbahce%'
+                   OR email LIKE '%@test-identity%'
+                   OR name LIKE 'Fenerbahce%'
+            )`,
         [WALLET_ADDRESS],
     );
 
@@ -72,35 +86,36 @@ const cleanupDB = async () => {
 
     await db.query(
         `DELETE FROM pending_transactions
-         WHERE payload->>'wallet_address' = $1`,
-        [WALLET_ADDRESS],
+         WHERE tx_hash = $1
+            OR payload->>'wallet_address' = $2`,
+        [FAKE_TX_HASH, WALLET_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM addresses
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [WALLET_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM departments
          WHERE academy_id IN (
             SELECT id FROM academies
-            WHERE wallet_address = $1
+            WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test-identity%'
+               OR name LIKE 'Fenerbahce%'
          )`,
-        [WALLET_ADDRESS],
     );
 
     await db.query(
         `DELETE FROM academies
-         WHERE wallet_address = $1
-            OR email LIKE '%@test-identity%'`,
-        [WALLET_ADDRESS],
+         WHERE email LIKE '%@fenerbahce%'
+            OR email LIKE '%@test-identity%'
+            OR name LIKE 'Fenerbahce%'`,
     );
 };
 
@@ -148,7 +163,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
+            .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
@@ -173,11 +188,12 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_UPPER });
+            .send({ wallet_address: WALLET_UPPER, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 200);
         assert.equal(calls.length, 1);
-        assert.equal(calls[0].walletAddress, WALLET_ADDRESS);
+        assert.equal(calls[0].publicKey, ACADEMY_IDENTITY_PUBLIC_KEY);
+        assert.equal(calls[0].reason, REVOCATION_REASON);
     });
 
     it('inserts a pending_transaction row after successful submission', async () => {
@@ -187,7 +203,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
+            .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -197,7 +213,7 @@ describe('POST /api/identity/academies/revoke', function () {
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
         assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
-        assert.equal(pending.payload.role, 'academy');
+        assert.equal(pending.payload.reason, REVOCATION_REASON);
         assert.equal(pending.payload.action, 'revoke');
     });
 
@@ -212,7 +228,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
+            .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(listenerCalls.length, 1);
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
@@ -223,7 +239,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: '0x0000000000000000000000000000000000000001' });
+            .send({ wallet_address: '0x0000000000000000000000000000000000000001', revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
@@ -243,7 +259,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
+            .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
@@ -263,7 +279,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
-            .send({ wallet_address: WALLET_ADDRESS });
+            .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -277,7 +293,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({});
+            .send({ revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -290,7 +306,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ wallet_address: 'not-a-wallet' });
+            .send({ wallet_address: 'not-a-wallet', revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find((e) => e.field === 'wallet_address');

@@ -1,8 +1,6 @@
 import Joi from 'joi';
 
 const createDepartmentSchema = Joi.object({
-  academy_id: Joi.string().uuid().required(),
-
   code: Joi.string().trim().max(50).required(),
   name: Joi.string().trim().max(255).required(),
   faculty: Joi.string().trim().max(255).required(),

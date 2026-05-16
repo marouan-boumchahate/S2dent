@@ -40,16 +40,16 @@ describe("Credential", () => {
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (64 bytes hex strings) for entity identification
-    const ACADEMY_PK = "0x" + "a1".repeat(64);
-    const SECOND_ACADEMY_PK = "0x" + "a2".repeat(64);
-    const FAKE_ACADEMY_PK = "0x" + "ff".repeat(64);
-    const PROFESSOR_PK = "0x" + "b1".repeat(64);
-    const OTHER_PROFESSOR_PK = "0x" + "b2".repeat(64);
-    const STUDENT_PK = "0x" + "c1".repeat(64);
-    const SECOND_STUDENT_PK = "0x" + "c2".repeat(64);
-    const OUTSIDE_STUDENT_PK = "0x" + "c3".repeat(64);
-    const EMPTY_PK = "0x";
+    // Public keys (65 bytes hex strings) for entity identification
+    const ACADEMY_PK = "0x04" + "a1".repeat(64);
+    const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
+    const FAKE_ACADEMY_PK = "0x04" + "ff".repeat(64);
+    const PROFESSOR_PK = "0x04" + "b1".repeat(64);
+    const OTHER_PROFESSOR_PK = "0x04" + "b2".repeat(64);
+    const STUDENT_PK = "0x04" + "c1".repeat(64);
+    const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
+    const OUTSIDE_STUDENT_PK = "0x04" + "c3".repeat(64);
+    const EMPTY_PK = "0x04";
 
 
     function defaultIssueArgs(overrides: Partial<{
@@ -582,7 +582,7 @@ describe("Credential", () => {
                 ),
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert on zero issuer address", async () => {
@@ -599,7 +599,7 @@ describe("Credential", () => {
                 ),
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert on zero academy address", async () => {
@@ -616,7 +616,7 @@ describe("Credential", () => {
                 ),
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
     });
 
@@ -934,7 +934,7 @@ describe("Credential", () => {
                 ),
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert when the index is out of range", async () => {
@@ -1157,7 +1157,7 @@ describe("Credential", () => {
                 instance.getCredential(EMPTY_PK, 0),
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 64 bytes.");
+                .withArgs("Public key must be 65 bytes.");
         });
 
         it("Should revert when the index is out of range", async () => {
