@@ -52,7 +52,7 @@ export default function OtpPage() {
         </div>
 
         <button
-          onClick={() => router.push('/createStudent')}
+          onClick={() => router.push('/students')}
           className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition"
         >
           Verify
