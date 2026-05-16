@@ -5,6 +5,9 @@ import {
 } from '../../../blockchain/identity/professor.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { ethers } from 'ethers'
+import { getCache, delCache } from '../../../cache/cache.client.js'
+import { otpKey } from '../../../cache/cache.keys.js'
+import { recoverSigner } from '../../../utils/crypto.js'
 
 
 // Helpers
@@ -18,21 +21,44 @@ const formatDateOnly = (value) => {
         return String(value).slice(0, 10)
     }
 }
-const getProfessorIdentityPayload = async (email) => {
+const fetchFromCache = async (email, otp) => {
+    const cacheKey = otpKey(email, otp)
+    const cachedData = await getCache(cacheKey)
+
+    if (!cachedData) {
+        const err = new Error('Invalid or expired OTP')
+        err.statusCode = 400
+        err.code = 'INVALID_OTP'
+        throw err
+    }
+
+    await delCache(cacheKey)
+
+    return JSON.parse(cachedData)
+}
+const getProfessorById = async (professor_id, role) => {
+    if (role !== 'professor') {
+        const err = new Error('Professor not found with the provided email')
+        err.statusCode = 404
+        err.code = 'PROFESSOR_NOT_FOUND'
+        throw err
+    }
+
     const { rows: [professor] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, 
                 p.employee_number, p.hire_date, p.rank, p.employment_type, p.title,
                 i.public_key AS academy_public_key, a.name AS academy_name,
                 addr.id AS address_id,
                 d.is_active AS is_department_active
-         FROM users u
-         JOIN professors p ON u.id = p.user_id
+         FROM professors p
+         JOIN users u ON u.id = p.user_id
          JOIN academies a ON p.academy_id = a.id
          JOIN identities i ON i.academy_id = a.id
          LEFT JOIN addresses addr ON addr.user_id = u.id
          LEFT JOIN departments d ON d.academy_id = a.id
-         WHERE u.email = $1`,
-        [email]
+         WHERE p.id = $1
+         LIMIT 1`,
+        [professor_id]
     )
 
     if (!professor) {
@@ -122,11 +148,6 @@ const saveTransaction = async (txHash, payloadObj) => {
     )
 }
 
-const getRandomPublicKey = () => {
-    const randomWallet = ethers.Wallet.createRandom()
-    return randomWallet.signingKey.publicKey
-}
-
 
 // Issuance
 // --------
@@ -139,18 +160,20 @@ const ISSUE_ON_FAILURE = (title, name) => ({
     message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
 })
 
-export const issueProfessorIdentityService = async ({ wallet, email }) => {
-    const checksumAddr = ethers.getAddress(wallet)
+export const issueProfessorIdentityService = async ({ otp, email, signature }) => {
+    email = email.toLowerCase().trim()
+
+    const { id, message, role } = await fetchFromCache(email, otp)
+    const professor = await getProfessorById(id, role)
+
+    const { signerPublicKey, signerAddress } = recoverSigner(message, signature)
+    const checksumAddr = ethers.getAddress(signerAddress)
 
     await ensureWalletAddressUnique(checksumAddr)
-    const professor = await getProfessorIdentityPayload(email)
-
-    const professorPublicKey = getRandomPublicKey()
-    const academyPublicKey = professor.academy_public_key
 
     const tx = await issueProfessorIdentity({
-        professorPublicKey,
-        academyPublicKey,
+        professorPublicKey: signerPublicKey,
+        academyPublicKey: professor.academy_public_key,
 
         employeeId: professor.employee_number,
         fullName: professor.full_name,
@@ -164,12 +187,9 @@ export const issueProfessorIdentityService = async ({ wallet, email }) => {
     const payload = {
         action: 'issue',
 
-        wallet: checksumAddr,
-        public_key: professorPublicKey,
-        user_id: professor.user_id,
-        professor_number: professor.employee_number,
-        name: professor.full_name,
-
+        wallet_address: checksumAddr,
+        public_key: signerPublicKey,
+        entity_id: professor.user_id,
         role: 'professor',
         
         email: professor.email,
@@ -201,7 +221,7 @@ const REVOKE_ON_FAILURE = (title, name) => ({
     message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity revocation. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
 })
 
-export const revokeProfessorIdentityService = async ({ academy_address, professor_address }) => {
+export const revokeProfessorIdentityService = async ({ academy_address, professor_address, reason }) => {
     const professorWallet = ethers.getAddress(professor_address)
     const academyWallet = ethers.getAddress(academy_address)
 
@@ -209,17 +229,15 @@ export const revokeProfessorIdentityService = async ({ academy_address, professo
 
     const tx = await revokeProfessorIdentity({ 
         professorPublicKey: professor.professor_public_key, 
-        academyPublicKey: professor.academy_public_key 
+        academyPublicKey: professor.academy_public_key,
+        reason
     })
 
     const payload = {
         action: 'revoke',
 
-        wallet: professorWallet,
-        professor_number: professor.employee_number,
-        name: professor.full_name,
-
-        role: 'professor',
+        wallet_address: professorWallet,
+        reason,
 
         email: professor.email,
         onSuccess: REVOKE_ON_SUCCESS(professor.title, professor.full_name, professor.academy_name),

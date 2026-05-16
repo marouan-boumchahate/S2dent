@@ -115,9 +115,9 @@ const revokeAcademyIdentity = async (payload) => {
     try {
         const contract = getContract()
 
-        const { publicKey } = payload
+        const { publicKey, reason } = payload
 
-        const params = [publicKey] // Conrtract Parameters
+        const params = [publicKey, reason] // Conrtract Parameters
 
         const gasLimit = await getGasLimit(contract, 'revokeAcademyIdentity', params)
         // console.log('Estimated gas limit (with margin):', gasLimit.toString())

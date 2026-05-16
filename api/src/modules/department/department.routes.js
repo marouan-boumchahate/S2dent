@@ -4,7 +4,7 @@ import { createDepartmentSchema, updateDepartmentSchema } from './department.val
 import {
   createDepartmentController,
   listDepartmentsController,
-  getDepartmentByIdController,
+  getUserDepartmentController,
   updateDepartmentController,
   deleteDepartmentController,
 } from './department.controller.js';
@@ -21,10 +21,10 @@ router.get(
 );
 
 router.get(
-  '/:id',
+  '/me',
   authenticate,
-  requireRole('academy', 'professor', 'student'),
-  getDepartmentByIdController,
+  requireRole('professor', 'student'),
+  getUserDepartmentController,
 );
 
 router.post(

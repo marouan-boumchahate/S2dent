@@ -34,7 +34,7 @@ const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
 
 const makeCacheStubs = (overrides = {}) => ({
-    getCache: sinon.stub().resolves({ ip: TEST_IP, device: TEST_UA }),
+    getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: TEST_UA })),
     setCache: sinon.stub().resolves(),
     delCache: sinon.stub().resolves(),
     ...overrides,
@@ -71,7 +71,7 @@ const logoutReq = (app, refreshToken) =>
         .delete('/api/auth/logout')
         .set('User-Agent', TEST_UA)
         .set('X-Forwarded-For', TEST_IP)
-        .send({ refreshToken });
+        .send({ refresh_token: refreshToken });
 
 
 describe('DELETE /api/auth/logout', function () {
@@ -91,13 +91,13 @@ describe('DELETE /api/auth/logout', function () {
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        assert.ok(res.body.errors.find(e => e.field === 'refreshToken'));
+        assert.ok(res.body.errors.find(e => e.field === 'refresh_token'));
     });
 
     it('returns 422 VALIDATION_ERROR when refreshToken is an empty string', async () => {
         const { app } = await makeApp();
 
-        const res = await request(app).delete('/api/auth/logout').send({ refreshToken: '' });
+        const res = await request(app).delete('/api/auth/logout').send({ refresh_token: '' });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
@@ -121,7 +121,7 @@ describe('DELETE /api/auth/logout', function () {
         const refreshToken = issueRefreshToken(address, 'professor');
         const { app, cache } = await makeApp({
             cache: makeCacheStubs({
-                getCache: sinon.stub().resolves({ ip: '8.8.8.8', device: TEST_UA }),
+                getCache: sinon.stub().resolves(JSON.stringify({ ip: '8.8.8.8', device: TEST_UA })),
             }),
         });
 
@@ -136,7 +136,7 @@ describe('DELETE /api/auth/logout', function () {
         const refreshToken = issueRefreshToken(address, 'professor');
         const { app, cache } = await makeApp({
             cache: makeCacheStubs({
-                getCache: sinon.stub().resolves({ ip: TEST_IP, device: 'other-agent' }),
+                getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: 'other-agent' })),
             }),
         });
 

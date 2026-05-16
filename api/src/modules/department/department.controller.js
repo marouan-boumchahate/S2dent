@@ -2,7 +2,7 @@ import { created, noContent, ok } from '../../utils/response.js';
 import {
   createDepartmentService,
   listDepartmentsService,
-  getDepartmentByIdService,
+  getUserDepartmentService,
   updateDepartmentService,
   deleteDepartmentService,
 } from './department.service.js';
@@ -10,7 +10,6 @@ import {
 
 const createDepartmentController = async (req, res) => {
   const payload = {
-    academy_id: req.body.academy_id,
     code: req.body.code,
     name: req.body.name,
     faculty: req.body.faculty,
@@ -19,7 +18,9 @@ const createDepartmentController = async (req, res) => {
     is_active: req.body.is_active,
   };
 
-  const result = await createDepartmentService({ ...payload });
+  const academy_id = req.user.rid;
+
+  const result = await createDepartmentService({ ...payload, academy_id });
 
   return created(res, result, 'Department created successfully');
 };
@@ -30,10 +31,10 @@ const listDepartmentsController = async (req, res) => {
 
   return ok(res, result, 'Departments retrieved successfully');
 };
-const getDepartmentByIdController = async (req, res) => {
-  const { id } = req.params;
+const getUserDepartmentController = async (req, res) => {
+  const { uid: user_id, role } = req.user;
 
-  const result = await getDepartmentByIdService(id);
+  const result = await getUserDepartmentService(user_id, role);
 
   return ok(res, result, 'Department retrieved successfully');
 };
@@ -61,7 +62,7 @@ const deleteDepartmentController = async (req, res) => {
 export {
   createDepartmentController,
   listDepartmentsController,
-  getDepartmentByIdController,
+  getUserDepartmentController,
   updateDepartmentController,
   deleteDepartmentController,
 };

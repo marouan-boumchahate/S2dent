@@ -1,5 +1,6 @@
 import esmock from 'esmock';
 import request from 'supertest';
+import crypto from 'crypto';
 import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
@@ -65,23 +66,74 @@ const makeApp = async (overrides = {}) => {
     return app;
 };
 
+const ensureNonceFkOwner = async (role) => {
+    if (role === 'academy') {
+        const suffix = crypto.randomBytes(4).toString('hex');
+        const { rows: [academy] } = await db.query(
+            `INSERT INTO academies (
+                academy_number, email, name, short_name, type,
+                legal_name, registration_number, tax_id
+            ) VALUES ($1, $2, $3, $4, 'university', $5, $6, $7)
+            RETURNING id`,
+            [
+                `ACDN-${suffix}`,
+                `nonce-acad-${suffix}@seed.test`,
+                `Nonce Test Academy ${suffix}`,
+                `NTA${suffix.slice(0,4).toUpperCase()}`,
+                `Nonce Test Academy ${suffix} Legal`,
+                `REG-NONCE-${suffix}`,
+                `TAX-NONCE-${suffix}`,
+            ],
+        );
+        return { academy_id: academy.id, user_id: null };
+    }
+    // For 'student', 'professor', 'system_admin' — need a real user_id.
+    const suffix = crypto.randomBytes(4).toString('hex');
+    const { rows: [user] } = await db.query(
+        `INSERT INTO users (
+            first_name, middle_name, last_name, full_name,
+            date_of_birth, gender, national_id, nationality, email
+        ) VALUES ($1, NULL, $2, $3, '1990-01-01', 'male', $4, 'Testland', $5)
+        RETURNING id`,
+        [
+            'Nonce', `User${suffix}`, `Nonce User ${suffix}`,
+            `NID-NONCE-${suffix}`, `nonce-user-${suffix}@seed.test`,
+        ],
+    );
+    return { academy_id: null, user_id: user.id };
+};
+
 const seedIdentity = async (walletAddress, role = 'professor', opts = {}) => {
     await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
+    const { academy_id, user_id } = await ensureNonceFkOwner(role);
+    const publicKey = '0x04' + crypto.randomBytes(64).toString('hex');
     await db.query(
-        `INSERT INTO identities (wallet_address, role, nonce, nonce_expires_at, is_active)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO identities (wallet_address, public_key, role, nonce, nonce_expires_at, is_active, academy_id, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
             walletAddress,
+            publicKey,
             role,
             opts.nonce ?? null,
             opts.nonce_expires_at ?? null,
             opts.is_active ?? true,
+            academy_id,
+            user_id,
         ],
     );
+    return { academy_id, user_id };
 };
 
 const cleanupIdentity = async (walletAddress) => {
+    const { rows } = await db.query(
+        `SELECT academy_id, user_id FROM identities WHERE wallet_address = $1`,
+        [walletAddress],
+    );
     await db.query(`DELETE FROM identities WHERE wallet_address = $1`, [walletAddress]);
+    for (const r of rows) {
+        if (r.academy_id) await db.query(`DELETE FROM academies WHERE id = $1`, [r.academy_id]);
+        if (r.user_id)    await db.query(`DELETE FROM users WHERE id = $1`,     [r.user_id]);
+    }
 };
 
 
@@ -107,7 +159,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
@@ -131,7 +183,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 200);
         assert.equal(calls.student, 1);
@@ -151,7 +203,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 200);
         assert.equal(calls.student, 0);
@@ -166,7 +218,7 @@ describe('GET /api/auth/nonce', function () {
         const before = Date.now();
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
         const after = Date.now();
 
         assert.equal(res.status, 200);
@@ -198,7 +250,7 @@ describe('GET /api/auth/nonce', function () {
         // look the row up with the checksummed value
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address: address.toLowerCase() });
+            .query({ wallet_address: address.toLowerCase() });
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
@@ -216,7 +268,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.success, false);
@@ -232,7 +284,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'IDENTITY_NOT_FOUND');
@@ -247,7 +299,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'IDENTITY_REVOKED');
@@ -261,7 +313,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'INVALID_ROLE');
@@ -276,7 +328,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address });
+            .query({ wallet_address: address });
 
         assert.equal(res.status, 404);
         const { rows: [row] } = await db.query(
@@ -304,7 +356,7 @@ describe('GET /api/auth/nonce', function () {
 
         const res = await request(app)
             .get('/api/auth/nonce')
-            .query({ address: 'not-an-address' });
+            .query({ wallet_address: 'not-an-address' });
 
         assert.equal(res.status, 500);
         assert.equal(res.body.success, false);

@@ -1,7 +1,6 @@
 import request from 'supertest';
 import { strict as assert } from 'assert';
 import sinon from 'sinon';
-import { ethers } from 'ethers';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
 
@@ -9,7 +8,6 @@ import db from '../../src/config/db.js';
 // ========
 const validBody = (overrides = {}) => ({
     email: 'admin@fenerbahce.edu.tr',
-    wallet_address: '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
     name: 'Fenerbahce University',
     short_name: 'FBU',
     type: 'university',
@@ -26,12 +24,6 @@ const cleanupDB = async () => {
             SELECT id FROM academies
             WHERE email LIKE '%@fenerbahce%'
                OR email LIKE '%@test%'
-               OR wallet_address IN (
-                   '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
-                   '0x1111222233334444555566667777888899990000',
-                   '0x2222333344445555666677778888999900001111',
-                   '0xabcdef1234567890abcdef1234567890abcdef12'
-               )
         )
     `);
 
@@ -39,12 +31,9 @@ const cleanupDB = async () => {
         DELETE FROM academies
         WHERE email LIKE '%@fenerbahce%'
            OR email LIKE '%@test%'
-           OR wallet_address IN (
-               '0x8fa1b2c3d4e5f67890123456789abcdefabcdef0',
-               '0x1111222233334444555566667777888899990000',
-               '0x2222333344445555666677778888999900001111',
-               '0xabcdef1234567890abcdef1234567890abcdef12'
-           )
+           OR name LIKE 'Fenerbahce%'
+           OR name LIKE 'Test Academy%'
+           OR registration_number LIKE 'REG-FBU%'
     `);
 };
 
@@ -79,7 +68,6 @@ describe('POST /api/academies', () => {
         assert.equal(academy.short_name, body.short_name);
         assert.equal(academy.type, body.type);
         assert.equal(academy.email, body.email);
-        assert.equal(academy.wallet_address, ethers.getAddress(body.wallet_address));
 
         assert.equal(academy.description, null);
         assert.equal(academy.website, null);
@@ -93,20 +81,6 @@ describe('POST /api/academies', () => {
         // checking academy_number shape
         assert.ok(academy.academy_number);
         assert.match(academy.academy_number, /^ACD_\d{6}\d+$/);
-    });
-
-    it('stores wallet_address lowercased regardless of input casing', async () => {
-        const body = validBody({ wallet_address: '0xabcdef1234567890abcdef1234567890abcdef12' });
-
-        const res = await request(app)
-            .post('/api/academies')
-            .send(body);
-
-        assert.equal(res.status, 201);
-        assert.equal(
-            res.body.data.academy.wallet_address,
-            ethers.getAddress(body.wallet_address),
-        );
     });
 
     it('includes optional fields when provided', async () => {
@@ -139,7 +113,10 @@ describe('POST /api/academies', () => {
             .post('/api/academies')
             .send(validBody({
                 name: 'Test Academy 2',
-                wallet_address: '0x1111222233334444555566667777888899990000',
+                short_name: 'TA2',
+                legal_name: 'Test Academy 2 Legal',
+                registration_number: 'REG-OTHER-001',
+                tax_id: 'TAX-OTHER-001',
             }));
 
         assert.equal(res.status, 409);
@@ -155,13 +132,16 @@ describe('POST /api/academies', () => {
             .post('/api/academies')
             .send(validBody({
                 email: 'other@test.edu.tr',
-                wallet_address: '0x2222333344445555666677778888999900001111',
+                short_name: 'TA2',
+                legal_name: 'Test Academy 2 Legal',
+                registration_number: 'REG-OTHER-002',
+                tax_id: 'TAX-OTHER-002',
             }));
 
         assert.equal(res.status, 409);
         assert.equal(res.body.code, 'ACADEMY_DUPLICATE');
     });
-    
+
     it('returns 409 ACADEMY_SHORT_NAME_DUPLICATE when academy short name already exists', async () => {
         await request(app)
             .post('/api/academies')
@@ -172,7 +152,9 @@ describe('POST /api/academies', () => {
             .send(validBody({
                 email: 'other@test.edu.tr',
                 name: 'Test Academy 2',
-                wallet_address: '0x2222333344445555666677778888999900001111',
+                legal_name: 'Test Academy 2 Legal',
+                registration_number: 'REG-OTHER-003',
+                tax_id: 'TAX-OTHER-003',
             }));
 
         assert.equal(res.status, 409);
@@ -188,16 +170,6 @@ describe('POST /api/academies', () => {
         assert.equal(res.body.code, 'VALIDATION_ERROR');
         assert.ok(Array.isArray(res.body.errors));
         assert.ok(res.body.errors.length > 0);
-    });
-
-    it('returns 422 with correct field name for invalid wallet_address', async () => {
-        const res = await request(app)
-            .post('/api/academies')
-            .send(validBody({ wallet_address: 'not-an-address' }));
-
-        assert.equal(res.status, 422);
-        const field = res.body.errors.find(e => e.field === 'wallet_address');
-        assert.ok(field, 'errors should contain a wallet_address entry');
     });
 
     it('returns 422 for invalid academy type', async () => {
@@ -223,7 +195,6 @@ describe('POST /api/academies', () => {
     it('returns 422 when each required field is missing', async () => {
         const requiredFields = [
             'email',
-            'wallet_address',
             'name',
             'short_name',
             'type',

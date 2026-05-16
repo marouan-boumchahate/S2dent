@@ -5,6 +5,9 @@ import {
 } from '../../../blockchain/identity/student.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { ethers } from 'ethers'
+import { getCache, delCache } from '../../../cache/cache.client.js'
+import { otpKey } from '../../../cache/cache.keys.js'
+import { recoverSigner } from '../../../utils/crypto.js'
 
 
 // Helpers
@@ -18,7 +21,29 @@ const formatDateOnly = (value) => {
         return String(value).slice(0, 10)
     }
 }
-const getStudentIdentityPayload = async (email) => {
+const fetchFromCache = async (email, otp) => {
+    const cacheKey = otpKey(email, otp)
+    const cachedData = await getCache(cacheKey)
+
+    if (!cachedData) {
+        const err = new Error('Invalid or expired OTP')
+        err.statusCode = 400
+        err.code = 'INVALID_OTP'
+        throw err
+    }
+    
+    await delCache(cacheKey)
+
+    return JSON.parse(cachedData)
+}
+const getStudentById = async (student_id, role) => {
+    if (role !== 'student') {
+        const err = new Error('Student not found with the provided email')
+        err.statusCode = 404
+        err.code = 'STUDENT_NOT_FOUND'
+        throw err
+    }
+
     const { rows: [student] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, u.nationality, u.gender,
                 s.student_number, s.enrollment_date,
@@ -26,14 +51,15 @@ const getStudentIdentityPayload = async (email) => {
                 a.name AS academy_name,
                 addr.country,
                 d.is_active AS is_department_active, d.name AS department_name
-         FROM users u
-         JOIN students s ON u.id = s.user_id
+         FROM students s
+         JOIN users u ON u.id = s.user_id
          JOIN academies a ON s.academy_id = a.id
          JOIN identities i ON i.academy_id = a.id
          LEFT JOIN addresses addr ON addr.user_id = u.id
          LEFT JOIN departments d ON d.academy_id = a.id
-         WHERE u.email = $1`,
-        [email]
+         WHERE s.id = $1
+         LIMIT 1`,
+        [student_id]
     )
 
     if (!student) {
@@ -124,12 +150,6 @@ const saveTransaction = async (txHash, payloadObj) => {
 }
 
 
-const getRandomPublicKey = () => {
-    const randomWallet = ethers.Wallet.createRandom()
-    return randomWallet.signingKey.publicKey
-}
-
-
 // Issuance
 // --------
 const ON_SUCCESS = (title, name, academyName) => ({
@@ -141,18 +161,20 @@ const ON_FAILURE = (title, name) => ({
     message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
 })
 
-export const issueStudentIdentityService = async ({ wallet, email }) => {
-    const studentWallet = ethers.getAddress(wallet)
+export const issueStudentIdentityService = async ({ otp, email, signature }) => {
+    email = email.toLowerCase().trim()
 
-    await ensureWalletAddressUnique(studentWallet)
-    const student = await getStudentIdentityPayload(email)
+    const { id, message, role } = await fetchFromCache(email, otp)
+    const student = await getStudentById(id, role)
 
-    const studentPublicKey = getRandomPublicKey()
-    const academyPublicKey = student.academy_public_key
+    const { signerPublicKey, signerAddress } = recoverSigner(message, signature)
+    const checksumAddr = ethers.getAddress(signerAddress)
+
+    await ensureWalletAddressUnique(checksumAddr)
 
     const tx = await issueStudentIdentity({
-        studentPublicKey,
-        academyPublicKey,
+        studentPublicKey: signerPublicKey,
+        academyPublicKey: student.academy_public_key,
 
         studentId: student.student_number,
         fullName: student.full_name,
@@ -168,12 +190,9 @@ export const issueStudentIdentityService = async ({ wallet, email }) => {
     const payload = {
         action: 'issue',
 
-        wallet: studentWallet,
-        public_key: studentPublicKey,
-        user_id: student.user_id,
-        student_number: student.student_number,
-        name: student.full_name,
-
+        wallet_address: checksumAddr,
+        public_key: signerPublicKey,
+        entity_id: student.user_id,
         role: 'student',
         
         email: student.email,
@@ -185,7 +204,7 @@ export const issueStudentIdentityService = async ({ wallet, email }) => {
     listenOnTransaction(tx)
 
     return {
-        student_wallet: studentWallet,
+        student_wallet: checksumAddr,
         blockchain_transaction: {
             tx_hash: tx.hash,
             status: 'pending',
@@ -205,7 +224,7 @@ const REVOKE_ON_FAILURE = (title, name) => ({
     message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity revocation. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
 })
 
-export const revokeStudentIdentityService = async ({ academy_address, student_address }) => {
+export const revokeStudentIdentityService = async ({ academy_address, student_address, reason }) => {
     const studentWallet = ethers.getAddress(academy_address)
     const academyWallet = ethers.getAddress(student_address)
 
@@ -213,7 +232,8 @@ export const revokeStudentIdentityService = async ({ academy_address, student_ad
 
     const tx = await revokeStudentIdentity({ 
         studentPublicKey: student.student_public_key, 
-        academyPublicKey: student.academy_public_key 
+        academyPublicKey: student.academy_public_key,
+        reason
     })
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
@@ -221,10 +241,7 @@ export const revokeStudentIdentityService = async ({ academy_address, student_ad
         action: 'revoke',
 
         wallet: studentWallet,
-        student_number: student.student_number,
-        name: student.full_name,
-
-        role: 'student',
+        reason,
 
         email: student.email,
         onSuccess: REVOKE_ON_SUCCESS(title, student.full_name, student.academy_name),

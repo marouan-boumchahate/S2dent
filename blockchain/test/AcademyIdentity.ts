@@ -30,10 +30,10 @@ describe("AcademyIdentity", () => {
     const ONE_DAY_SECS = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (64 bytes hex strings) for entity identification
-    const ACADEMY_PK = "0x" + "a1".repeat(64);
-    const SECOND_ACADEMY_PK = "0x" + "a2".repeat(64);
-    const EMPTY_PK = "0x";
+    // Public keys (65 bytes hex strings) for entity identification
+    const ACADEMY_PK = "0x04" + "a1".repeat(64);
+    const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
+    const EMPTY_PK = "0x04";
 
     async function deployFixture() {
         const { ethers } = await hre.network.connect();

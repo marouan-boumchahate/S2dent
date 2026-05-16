@@ -8,24 +8,58 @@ import {
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { getAcademyCertificateAttrs } from '../../../ca/ca.attrs.js'
 import { buildIdentityCertificate } from '../../../ca/ca.identity.js'
+import { getCache, delCache } from '../../../cache/cache.client.js'
+import { otpKey } from '../../../cache/cache.keys.js'
+import { recoverSigner } from '../../../utils/crypto.js'
 
 
 // Helpers
 // -------
-const getAcademyByEmail = async (email) => {
-    const { rows: [academy] } = await db.query(
-        `SELECT id, academy_number, name, short_name, type,
-            legal_name, registration_number, tax_id, billing_email, email
-        FROM academies
-        WHERE email = $1
-        LIMIT 1`,
-        [email],
-    )
-    
-    if (!academy) {
+const fetchFromCache = async (email, otp) => {
+    const cacheKey = otpKey(email, otp)
+    const cachedData = await getCache(cacheKey)
+
+    if (!cachedData) {
+        const err = new Error('Invalid or expired OTP')
+        err.statusCode = 400
+        err.code = 'INVALID_OTP'
+        throw err
+    }
+
+    await delCache(cacheKey)
+
+    return JSON.parse(cachedData)
+}
+const getAcademyById = async (academy_id, role) => {
+    if(role !== 'academy') {
         const err = new Error('Academy not found with the provided email')
         err.statusCode = 404
         err.code = 'ACADEMY_NOT_FOUND'
+        throw err
+    }
+
+    const { rows: [academy] } = await db.query(
+        `SELECT a.id, a.academy_number, a.name, a.short_name, a.type,
+            a.legal_name, a.registration_number, a.tax_id, a.billing_email, a.email, 
+            addr.id AS address_id
+        FROM academies AS a
+        LEFT JOIN addresses AS addr ON addr.academy_id = a.id
+        WHERE a.id = $1
+        LIMIT 1`,
+        [academy_id],
+    )
+
+    if (!academy) {
+        const err = new Error('Academy not found with the provided ID')
+        err.statusCode = 404
+        err.code = 'ACADEMY_NOT_FOUND'
+        throw err
+    }
+
+    if(!academy.address_id) {
+        const err = new Error('Academy address is required before issuing an identity. Please add an address to your academy profile.')
+        err.statusCode = 409
+        err.code = 'ACADEMY_ADDRESS_REQUIRED'
         throw err
     }
     
@@ -33,11 +67,12 @@ const getAcademyByEmail = async (email) => {
 }
 const getAcademyByWallet = async (wallet) => {
     const { rows: [academy] } = await db.query(
-        `SELECT id, academy_number, name, short_name, type,
-            legal_name, registration_number, tax_id, billing_email, email
+        `SELECT a.id, academy_number, name, short_name, type,
+            legal_name, registration_number, tax_id, billing_email, email,
+            i.public_key
         FROM academies as a
         JOIN identities as i ON i.academy_id = a.id
-        WHERE i.wallet = $1
+        WHERE i.wallet_address = $1
         LIMIT 1`,
         [wallet],
     )
@@ -79,7 +114,7 @@ const saveTransaction = async (txHash, payloadObj) => {
 const ensureWalletAddressUnique = async (wallet) => 
 {
     const { rows } = await db.query(
-        `SELECT 1 FROM identities WHERE wallet = $1 LIMIT 1`,
+        `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
         [wallet]
     );
 
@@ -94,7 +129,7 @@ const ensureWalletAddressUnique = async (wallet) =>
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
     await db.query(
         `INSERT INTO identity_certificates
-        (wallet, certificate_pem, chain_pem, fingerprint, created_at)
+        (wallet_address, certificate_pem, chain_pem, fingerprint, created_at)
         VALUES ($1, $2, $3, $4, NOW())`,
         [walletAddress, certPem, chainPem, fingerprintHex]
     )
@@ -139,15 +174,14 @@ const ON_FAILURE = {
     message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
 }
 
-export const issueAcademyIdentity = async ({ wallet, email }) => {
-    const checksumAddr = ethers.getAddress(wallet)
-    
-    await ensureWalletAddressUnique(checksumAddr)
-    const academy = await getAcademyByEmail(email)
-    await ensureAcademyHasAddress(academy.id)
+export const issueAcademyIdentity = async ({ otp, email, signature }) => {   
+    const { id, message, role } = await fetchFromCache(email, otp)
 
-    const publicKey = getRandomPublicKey() // In a real implementation, I would derive this from the academy's wallet or have them provide it
-    
+    const academy = await getAcademyById(id, role)
+    const { signerPublicKey, signerAddress } = recoverSigner(message, signature)
+
+    const checksumAddr = ethers.getAddress(signerAddress)
+    await ensureWalletAddressUnique(checksumAddr)
     
     const {
         fingerprint,
@@ -163,7 +197,7 @@ export const issueAcademyIdentity = async ({ wallet, email }) => {
     )
     
     const tx = await issueAcademy({
-        publicKey,
+        publicKey: signerPublicKey,
         
         academyNumber: academy.academy_number,
         name: academy.name,
@@ -188,14 +222,9 @@ export const issueAcademyIdentity = async ({ wallet, email }) => {
     const payload = {
         action: 'issue',
         
-        wallet: checksumAddr,
-        public_key: publicKey,
-        academy_number: academy.academy_number,
-        certificate_fingerprint: fingerprint,
-
-        name: academy.name,
-        short_name: academy.short_name,
-
+        entity_id: id,
+        wallet_address: checksumAddr,
+        public_key: signerPublicKey,
         role: 'academy',
         
         email: academy.email,
@@ -205,10 +234,9 @@ export const issueAcademyIdentity = async ({ wallet, email }) => {
     await saveTransaction(tx.hash, payload)
     
     listenOnTransaction(tx)
-
     
     return {
-        academy_wallet: checksumAddr,
+        academy_address: checksumAddr,
         blockchain_transaction: {
             tx_hash: tx.hash,
             status: 'pending',
@@ -232,24 +260,19 @@ const REVOKE_ON_FAILURE = {
     message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
 }
 
-export const revokeAcademyIdentity = async ({ wallet }) => {
-    const checksumAddr = ethers.getAddress(wallet)
+export const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
+    const checksumAddr = ethers.getAddress(wallet_address)
 
     const academy = await getAcademyByWallet(checksumAddr)
 
-    const tx = await revokeAcademy({ walletAddress: checksumAddr })
+    const tx = await revokeAcademy({ publicKey: academy.public_key, reason })
 
     // Saving Transaction Off-Chain
     const payload = {
         action: 'revoke',
 
-        wallet: checksumAddr,
-        academy_number: academy.academy_number,
-
-        name: academy.name,
-        short_name: academy.short_name,
-
-        role: 'academy',
+        wallet_address: checksumAddr,
+        reason,
 
         email: academy.email,
         onSuccess: REVOKE_ON_SUCCESS,
@@ -260,7 +283,7 @@ export const revokeAcademyIdentity = async ({ wallet }) => {
     listenOnTransaction(tx)
 
     return {
-        academy_wallet: checksumAddr,
+        academy_address: checksumAddr,
         blockchain_transaction: {
             tx_hash: tx.hash,
             status: 'pending',
