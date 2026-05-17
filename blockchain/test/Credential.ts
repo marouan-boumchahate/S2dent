@@ -40,16 +40,13 @@ describe("Credential", () => {
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (65 bytes hex strings) for entity identification
+    // Public keys (65 bytes hex strings) stored as identity data on-chain
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
-    const FAKE_ACADEMY_PK = "0x04" + "ff".repeat(64);
     const PROFESSOR_PK = "0x04" + "b1".repeat(64);
     const OTHER_PROFESSOR_PK = "0x04" + "b2".repeat(64);
     const STUDENT_PK = "0x04" + "c1".repeat(64);
     const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
-    const OUTSIDE_STUDENT_PK = "0x04" + "c3".repeat(64);
-    const EMPTY_PK = "0x04";
 
 
     function defaultIssueArgs(overrides: Partial<{
@@ -112,8 +109,9 @@ describe("Credential", () => {
         await instance.waitForDeployment();
 
         // Register the primary academy
-        await instance.connect(owner).issueAcademyIdentity(ACADEMY_PK, {
+        await instance.connect(owner).issueAcademyIdentity(academy.address, {
             infos: {
+                publicKey: ACADEMY_PK,
                 academyId: ACADEMY_ID,
                 name: ACADEMY_NAME,
                 shortName: ACADEMY_CODE,
@@ -136,9 +134,10 @@ describe("Credential", () => {
 
         // Register a professor under the primary academy
         await instance.connect(owner).issueProfessorIdentity(
-            PROFESSOR_PK,
-            ACADEMY_PK,
+            professor.address,
+            academy.address,
             {
+                publicKey: PROFESSOR_PK,
                 employeeId: PROFESSOR_EMPLOYEE_ID,
                 nationalId: PROFESSOR_NATIONAL_ID,
                 fullName: PROFESSOR_NAME,
@@ -150,9 +149,10 @@ describe("Credential", () => {
 
         // Register the student under the primary academy
         await instance.connect(owner).issueStudentIdentity(
-            STUDENT_PK,
-            ACADEMY_PK,
+            student.address,
+            academy.address,
             {
+                publicKey: STUDENT_PK,
                 studentId: STUDENT_ID,
                 fullName: STUDENT_NAME,
                 nationality: STUDENT_NATIONALITY,
@@ -180,9 +180,10 @@ describe("Credential", () => {
         };
     }
 
-    async function registerSecondAcademy(instance: any, owner: any, publicKey: string, now: number) {
-        await instance.connect(owner).issueAcademyIdentity(publicKey, {
+    async function registerSecondAcademy(instance: any, owner: any, academyAddress: string, now: number) {
+        await instance.connect(owner).issueAcademyIdentity(academyAddress, {
             infos: {
+                publicKey: SECOND_ACADEMY_PK,
                 academyId: SECOND_ACADEMY_ID,
                 name: SECOND_ACADEMY_NAME,
                 shortName: SECOND_ACADEMY_CODE,
@@ -210,9 +211,9 @@ describe("Credential", () => {
         const { instance, owner, academy, student } = base;
 
         await instance.connect(owner).issueCredential(
-            STUDENT_PK,
-            ACADEMY_PK,
-            ACADEMY_PK,
+            student.address,
+            academy.address,
+            academy.address,
             defaultIssueArgs(),
         );
 
@@ -227,13 +228,13 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs(),
             );
 
-            const record = await instance.credentials(STUDENT_PK, 0);
+            const record = await instance.credentials(student.address, 0);
 
             expect(record.identity.title).to.equal(CRED_TITLE);
             expect(record.identity.code).to.equal(CRED_CODE);
@@ -248,9 +249,9 @@ describe("Credential", () => {
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.issuedAt).to.be.gt(0);
             expect(record.status.revokedAt).to.equal(0);
-            expect(record.status.academy).to.equal(ACADEMY_PK);
-            expect(record.status.issuer).to.equal(ACADEMY_PK);
-            expect(record.status.revoker).to.equal("0x");
+            expect(record.status.academy).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(academy.address);
+            expect(record.status.revoker).to.equal(ethers.ZeroAddress);
             expect(record.status.revocationReason).to.equal("");
         });
 
@@ -260,13 +261,13 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs(),
             );
 
-            const record = await instance.credentials(STUDENT_PK, 0);
+            const record = await instance.credentials(student.address, 0);
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
         });
 
@@ -275,20 +276,20 @@ describe("Credential", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            expect(await instance.getCredentialCount(STUDENT_PK)).to.equal(0);
+            expect(await instance.getCredentialCount(student.address)).to.equal(0);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs(),
             );
-            expect(await instance.getCredentialCount(STUDENT_PK)).to.equal(1);
+            expect(await instance.getCredentialCount(student.address)).to.equal(1);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs({
                     payloadHash:
                         "0x3333333333333333333333333333333333333333333333333333333333333333",
@@ -296,9 +297,9 @@ describe("Credential", () => {
                     code: "MSC-CS-2026",
                 }),
             );
-            expect(await instance.getCredentialCount(STUDENT_PK)).to.equal(2);
+            expect(await instance.getCredentialCount(student.address)).to.equal(2);
 
-            const second = await instance.credentials(STUDENT_PK, 1);
+            const second = await instance.credentials(student.address, 1);
             expect(second.identity.title).to.equal("Master of Computer Science");
             expect(second.identity.code).to.equal("MSC-CS-2026");
         });
@@ -310,16 +311,16 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             )
                 .to.emit(instance, "CredentialIssued")
                 .withArgs(
-                    STUDENT_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
                     CRED_PAYLOAD_HASH,
                     0n,
                     (ts: bigint) => ts > 0n,
@@ -333,9 +334,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(academy).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWith(
@@ -350,9 +351,10 @@ describe("Credential", () => {
 
             // Register a second student so we can target a different recipient
             await instance.connect(owner).issueStudentIdentity(
-                SECOND_STUDENT_PK,
-                ACADEMY_PK,
+                secondStudent.address,
+                academy.address,
                 {
+                    publicKey: SECOND_STUDENT_PK,
                     studentId: "STD-CRED-002",
                     fullName: "Second Student",
                     nationality: "Turkish",
@@ -365,9 +367,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    SECOND_STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    secondStudent.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(), // same payloadHash as in fixture
                 ),
             ).to.be.revertedWithCustomError(instance, "CredentialPayloadAlreadyUsed");
@@ -375,9 +377,9 @@ describe("Credential", () => {
             // Sanity: also forbidden to re-issue the same payloadHash to the same student
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "CredentialPayloadAlreadyUsed");
@@ -392,15 +394,15 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                PROFESSOR_PK,
-                ACADEMY_PK,
+                student.address,
+                professor.address,
+                academy.address,
                 defaultIssueArgs(),
             );
 
-            const record = await instance.credentials(STUDENT_PK, 0);
-            expect(record.status.issuer).to.equal(PROFESSOR_PK);
-            expect(record.status.academy).to.equal(ACADEMY_PK);
+            const record = await instance.credentials(student.address, 0);
+            expect(record.status.issuer).to.equal(professor.address);
+            expect(record.status.academy).to.equal(academy.address);
         });
 
         it("Should revert when issuer is not a registered professor", async () => {
@@ -410,9 +412,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    OTHER_PROFESSOR_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    otherProfessor.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "ProfessorIdentityNotIssued");
@@ -423,13 +425,13 @@ describe("Credential", () => {
             const { instance, owner, academy, professor, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(owner).revokeProfessorIdentity(PROFESSOR_PK, ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeProfessorIdentity(professor.address, academy.address, "Reason");
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    PROFESSOR_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    professor.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "ProfessorIdentityAlreadyRevoked");
@@ -440,11 +442,12 @@ describe("Credential", () => {
             const { instance, owner, academy, secondAcademy, otherProfessor, student, now } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await registerSecondAcademy(instance, owner, SECOND_ACADEMY_PK, now);
+            await registerSecondAcademy(instance, owner, secondAcademy.address, now);
             await instance.connect(owner).issueProfessorIdentity(
-                OTHER_PROFESSOR_PK,
-                SECOND_ACADEMY_PK,
+                otherProfessor.address,
+                secondAcademy.address,
                 {
+                    publicKey: OTHER_PROFESSOR_PK,
                     employeeId: "EMP_OTHER_001",
                     nationalId: "TR-OTHER-PROF-01",
                     fullName: "Grace Hopper",
@@ -456,9 +459,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    OTHER_PROFESSOR_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    otherProfessor.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWith(
@@ -476,9 +479,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    FAKE_ACADEMY_PK,
-                    FAKE_ACADEMY_PK,
+                    student.address,
+                    fakeAcademy.address,
+                    fakeAcademy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "AcademyIdentityNotIssued");
@@ -489,13 +492,13 @@ describe("Credential", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeAcademyIdentity(academy.address, "Reason");
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "AcademyIdentityAlreadyRevoked");
@@ -508,9 +511,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    OUTSIDE_STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    outsideStudent.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "StudentIdentityNotIssued");
@@ -521,13 +524,13 @@ describe("Credential", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason");
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWithCustomError(instance, "StudentIdentityAlreadyRevoked");
@@ -538,11 +541,12 @@ describe("Credential", () => {
             const { instance, owner, academy, secondAcademy, secondStudent, now } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            await registerSecondAcademy(instance, owner, SECOND_ACADEMY_PK, now);
+            await registerSecondAcademy(instance, owner, secondAcademy.address, now);
             await instance.connect(owner).issueStudentIdentity(
-                SECOND_STUDENT_PK,
-                SECOND_ACADEMY_PK,
+                secondStudent.address,
+                secondAcademy.address,
                 {
+                    publicKey: SECOND_STUDENT_PK,
                     studentId: "STD-CRED-OTHER",
                     fullName: "Outsider Student",
                     nationality: "Turkish",
@@ -555,9 +559,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    SECOND_STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    secondStudent.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             ).to.be.revertedWith(
@@ -575,14 +579,14 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    EMPTY_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    ethers.ZeroAddress,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
 
         it("Should revert on zero issuer address", async () => {
@@ -592,14 +596,14 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    EMPTY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    ethers.ZeroAddress,
+                    academy.address,
                     defaultIssueArgs(),
                 ),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
 
         it("Should revert on zero academy address", async () => {
@@ -609,14 +613,14 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    EMPTY_PK,
+                    student.address,
+                    academy.address,
+                    ethers.ZeroAddress,
                     defaultIssueArgs(),
                 ),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
     });
 
@@ -629,9 +633,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ title: "AB" }),
                 ),
             ).to.be.revertedWith("Invalid credential: title is too short.");
@@ -644,9 +648,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ title: "T".repeat(257) }),
                 ),
             ).to.be.revertedWith("Invalid credential: title is too long.");
@@ -659,9 +663,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ code: "" }),
                 ),
             ).to.be.revertedWith("Invalid credential: code is required.");
@@ -674,9 +678,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ code: "C".repeat(257) }),
                 ),
             ).to.be.revertedWith("Invalid credential: code is too long.");
@@ -688,13 +692,13 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs({ description: "" }),
             );
 
-            const record = await instance.credentials(STUDENT_PK, 0);
+            const record = await instance.credentials(student.address, 0);
             expect(record.identity.description).to.equal("");
         });
 
@@ -705,9 +709,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ description: "D".repeat(1025) }),
                 ),
             ).to.be.revertedWith("Invalid credential: description is too long.");
@@ -720,9 +724,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ credentialType: 99 }),
                 ),
             ).to.be.revertedWithCustomError(instance, "InvalidCredentialType");
@@ -735,9 +739,9 @@ describe("Credential", () => {
 
             for (let t = 0; t <= 5; t++) {
                 await instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({
                         credentialType: t,
                         payloadHash:
@@ -746,10 +750,10 @@ describe("Credential", () => {
                 );
             }
 
-            expect(await instance.getCredentialCount(STUDENT_PK)).to.equal(6);
+            expect(await instance.getCredentialCount(student.address)).to.equal(6);
 
             for (let t = 0; t <= 5; t++) {
-                const record = await instance.credentials(STUDENT_PK, t);
+                const record = await instance.credentials(student.address, t);
                 expect(record.identity.credentialType).to.equal(t);
             }
         });
@@ -764,25 +768,25 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ payloadHash: ethers.ZeroHash }),
                 ),
             ).to.be.revertedWithCustomError(instance, "InvalidPayloadHash");
         });
 
         it("Should revert on zero payloadSignature", async () => {
-            const { networkHelpers, ethers } = await hre.network.connect();
+            const { networkHelpers } = await hre.network.connect();
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
-                    defaultIssueArgs({ payloadSignature: ethers.ZeroHash }),
+                    student.address,
+                    academy.address,
+                    academy.address,
+                    defaultIssueArgs({ payloadSignature: "0x" }),
                 ),
             ).to.be.revertedWithCustomError(instance, "InvalidPayloadSignature");
         });
@@ -794,9 +798,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).issueCredential(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
+                    academy.address,
                     defaultIssueArgs({ encryptedPayload: "" }),
                 ),
             ).to.be.revertedWithCustomError(instance, "InvalidEncryptedPayload");
@@ -811,20 +815,20 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await instance.connect(owner).revokeCredential(
-                STUDENT_PK,
+                student.address,
                 0,
-                ACADEMY_PK,
+                academy.address,
                 "Academic misconduct",
             );
 
-            const record = await instance.credentials(STUDENT_PK, 0);
+            const record = await instance.credentials(student.address, 0);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(ACADEMY_PK);
+            expect(record.status.revoker).to.equal(academy.address);
             expect(record.status.revocationReason).to.equal("Academic misconduct");
             // Issuance metadata must remain intact
-            expect(record.status.academy).to.equal(ACADEMY_PK);
-            expect(record.status.issuer).to.equal(ACADEMY_PK);
+            expect(record.status.academy).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(academy.address);
             expect(record.status.issuedAt).to.be.gt(0);
         });
 
@@ -835,16 +839,16 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             )
                 .to.emit(instance, "CredentialRevoked")
                 .withArgs(
-                    STUDENT_PK,
-                    ACADEMY_PK,
+                    student.address,
+                    academy.address,
                     0n,
                     (ts: bigint) => ts > 0n,
                 );
@@ -857,9 +861,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(academy).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             ).to.be.revertedWith(
@@ -867,16 +871,16 @@ describe("Credential", () => {
             );
         });
 
-        it("Should revert when _revokerPublicKey is not a registered academy", async () => {
+        it("Should revert when _revokerAddress is not a registered academy", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, owner, fakeAcademy, student } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    FAKE_ACADEMY_PK,
+                    fakeAcademy.address,
                     "Reason",
                 ),
             ).to.be.revertedWith(
@@ -884,18 +888,18 @@ describe("Credential", () => {
             );
         });
 
-        it("Should revert when _revokerPublicKey is a different registered academy", async () => {
+        it("Should revert when _revokerAddress is a different registered academy", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, owner, secondAcademy, student, now } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
-            await registerSecondAcademy(instance, owner, SECOND_ACADEMY_PK, now);
+            await registerSecondAcademy(instance, owner, secondAcademy.address, now);
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    SECOND_ACADEMY_PK,
+                    secondAcademy.address,
                     "Reason",
                 ),
             ).to.be.revertedWith("Invalid revoker: must be the issuing academy.");
@@ -906,13 +910,13 @@ describe("Credential", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeAcademyIdentity(academy.address, "Reason");
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             ).to.be.revertedWith(
@@ -920,21 +924,21 @@ describe("Credential", () => {
             );
         });
 
-        it("Should revert on zero student public key", async () => {
+        it("Should revert on zero student address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    EMPTY_PK,
+                    ethers.ZeroAddress,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
 
         it("Should revert when the index is out of range", async () => {
@@ -944,9 +948,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     5,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             ).to.be.revertedWithCustomError(instance, "CredentialIndexOutOfRange");
@@ -959,9 +963,10 @@ describe("Credential", () => {
 
             // secondStudent is a signer but has no credentials issued
             await instance.connect(owner).issueStudentIdentity(
-                SECOND_STUDENT_PK,
-                ACADEMY_PK,
+                secondStudent.address,
+                academy.address,
                 {
+                    publicKey: SECOND_STUDENT_PK,
                     studentId: "STD-CRED-NONE",
                     fullName: "No Cred Student",
                     nationality: "Turkish",
@@ -974,9 +979,9 @@ describe("Credential", () => {
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    SECOND_STUDENT_PK,
+                    secondStudent.address,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason",
                 ),
             ).to.be.revertedWithCustomError(instance, "CredentialIndexOutOfRange");
@@ -988,17 +993,17 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await instance.connect(owner).revokeCredential(
-                STUDENT_PK,
+                student.address,
                 0,
-                ACADEMY_PK,
+                academy.address,
                 "Reason",
             );
 
             await expect(
                 instance.connect(owner).revokeCredential(
-                    STUDENT_PK,
+                    student.address,
                     0,
-                    ACADEMY_PK,
+                    academy.address,
                     "Reason again",
                 ),
             ).to.be.revertedWithCustomError(instance, "CredentialAlreadyRevoked");
@@ -1011,9 +1016,9 @@ describe("Credential", () => {
 
             // Issue a second credential
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs({
                     payloadHash:
                         "0x4444444444444444444444444444444444444444444444444444444444444444",
@@ -1023,14 +1028,14 @@ describe("Credential", () => {
             );
 
             await instance.connect(owner).revokeCredential(
-                STUDENT_PK,
+                student.address,
                 0,
-                ACADEMY_PK,
+                academy.address,
                 "Reason",
             );
 
-            const first  = await instance.credentials(STUDENT_PK, 0);
-            const second = await instance.credentials(STUDENT_PK, 1);
+            const first  = await instance.credentials(student.address, 0);
+            const second = await instance.credentials(student.address, 1);
 
             expect(first.status.isNotRevoked).to.equal(false);
             expect(second.status.isNotRevoked).to.equal(true);
@@ -1045,14 +1050,14 @@ describe("Credential", () => {
             const { instance, student } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            expect(await instance.getCredentialCount(STUDENT_PK)).to.equal(0);
+            expect(await instance.getCredentialCount(student.address)).to.equal(0);
         });
 
-        it("Should return 0 for an unknown public key", async () => {
+        it("Should return 0 for an unknown address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance } = await networkHelpers.loadFixture(deployFixture);
 
-            const unknown = "0x" + "de".repeat(64);
+            const unknown = ethers.Wallet.createRandom().address;
             expect(await instance.getCredentialCount(unknown)).to.equal(0);
         });
     });
@@ -1060,11 +1065,11 @@ describe("Credential", () => {
     describe("getCredential", () => {
 
         it("Should return the full credential record at the given index", async () => {
-            const { networkHelpers, ethers } = await hre.network.connect();
+            const { networkHelpers } = await hre.network.connect();
             const { instance, academy, student } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
-            const record = await instance.getCredential(STUDENT_PK, 0);
+            const record = await instance.getCredential(student.address, 0);
 
             expect(record.identity.title).to.equal(CRED_TITLE);
             expect(record.identity.code).to.equal(CRED_CODE);
@@ -1079,10 +1084,8 @@ describe("Credential", () => {
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.issuedAt).to.be.gt(0);
             expect(record.status.revokedAt).to.equal(0);
-            expect(record.status.academy).to.equal(ACADEMY_PK);
-            expect(record.status.issuer).to.equal(ACADEMY_PK);
-            expect(record.status.revoker).to.equal("0x");
-            expect(record.status.revocationReason).to.equal("");
+            expect(record.status.academy).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(academy.address);
         });
 
         it("Should return matching data for the public credentials() getter", async () => {
@@ -1090,8 +1093,8 @@ describe("Credential", () => {
             const { instance, student } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
-            const viaGetter = await instance.getCredential(STUDENT_PK, 0);
-            const viaMapping = await instance.credentials(STUDENT_PK, 0);
+            const viaGetter = await instance.getCredential(student.address, 0);
+            const viaMapping = await instance.credentials(student.address, 0);
 
             expect(viaGetter.identity.title).to.equal(viaMapping.identity.title);
             expect(viaGetter.payload.payloadHash).to.equal(viaMapping.payload.payloadHash);
@@ -1106,16 +1109,16 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await instance.connect(owner).revokeCredential(
-                STUDENT_PK,
+                student.address,
                 0,
-                ACADEMY_PK,
+                academy.address,
                 "Academic misconduct",
             );
 
-            const record = await instance.getCredential(STUDENT_PK, 0);
+            const record = await instance.getCredential(student.address, 0);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(ACADEMY_PK);
+            expect(record.status.revoker).to.equal(academy.address);
             expect(record.status.revocationReason).to.equal("Academic misconduct");
         });
 
@@ -1125,9 +1128,9 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await instance.connect(owner).issueCredential(
-                STUDENT_PK,
-                ACADEMY_PK,
-                ACADEMY_PK,
+                student.address,
+                academy.address,
+                academy.address,
                 defaultIssueArgs({
                     payloadHash:
                         "0x5555555555555555555555555555555555555555555555555555555555555555",
@@ -1137,8 +1140,8 @@ describe("Credential", () => {
                 }),
             );
 
-            const first  = await instance.getCredential(STUDENT_PK, 0);
-            const second = await instance.getCredential(STUDENT_PK, 1);
+            const first  = await instance.getCredential(student.address, 0);
+            const second = await instance.getCredential(student.address, 1);
 
             expect(first.identity.title).to.equal(CRED_TITLE);
             expect(first.identity.credentialType).to.equal(CRED_TYPE_DEGREE);
@@ -1148,16 +1151,16 @@ describe("Credential", () => {
             expect(second.identity.credentialType).to.equal(4);
         });
 
-        it("Should revert on zero student public key", async () => {
+        it("Should revert on zero student address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance } =
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await expect(
-                instance.getCredential(EMPTY_PK, 0),
+                instance.getCredential(ethers.ZeroAddress, 0),
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
 
         it("Should revert when the index is out of range", async () => {
@@ -1166,7 +1169,7 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             await expect(
-                instance.getCredential(STUDENT_PK, 5),
+                instance.getCredential(student.address, 5),
             ).to.be.revertedWithCustomError(instance, "CredentialIndexOutOfRange");
         });
 
@@ -1176,7 +1179,7 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.getCredential(STUDENT_PK, 0),
+                instance.getCredential(student.address, 0),
             ).to.be.revertedWithCustomError(instance, "CredentialIndexOutOfRange");
         });
 
@@ -1186,7 +1189,7 @@ describe("Credential", () => {
                 await networkHelpers.loadFixture(deployWithCredentialFixture);
 
             // A non-owner, non-academy account should still be able to read
-            const record = await instance.connect(fakeAcademy).getCredential(STUDENT_PK, 0);
+            const record = await instance.connect(fakeAcademy).getCredential(student.address, 0);
             expect(record.identity.title).to.equal(CRED_TITLE);
         });
     });

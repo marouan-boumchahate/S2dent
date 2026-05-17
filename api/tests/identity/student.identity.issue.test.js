@@ -425,8 +425,9 @@ describe('POST /api/identity/students/issue', function () {
         assert.equal(calls.length, 1);
 
         const call = calls[0];
-        assert.equal(call.studentPublicKey, ISSUE_SIGNER.signingKey.publicKey, 'student public key must be passed');
-        assert.equal(call.academyPublicKey, ACADEMY_PUBLIC_KEY, 'academy public key must be passed');
+        assert.equal(call.studentAddress, ISSUE_SIGNER_ADDRESS, 'student address must come from the signer');
+        assert.equal(call.academyAddress, ACADEMY_WALLET, 'academy address must come from the academy identity');
+        assert.equal(call.publicKey, ISSUE_SIGNER.signingKey.publicKey, 'public key must come from the signer');
         assert.equal(call.studentId, 'STU-001', 'studentId must match');
         assert.equal(call.fullName, 'John Smith', 'fullName must match');
         assert.equal(call.nationalId, 'NID-12345678', 'nationalId must match');

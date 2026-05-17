@@ -9,8 +9,8 @@ async function main() {
     "0x5fbdb2315678afecb367f032d93f642f64180aa3"
   );
 
-  const STUDENT_PUBLIC_KEY = "0x" + "00".repeat(64); // 64-byte public key
-  const data = await contract.students(STUDENT_PUBLIC_KEY);
+  const STUDENT_ADDRESS = "0x0000000000000000000000000000000000000000"; // wallet address
+  const data = await contract.students(STUDENT_ADDRESS);
 
   console.log("isNotRevoked:", data.status.isNotRevoked);
   console.log("revokedAt:", data.status.revokedAt.toString());

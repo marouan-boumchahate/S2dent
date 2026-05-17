@@ -69,7 +69,7 @@ const getAcademyByWallet = async (wallet) => {
     const { rows: [academy] } = await db.query(
         `SELECT a.id, academy_number, name, short_name, type,
             legal_name, registration_number, tax_id, billing_email, email,
-            i.public_key
+            i.wallet_address, i.public_key
         FROM academies as a
         JOIN identities as i ON i.academy_id = a.id
         WHERE i.wallet_address = $1
@@ -197,6 +197,7 @@ export const issueAcademyIdentity = async ({ otp, email, signature }) => {
     )
     
     const tx = await issueAcademy({
+        academyAddress: checksumAddr,
         publicKey: signerPublicKey,
         
         academyNumber: academy.academy_number,
@@ -265,7 +266,7 @@ export const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
 
     const academy = await getAcademyByWallet(checksumAddr)
 
-    const tx = await revokeAcademy({ publicKey: academy.public_key, reason })
+    const tx = await revokeAcademy({ academyAddress: academy.wallet_address, reason })
 
     // Saving Transaction Off-Chain
     const payload = {

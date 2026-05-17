@@ -26,14 +26,16 @@ contract S2dent {
     error InvalidNumber(string reason);
 
     // validations
+    function _validateAddressSet(address _addr) internal pure {
+        if (_addr == address(0)) {
+            revert InvalidAddress("Address must not be the zero address.");
+        }
+    }
+
     function _validatePublicKeySet(bytes memory _publicKey) internal pure {
         if (_publicKey.length != PUBLIC_KEY_LENGTH) {
             revert InvalidPublicKey("Public key must be 65 bytes.");
         }
-    }
-
-    function _publicKeysEqual(bytes memory a, bytes memory b) internal pure returns (bool) {
-        return keccak256(a) == keccak256(b);
     }
 
     function _validateStringIsNotEmpty(

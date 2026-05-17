@@ -408,6 +408,7 @@ describe('POST /api/identity/academies/issue', function () {
         assert.equal(calls.length, 1);
 
         const call = calls[0];
+        assert.equal(call.academyAddress, ISSUE_SIGNER_ADDRESS, 'academyAddress must come from the signer');
         assert.equal(call.publicKey, ISSUE_SIGNER_PUBLIC_KEY, 'publicKey must come from the signer');
         assert.match(call.academyNumber, /^ACD_[0-9]{7}$/, 'academyNumber must match ACD_ format');
         assert.equal(call.name, 'Fenerbahce University', 'academy name must match');
