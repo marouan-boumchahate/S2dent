@@ -1,11 +1,21 @@
 ﻿import 'package:app/core/widgets/layouts/main_layout.dart';
+import 'package:app/core/widgets/ui/loading.dart';
+import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
+import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
+import 'package:app/feature/home/domain/home_data.dart';
+import 'package:app/feature/home/presentation/providers/home_provider.dart';
 import 'package:app/feature/home/presentation/widgets/activity_item.dart';
+import 'package:app/feature/home/presentation/widgets/credentials_bottom_sheet.dart';
 import 'package:app/feature/home/presentation/widgets/custom_horizontal_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.dart';
 import 'package:app/feature/home/presentation/widgets/quick_action.dart';
 import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/feature/profile/presentation/widgets/custom_text_button.dart';
+import 'package:app/feature/settings/presentation/pages/settings.dart';
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,35 +27,13 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  final String dummyAddress = "0x4f2aB8Af89539nBBFe73983BfUUBbbDBbBBDD76S86390";
   bool _isCopied = false;
 
-  final List<Map<String, dynamic>> dummyActivites = [
-    {
-      "title": "Bachelor of CE",
-      "subTitle": "Fenerbahce University",
-      "icon": Icons.description_outlined,
-      "isCredential": true,
-    },
-    {
-      "title": "Attendence List Scanned",
-      "subTitle": "By a verifier",
-      "icon": Icons.qr_code_rounded,
-      "isCredential": false,
-    },
-    {
-      "title": "Identity Issued",
-      "subTitle": "By FBU",
-      "icon": Icons.create,
-      "isCredential": true,
-    }
-  ];
-
-  void onTapCopy() async {
+  void onTapCopy(HomeData data) async {
     setState(() {
       _isCopied = true;
     });
-    await Clipboard.setData(ClipboardData(text: dummyAddress));
+    await Clipboard.setData(ClipboardData(text: data.walletAddress ?? ""));
     Future.delayed(
       Duration(seconds: 3),
       () {
@@ -56,12 +44,26 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void onTapSeeAll() {
-    debugPrint("navigate to {see all} page");
+  void onTapSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => SettingsPage(),
+      ),
+    );
   }
 
-  void onTapCredentials() {
-    debugPrint("navigate to {credentials} page");
+  void onTapSeeAll(HomeData data) {
+    showModalBottomSheet(
+      useSafeArea: true,
+      isScrollControlled: true,
+      isDismissible: true,
+      showDragHandle: true,
+      context: context,
+      builder: (ctx) => CredentialsBottomSheet(
+        credentials: data.credentialsList ?? [],
+      ),
+    );
   }
 
   void onTapScan() {
@@ -74,19 +76,28 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return MainLayout(
-      children: [
-        _header(),
-        _userInfoContainer(context),
-        const SizedBox(height: 20),
-        _quickActions(),
-        const SizedBox(height: 20),
-        _recentActivities(),
-      ],
+    final homeDataAsync = ref.watch(homeDataProvider);
+    return homeDataAsync.when(
+      data: (data) => MainLayout(
+        children: [
+          _header(data),
+          _userInfoContainer(context, data),
+          const SizedBox(height: 20),
+          _quickActions(),
+          const SizedBox(height: 20),
+          _recentActivities(data),
+        ],
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text(error.toString()),
+      ),
+      loading: () => Center(
+        child: LoadingState(),
+      ),
     );
   }
 
-  Padding _header() {
+  Padding _header(HomeData data) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
@@ -97,7 +108,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             style: TextStyle(fontSize: 16),
           ),
           Text(
-            "Ousama",
+            data.firstName ?? "",
             style: TextStyle(fontSize: 40),
           ),
         ],
@@ -105,11 +116,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  CustomVerticalContainer _userInfoContainer(BuildContext context) {
+  CustomVerticalContainer _userInfoContainer(
+      BuildContext context, HomeData data) {
     return CustomVerticalContainer(
       children: [
-        _walletAddress(context),
-        _rowStats(context),
+        _walletAddress(
+          context,
+          data,
+        ),
+        _rowStats(context, data),
       ],
     );
   }
@@ -127,10 +142,10 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             Expanded(
               child: QuickAction(
-                label: "Credentials",
-                icon: Icons.description_outlined,
+                label: "Settings",
+                icon: Icons.settings,
                 color: context.colors.tertiary,
-                onTap: onTapCredentials,
+                onTap: onTapSettings,
               ),
             ),
             Expanded(
@@ -155,25 +170,39 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Column _recentActivities() {
+  Column _recentActivities(HomeData data) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text("Recent Activites", style: TextStyle(fontSize: 20)),
-            TextButton(onPressed: onTapSeeAll, child: Text("See All"))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: CustomTextButton(
+                label: "See all",
+                color: context.colors.primary,
+                onTap: () => onTapSeeAll(data),
+              ),
+            )
           ],
         ),
+        const SizedBox(height: 8),
         CustomVerticalContainer(
           children: List.generate(
-            dummyActivites.length,
+            data.recentCredentials?.length ?? 0,
             (index) {
               return ActivityItem(
-                title: dummyActivites[index]["title"],
-                subTitle: dummyActivites[index]["subTitle"],
-                icon: dummyActivites[index]["icon"],
-                isCredential: dummyActivites[index]["isCredential"],
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (ctx) => CredentialDetailsDialog(
+                      credential: data.recentCredentials?[index]),
+                ),
+                title: data.recentCredentials?[index].title ?? "",
+                subTitle: data.recentCredentials?[index].issuerName ?? "",
+                icon: CredentialIcon(
+                    type: data.recentCredentials?[index].type ??
+                        CredentialType.unknown),
               );
             },
           ),
@@ -182,7 +211,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Padding _walletAddress(BuildContext context) {
+  Padding _walletAddress(BuildContext context, HomeData data) {
     return Padding(
       padding: EdgeInsets.all(12),
       child: Column(
@@ -193,25 +222,27 @@ class _HomePageState extends ConsumerState<HomePage> {
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.start,
           ),
-          _walletAddressField(context),
+          _walletAddressField(context, data),
         ],
       ),
     );
   }
 
-  Container _walletAddressField(BuildContext context) {
+  Container _walletAddressField(BuildContext context, HomeData data) {
     return Container(
       decoration: BoxDecoration(
         color: context.colors.primaryContainer.withAlpha(180),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        title: Text(
-          "${dummyAddress.substring(0, 8)}...${dummyAddress.substring(dummyAddress.length - 3)}",
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: data.walletAddress?.isEmpty ?? true
+            ? const Text("")
+            : Text(
+                "${data.walletAddress!.substring(0, 8)}...${data.walletAddress!.substring(data.walletAddress!.length - 3)}",
+                overflow: TextOverflow.ellipsis,
+              ),
         trailing: IconButton(
-          onPressed: _isCopied ? null : onTapCopy,
+          onPressed: _isCopied ? null : () => onTapCopy(data),
           icon: AnimatedSwitcher(
             duration: Duration(milliseconds: 250),
             transitionBuilder: (child, animation) => ScaleTransition(
@@ -233,26 +264,26 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Padding _rowStats(BuildContext context) {
+  Padding _rowStats(BuildContext context, HomeData data) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           StatItem(
-            stat: "5",
+            stat: data.credentialsCount?.toString() ?? "0",
             label: "Credentials",
             color: context.colors.tertiary,
           ),
           CustomVerticalDivider(),
           StatItem(
-            stat: "4.0",
+            stat: data.cgpa?.toStringAsFixed(2) ?? "0",
             label: "GPA",
             color: context.colors.secondary,
           ),
           CustomVerticalDivider(),
           StatItem(
-            stat: "Active",
+            stat: data.enrollmentStatus?.capitalize ?? "",
             label: "Status",
             color: context.colors.primary,
           )

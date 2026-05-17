@@ -12,7 +12,7 @@ class CredentialCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final Credential credential;
+  final Credential? credential;
   final VoidCallback onTap;
 
   @override
@@ -31,21 +31,21 @@ class CredentialCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              CredentialIcon(type: credential.type),
+              CredentialIcon(type: credential?.type ?? CredentialType.unknown),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      credential.title,
+                      credential?.title ?? "",
                       style: context.texts.titleLarge,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      credential.issuerName,
+                      credential?.issuerName ?? "",
                       style: context.texts.bodyLarge?.copyWith(
                         color: Colors.grey,
                       ),
@@ -54,7 +54,7 @@ class CredentialCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      dateFormatter(credential.issuedAt),
+                      dateFormatter(credential?.issuedAt),
                       style: context.texts.bodySmall?.copyWith(
                         color: context.colors.onSurface.withAlpha(128),
                       ),
@@ -63,7 +63,8 @@ class CredentialCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              CredentialStatusBadge(status: credential.status),
+              CredentialStatusBadge(
+                  status: credential?.status ?? CredentialStatus.unknown),
             ],
           ),
         ),

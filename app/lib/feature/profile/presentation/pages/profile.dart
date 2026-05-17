@@ -1,4 +1,5 @@
 ﻿import 'package:app/core/widgets/layouts/main_layout.dart';
+import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/pages/edit_address_info.dart';
@@ -23,14 +24,6 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      ref.read(profileControllerProvider.notifier).loadFullProfile();
-    });
-  }
-
   void onTapEditUserInfo(Student student) {
     Navigator.push(
       context,
@@ -103,9 +96,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       error: (error, stackTrace) => Center(
         child: Text("ERROR OCCURED"),
       ),
-      loading: () => Center(
-        child: CircularProgressIndicator(),
-      ),
+      loading: () => LoadingState(),
     );
   }
 }

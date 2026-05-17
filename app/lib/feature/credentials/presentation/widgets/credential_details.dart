@@ -15,7 +15,7 @@ class CredentialDetailsDialog extends StatelessWidget {
     required this.credential,
   });
 
-  final Credential credential;
+  final Credential? credential;
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -35,20 +35,21 @@ class CredentialDetailsDialog extends StatelessWidget {
               width: double.infinity,
               child: Row(
                 children: [
-                  CredentialIcon(type: credential.type),
+                  CredentialIcon(
+                      type: credential?.type ?? CredentialType.unknown),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          credential.title,
+                          credential?.title ?? "",
                           style: context.texts.titleMedium!.copyWith(
                             color: context.colors.onSurface,
                           ),
                         ),
                         Text(
-                          credential.type.name.capitalize,
+                          credential?.type.name.capitalize ?? "",
                           style: context.texts.titleSmall!.copyWith(
                             color: context.colors.secondary,
                           ),
@@ -56,7 +57,8 @@ class CredentialDetailsDialog extends StatelessWidget {
                       ],
                     ),
                   ),
-                  CredentialStatusBadge(status: credential.status),
+                  CredentialStatusBadge(
+                      status: credential?.status ?? CredentialStatus.unknown),
                 ],
               ),
             ),
@@ -74,25 +76,25 @@ class CredentialDetailsDialog extends StatelessWidget {
               context,
               "assets/icons/issuer.svg",
               "Issuer",
-              credential.issuerName,
+              credential?.issuerName ?? "",
             ),
             _credentialInfoTile(
               context,
               "assets/icons/person.svg",
               "Issued to",
-              credential.issuedTo,
+              credential?.issuedTo ?? "",
             ),
             _credentialInfoTile(
               context,
               "assets/icons/issued_at.svg",
               "Issued at",
-              dateFormatter(credential.issuedAt),
+              dateFormatter(credential?.issuedAt),
             ),
             _credentialInfoTile(
               context,
               "assets/icons/expires_at.svg",
               "Expires at",
-              dateFormatter(credential.expiresAt),
+              dateFormatter(credential?.expiresAt),
             ),
             const Divider(
               thickness: 2,
@@ -104,7 +106,7 @@ class CredentialDetailsDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(credential.description ?? "No description provided"),
+            Text(credential?.description ?? "No description provided"),
             const SizedBox(height: 8),
           ],
         ),

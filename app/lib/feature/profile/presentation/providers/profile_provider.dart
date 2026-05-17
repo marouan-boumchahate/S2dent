@@ -11,7 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 class ProfileController extends StateNotifier<AsyncValue<Student>> {
-  ProfileController(this.repository) : super(const AsyncValue.loading());
+  ProfileController(this.repository) : super(const AsyncValue.loading()) {
+    loadFullProfile();
+  }
 
   final ProfileRepository repository;
 
