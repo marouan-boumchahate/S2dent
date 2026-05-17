@@ -21,8 +21,8 @@ class CustomBottomNav extends StatelessWidget {
 
   static const _items = [
     _NavData(Icons.home_outlined, Icons.home_rounded, 'Home'),
-    _NavData(Icons.person_outline, Icons.person, 'Profile'),
     _NavData(Icons.file_copy_outlined, Icons.file_copy, "Credentials"),
+    _NavData(Icons.person_outline, Icons.person, 'Profile'),
   ];
 
   @override

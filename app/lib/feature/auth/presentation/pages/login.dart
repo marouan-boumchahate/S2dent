@@ -68,6 +68,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final isModalReady = ref.watch(appKitModalProvider) != null;
 
     ref.listen(authControllerProvider, (previous, next) {
       next.whenOrNull(
@@ -96,17 +97,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return AuthLayout(
       children: [
         _headerSection(context, icon),
-        _actions(context, authState.isLoading),
+        _actions(context, authState.isLoading, isModalReady),
       ],
     );
   }
 
-  Column _actions(BuildContext context, bool isLoading) {
+  Column _actions(BuildContext context, bool isLoading, bool isModalReady) {
+    final isDisabled = !isModalReady || isLoading;
     return Column(
       children: [
         PrimaryButton(
-          onTap: isLoading ? null : onTapSignIn,
-          label: isLoading ? "Connecting..." : "SIGN IN WITH A WALLET",
+          onTap: isDisabled ? null : onTapSignIn,
+          label: !isModalReady
+              ? "Initializing"
+              : isLoading
+                  ? "Connecting"
+                  : "SIGN IN WITH A WALLET",
+          isEnable: !isDisabled,
         ),
         _dividerSection(context),
         SecondaryButton(onTap: onTapVerify, label: "Verify Identity"),

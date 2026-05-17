@@ -15,8 +15,8 @@ class _ShellPageState extends State<ShellPage> {
   int _currentIndex = 0;
   final List<Widget> _tabs = [
     HomePage(),
-    ProfilePage(),
     CredentialPage(),
+    ProfilePage(),
   ];
   @override
   Widget build(BuildContext context) {
