@@ -1,4 +1,5 @@
 ﻿import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
@@ -91,9 +92,7 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
     final error = ref.read(profileControllerProvider).whenOrNull(
           error: (error, stackTrace) => error.toString(),
         );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error ?? "Profile could not be updated.")),
-    );
+    showAlertDialog(context, error ?? "Profile could not be updated.", type: AlertType.error);
   }
 
   ProfileUpdateData _buildUpdateData() {

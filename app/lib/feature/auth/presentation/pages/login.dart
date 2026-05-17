@@ -2,6 +2,7 @@ import 'package:app/core/config/app_config.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/navigation/shell_page.dart';
 import 'package:app/core/providers/appkit_provider.dart';
+import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';
 import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
@@ -40,6 +41,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           icons: ['https://s2dent.app/icon.png'],
         ),
         includedWalletIds: const {
+          //metamask wallet id only
           'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
         },
       );
@@ -74,9 +76,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       next.whenOrNull(
         data: (token) {
           if (token != null) {
-            Navigator.pushReplacement(
+            Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (ctx) => const ShellPage()),
+              MaterialPageRoute(
+                builder: (context) => const ShellPage(),
+              ),
+              (route) => false,
             );
           }
         },
@@ -84,9 +89,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           final message = error is ReownAppKitModalException
               ? error.message.toString()
               : error.toString();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
+          showAlertDialog(context, message, type: AlertType.error);
         },
       );
     });
