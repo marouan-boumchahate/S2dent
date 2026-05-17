@@ -26,6 +26,7 @@ contract ProfessorIdentity is AcademyIdentity {
 
     // Structs
     struct ProfessorIssueArgs {
+        bytes publicKey;
         string employeeId;
         string nationalId;
         string fullName;
@@ -38,6 +39,7 @@ contract ProfessorIdentity is AcademyIdentity {
     struct ProfessorIdentityData {
         bytes32 employeeIdHash;
         bytes32 nationalIdHash;
+        bytes publicKey;
         string fullName;
         ProfessorRank rank;
         EmploymentType employmentType;
@@ -47,8 +49,8 @@ contract ProfessorIdentity is AcademyIdentity {
         bool isNotRevoked;
         uint64 issuedAt;
         uint64 revokedAt;
-        bytes issuer;
-        bytes revoker;
+        address issuer;
+        address revoker;
         string revocationReason;
     }
     struct Professor {
@@ -65,26 +67,28 @@ contract ProfessorIdentity is AcademyIdentity {
 
     // Events
     event ProfessorIssued(
-        bytes indexed professorPublicKey,
-        bytes indexed issuerPublicKey,
+        address indexed professorAddress,
+        address indexed issuerAddress,
         bytes32 employeeIdHash,
         uint64 issuedAt
     );
     event ProfessorRevoked(
-        bytes indexed professorPublicKey,
-        bytes indexed revokerPublicKey,
+        address indexed professorAddress,
+        address indexed revokerAddress,
         uint64 revokedAt
     );
 
     // Mappers
-    mapping(bytes => Professor) public professors;
+    mapping(address => Professor) public professors;
 
     // Uniqueness indexes
-    mapping(bytes32 => bytes) private professorByEmployeeInAcademyHash;
-    mapping(bytes32 => bytes) private professorByNationalIdHash;
+    mapping(bytes32 => address) private professorByEmployeeInAcademyHash;
+    mapping(bytes32 => address) private professorByNationalIdHash;
 
     // Validations
     function _validateProfessorInfos(ProfessorIssueArgs calldata i, uint256 currentTime) internal pure {
+        _validatePublicKeySet(i.publicKey);
+
         _validateStringIsNotShort(i.employeeId, MIN_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too short.");
         _validateStringIsNotLong(i.employeeId, MAX_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too long.");
 
@@ -101,44 +105,45 @@ contract ProfessorIdentity is AcademyIdentity {
         _validateTime1BeforeTime2(i.hireDate, currentTime, "Invalid professor: hireDate is in the future.");
     }
     function _validateProfessorIssue(
-        bytes calldata _publicKey,
-        bytes calldata _academyPublicKey,
+        address _professorAddress,
+        address _academyAddress,
         ProfessorIssueArgs calldata args,
         uint256 currentTime
     ) internal pure {
-        _validatePublicKeySet(_publicKey);
-        _validatePublicKeySet(_academyPublicKey);
+        _validateAddressSet(_professorAddress);
+        _validateAddressSet(_academyAddress);
 
         _validateProfessorInfos(args, currentTime);
     }
 
     // External Functions
     function issueProfessorIdentity(
-        bytes calldata _publicKey,
-        bytes calldata _academyPublicKey,
+        address _professorAddress,
+        address _academyAddress,
         ProfessorIssueArgs calldata args
-    ) public onlyOwner onlyAcademy(_academyPublicKey) {
-        _validateProfessorIssue(_publicKey, _academyPublicKey, args, block.timestamp);
+    ) public onlyOwner onlyAcademy(_academyAddress) {
+        _validateProfessorIssue(_professorAddress, _academyAddress, args, block.timestamp);
 
-        if (professors[_publicKey].status.issuer.length != 0) {
+        if (professors[_professorAddress].status.issuer != address(0)) {
             revert ProfessorIdentityAlreadyIssued();
         }
 
         bytes32 employeeIdHash = keccak256(abi.encodePacked(args.employeeId));
         bytes32 nationalIdHash = keccak256(abi.encodePacked(args.nationalId));
-        bytes32 employeeInAcademyHash = keccak256(abi.encodePacked(_academyPublicKey, employeeIdHash));
+        bytes32 employeeInAcademyHash = keccak256(abi.encodePacked(_academyAddress, employeeIdHash));
 
-        if (professorByEmployeeInAcademyHash[employeeInAcademyHash].length != 0) {
+        if (professorByEmployeeInAcademyHash[employeeInAcademyHash] != address(0)) {
             revert ProfessorEmployeeIdAlreadyUsed();
         }
-        if (professorByNationalIdHash[nationalIdHash].length != 0) {
+        if (professorByNationalIdHash[nationalIdHash] != address(0)) {
             revert ProfessorNationalIdAlreadyUsed();
         }
 
-        professors[_publicKey] = Professor({
+        professors[_professorAddress] = Professor({
             identity: ProfessorIdentityData({
                 employeeIdHash: employeeIdHash,
                 nationalIdHash: nationalIdHash,
+                publicKey: args.publicKey,
                 fullName: args.fullName,
                 rank: ProfessorRank(args.rank),
                 employmentType: EmploymentType(args.employmentType),
@@ -148,39 +153,39 @@ contract ProfessorIdentity is AcademyIdentity {
                 isNotRevoked: true,
                 issuedAt: uint64(block.timestamp),
                 revokedAt: 0,
-                issuer: _academyPublicKey,
-                revoker: "",
+                issuer: _academyAddress,
+                revoker: address(0),
                 revocationReason: ""
             })
         });
 
-        professorByEmployeeInAcademyHash[employeeInAcademyHash] = _publicKey;
-        professorByNationalIdHash[nationalIdHash] = _publicKey;
+        professorByEmployeeInAcademyHash[employeeInAcademyHash] = _professorAddress;
+        professorByNationalIdHash[nationalIdHash] = _professorAddress;
 
-        emit ProfessorIssued(_publicKey, _academyPublicKey, employeeIdHash, uint64(block.timestamp));
+        emit ProfessorIssued(_professorAddress, _academyAddress, employeeIdHash, uint64(block.timestamp));
     }
 
     function revokeProfessorIdentity(
-        bytes calldata _publicKey,
-        bytes calldata _revokerPublicKey,
+        address _professorAddress,
+        address _revokerAddress,
         string calldata _reason
-    ) public onlyOwner onlyAcademy(_revokerPublicKey) {
-        _validatePublicKeySet(_publicKey);
+    ) public onlyOwner onlyAcademy(_revokerAddress) {
+        _validateAddressSet(_professorAddress);
 
-        ProfessorStatusData storage s = professors[_publicKey].status;
-        if (s.issuer.length == 0) revert ProfessorIdentityNotIssued();
+        ProfessorStatusData storage s = professors[_professorAddress].status;
+        if (s.issuer == address(0)) revert ProfessorIdentityNotIssued();
         if (!s.isNotRevoked) revert ProfessorIdentityAlreadyRevoked();
 
         require(
-            _publicKeysEqual(_revokerPublicKey, s.issuer),
+            _revokerAddress == s.issuer,
             "Invalid revoker: must be the issuing academy."
         );
 
         s.isNotRevoked = false;
         s.revokedAt = uint64(block.timestamp);
-        s.revoker = _revokerPublicKey;
+        s.revoker = _revokerAddress;
         s.revocationReason = _reason;
 
-        emit ProfessorRevoked(_publicKey, _revokerPublicKey, s.revokedAt);
+        emit ProfessorRevoked(_professorAddress, _revokerAddress, s.revokedAt);
     }
 }

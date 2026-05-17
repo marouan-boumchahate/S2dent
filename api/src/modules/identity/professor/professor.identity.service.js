@@ -47,7 +47,8 @@ const getProfessorById = async (professor_id, role) => {
     const { rows: [professor] } = await db.query(
         `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, 
                 p.employee_number, p.hire_date, p.rank, p.employment_type, p.title,
-                i.public_key AS academy_public_key, a.name AS academy_name,
+                i.wallet_address AS academy_wallet_address,
+                a.name AS academy_name,
                 addr.id AS address_id,
                 d.is_active AS is_department_active
          FROM professors p
@@ -68,7 +69,7 @@ const getProfessorById = async (professor_id, role) => {
         throw err
     }
 
-    if(!professor.academy_public_key) {
+    if(!professor.academy_wallet_address) {
         const err = new Error('Associated academy does not have a registered identity')
         err.statusCode = 400
         err.code = 'ACADEMY_IDENTITY_NOT_FOUND'
@@ -95,8 +96,8 @@ const getProfessorRevokePayload = async (academyWallet, professorWallet) => {
     const { rows: [professor] } = await db.query(
         `SELECT u.email, u.full_name,
                 p.employee_number, p.title,
-                ai.public_key AS academy_public_key,
-                i.public_key AS professor_public_key,
+                ai.wallet_address AS academy_wallet_address,
+                i.wallet_address AS professor_wallet_address,
                 a.name AS academy_name
          FROM identities i
          JOIN users u ON u.id = i.user_id
@@ -116,7 +117,7 @@ const getProfessorRevokePayload = async (academyWallet, professorWallet) => {
         throw err
     }
 
-    if(!professor.academy_public_key) {
+    if(!professor.academy_wallet_address) {
         const err = new Error('Academy not found for the professor')
         err.statusCode = 404
         err.code = 'ACADEMY_NOT_FOUND'
@@ -172,8 +173,9 @@ export const issueProfessorIdentityService = async ({ otp, email, signature }) =
     await ensureWalletAddressUnique(checksumAddr)
 
     const tx = await issueProfessorIdentity({
-        professorPublicKey: signerPublicKey,
-        academyPublicKey: professor.academy_public_key,
+        professorAddress: checksumAddr,
+        academyAddress: professor.academy_wallet_address,
+        publicKey: signerPublicKey,
 
         employeeId: professor.employee_number,
         fullName: professor.full_name,
@@ -228,8 +230,8 @@ export const revokeProfessorIdentityService = async ({ academy_address, professo
     const professor = await getProfessorRevokePayload(academyWallet, professorWallet)
 
     const tx = await revokeProfessorIdentity({ 
-        professorPublicKey: professor.professor_public_key, 
-        academyPublicKey: professor.academy_public_key,
+        professorAddress: professor.professor_wallet_address, 
+        academyAddress: professor.academy_wallet_address,
         reason
     })
 

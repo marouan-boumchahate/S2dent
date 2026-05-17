@@ -49,6 +49,7 @@ const issueAcademyIdentity = async (payload) => {
         const contract = getContract()
 
         const {
+            academyAddress,
             publicKey,
 
             academyNumber,
@@ -71,6 +72,7 @@ const issueAcademyIdentity = async (payload) => {
 
         const args = {
             infos: {
+                publicKey,
                 academyId: academyNumber,
                 name,
                 shortName,
@@ -91,7 +93,7 @@ const issueAcademyIdentity = async (payload) => {
             },
         }
 
-        const params = [publicKey, args] // Conrtract Parameters
+        const params = [academyAddress, args] // Conrtract Parameters
 
         const gasLimit = await getGasLimit(contract, 'issueAcademyIdentity', params)
         // console.log('Estimated gas limit (with margin):', gasLimit.toString())
@@ -115,9 +117,9 @@ const revokeAcademyIdentity = async (payload) => {
     try {
         const contract = getContract()
 
-        const { publicKey, reason } = payload
+        const { academyAddress, reason } = payload
 
-        const params = [publicKey, reason] // Conrtract Parameters
+        const params = [academyAddress, reason] // Conrtract Parameters
 
         const gasLimit = await getGasLimit(contract, 'revokeAcademyIdentity', params)
         // console.log('Estimated gas limit (with margin):', gasLimit.toString())
@@ -135,17 +137,18 @@ const revokeAcademyIdentity = async (payload) => {
         throw wrapped
     }
 }
-const getAcademyIdentity = async (publicKey) => {
+const getAcademyIdentity = async (academyAddress) => {
     try {
         const contract = getContract()
 
-        const [identity, proofs, cert, status] = await contract.academies(publicKey)
+        const [identity, proofs, cert, status] = await contract.academies(academyAddress)
 
         if (status.issuedAt === 0n) return null
 
         return {
             identity: {
                 academyIdHash: identity.academyIdHash.toString(),
+                publicKey: identity.publicKey.toString(),
                 name: identity.name.toString(),
                 shortName: identity.shortName.toString(),
                 academyType: Number(identity.academyType),

@@ -19,6 +19,7 @@ contract AcademyIdentity is S2dent {
 
     // Request Args
     struct AcademyInfosArgs {
+        bytes publicKey;
         string academyId;
         string name;
         string shortName;
@@ -47,6 +48,7 @@ contract AcademyIdentity is S2dent {
     // Stored Data Structs
     struct AcademyIdentityData {
         bytes32 academyIdHash;
+        bytes publicKey;
         string name;
         string shortName;
         AcademyType academyType;
@@ -90,27 +92,27 @@ contract AcademyIdentity is S2dent {
 
     // Events
     event AcademyIssued(
-        bytes indexed academyPublicKey,
+        address indexed academyAddress,
         address indexed issuer,
         bytes32 academyIdHash,
         uint64 issuedAt
     );
     event AcademyRevoked(
-        bytes indexed academyPublicKey,
+        address indexed academyAddress,
         address indexed revoker,
         uint64 revokedAt
     );
 
     // Mappers
-    mapping(bytes => Academy) public academies;
+    mapping(address => Academy) public academies;
 
     // Uniqueness indexes (no loops)
-    mapping(bytes32 => bytes) private academyByIdHash;
-    mapping(bytes32 => bytes) private academyByNameShortHash;
-    mapping(bytes32 => bytes) private academyByLegalBundleHash;
+    mapping(bytes32 => address) private academyByIdHash;
+    mapping(bytes32 => address) private academyByNameShortHash;
+    mapping(bytes32 => address) private academyByLegalBundleHash;
 
     // Modifiers
-    modifier onlyAcademy(bytes calldata _caller) {
+    modifier onlyAcademy(address _caller) {
         AcademyStatusData memory s = academies[_caller].status;
         require(
             s.issuer != address(0) && s.isNotRevoked, 
@@ -133,6 +135,8 @@ contract AcademyIdentity is S2dent {
         _validateTime1BeforeTime2(uint256(c.notBefore), uint256(c.notAfter), "Invalid certificate: notAfter must be greater than notBefore.");
     }
     function _validateAcademyInfos(AcademyInfosArgs calldata i) internal pure {
+        _validatePublicKeySet(i.publicKey);
+
         _validateStringIsNotEmpty(i.academyId, "Invalid: academyId is required.");
 
         _validateStringIsNotEmpty(i.name, "Invalid: name is empty.");
@@ -150,8 +154,8 @@ contract AcademyIdentity is S2dent {
         _validateStringIsNotEmpty(p.billingEmail, "Invalid proofs: billingEmail is required.");
     }
 
-    function _validateAcademyIssue(bytes calldata _publicKey, AcademyIssueArgs calldata a) internal pure {
-        _validatePublicKeySet(_publicKey);
+    function _validateAcademyIssue(address _academyAddress, AcademyIssueArgs calldata a) internal pure {
+        _validateAddressSet(_academyAddress);
 
         _validateAcademyInfos(a.infos);
         _validateAcademyProofs(a.proofs);
@@ -165,11 +169,11 @@ contract AcademyIdentity is S2dent {
 
     // External Functions
     function issueAcademyIdentity(
-        bytes calldata _publicKey,
+        address _academyAddress,
         AcademyIssueArgs calldata args
     ) public onlyOwner {
-        _validateAcademyIssue(_publicKey, args);
-        if (academies[_publicKey].status.issuer != address(0)) {
+        _validateAcademyIssue(_academyAddress, args);
+        if (academies[_academyAddress].status.issuer != address(0)) {
             revert AcademyIdentityAlreadyIssued();
         }
 
@@ -185,13 +189,14 @@ contract AcademyIdentity is S2dent {
             )
         );
 
-        if (academyByIdHash[academyIdHash].length != 0) revert AcademyIdAlreadyUsed();
-        if (academyByNameShortHash[nameShortHash].length != 0) revert AcademyNameShortNameAlreadyUsed();
-        if (academyByLegalBundleHash[legalBundleHash].length != 0) revert AcademyLegalBundleAlreadyUsed();
+        if (academyByIdHash[academyIdHash] != address(0)) revert AcademyIdAlreadyUsed();
+        if (academyByNameShortHash[nameShortHash] != address(0)) revert AcademyNameShortNameAlreadyUsed();
+        if (academyByLegalBundleHash[legalBundleHash] != address(0)) revert AcademyLegalBundleAlreadyUsed();
 
-        academies[_publicKey] = Academy({
+        academies[_academyAddress] = Academy({
             identity: AcademyIdentityData({
                 academyIdHash: academyIdHash,
+                publicKey: args.infos.publicKey,
                 name: args.infos.name,
                 shortName: args.infos.shortName,
                 academyType: AcademyType(args.infos.academyType)
@@ -220,20 +225,20 @@ contract AcademyIdentity is S2dent {
         });
 
         // set indexes for checks
-        academyByIdHash[academyIdHash] = _publicKey;
-        academyByNameShortHash[nameShortHash] = _publicKey;
-        academyByLegalBundleHash[legalBundleHash] = _publicKey;
+        academyByIdHash[academyIdHash] = _academyAddress;
+        academyByNameShortHash[nameShortHash] = _academyAddress;
+        academyByLegalBundleHash[legalBundleHash] = _academyAddress;
 
-        emit AcademyIssued(_publicKey, msg.sender, academyIdHash, uint64(block.timestamp));
+        emit AcademyIssued(_academyAddress, msg.sender, academyIdHash, uint64(block.timestamp));
     }
 
     function revokeAcademyIdentity(
-        bytes calldata _publicKey,
+        address _academyAddress,
         string calldata _reason
     ) public onlyOwner {
-        _validatePublicKeySet(_publicKey);
+        _validateAddressSet(_academyAddress);
 
-        AcademyStatusData storage s = academies[_publicKey].status;
+        AcademyStatusData storage s = academies[_academyAddress].status;
         if (s.issuer == address(0)) revert AcademyIdentityNotIssued();
         if (!s.isNotRevoked) revert AcademyIdentityAlreadyRevoked();
 
@@ -242,6 +247,6 @@ contract AcademyIdentity is S2dent {
         s.revoker = msg.sender;
         s.revocationReason = _reason;
 
-        emit AcademyRevoked(_publicKey, msg.sender, s.revokedAt);
+        emit AcademyRevoked(_academyAddress, msg.sender, s.revokedAt);
     }
 }

@@ -8,8 +8,8 @@ async function main() {
     "0x5FbDB2315678afecb367f032d93F642f64180aa3"
   );
 
-  const ACADEMY_PUBLIC_KEY = "0x" + "00".repeat(64); // 64-byte public key
-  const data = await contract.academies(ACADEMY_PUBLIC_KEY);
+  const ACADEMY_ADDRESS = "0x0000000000000000000000000000000000000000"; // wallet address
+  const data = await contract.academies(ACADEMY_ADDRESS);
 
   console.log("Academy Data:", data);
 }

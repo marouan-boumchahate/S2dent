@@ -17,7 +17,6 @@ const EMPLOYMENT_TYPE_TO_UINT8 = {
     contract: 4,
     other: 5,
 }
-
 const PROFESSOR_RANK_TO_UINT8 = {
     'assist. prof': 0,
     'assoc. prof': 1,
@@ -57,8 +56,9 @@ const issueProfessorIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            professorPublicKey,
-            academyPublicKey,
+            professorAddress,
+            academyAddress,
+            publicKey,
             
             employeeId,
             nationalId,
@@ -70,6 +70,7 @@ const issueProfessorIdentity = async (payload) => {
         } = payload
 
         const args = {
+            publicKey,
             employeeId,
             nationalId,
             fullName,
@@ -78,7 +79,7 @@ const issueProfessorIdentity = async (payload) => {
             employmentType: EMPLOYMENT_TYPE_TO_UINT8[employmentType.toLowerCase()] ?? EMPLOYMENT_TYPE_TO_UINT8.other
         }
 
-        const params = [professorPublicKey, academyPublicKey, args]
+        const params = [professorAddress, academyAddress, args]
 
         const gasLimit = await getGasLimit(contract, 'issueProfessorIdentity', params)
 
@@ -100,12 +101,12 @@ const revokeProfessorIdentity = async (payload) => {
         const contract = getContract()
 
         const {
-            professorPublicKey,
-            academyPublicKey,
+            professorAddress,
+            academyAddress,
             reason
         } = payload
 
-        const params = [professorPublicKey, academyPublicKey, reason]
+        const params = [professorAddress, academyAddress, reason]
 
         const gasLimit = await getGasLimit(contract, 'revokeProfessorIdentity', params)
 
@@ -122,11 +123,11 @@ const revokeProfessorIdentity = async (payload) => {
         throw wrapped
     }
 }
-const getProfessorIdentity = async (publicKey) => {
+const getProfessorIdentity = async (professorAddress) => {
     try {
         const contract = getContract()
 
-        const [identity, status] = await contract.professors(publicKey)
+        const [identity, status] = await contract.professors(professorAddress)
 
         if (status.issuedAt === 0n) {
             return null
@@ -136,6 +137,7 @@ const getProfessorIdentity = async (publicKey) => {
             identity: {
                 employeeIdHash: identity.employeeIdHash,
                 nationalIdHash: identity.nationalIdHash,
+                publicKey: identity.publicKey.toString(),
                 fullName: identity.fullName,
                 rank: Number(identity.rank),
                 employmentType: Number(identity.employmentType),

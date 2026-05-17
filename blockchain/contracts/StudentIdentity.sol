@@ -11,6 +11,7 @@ contract StudentIdentity is ProfessorIdentity {
 
     // Structs
     struct StudentIssueArgs {
+        bytes publicKey;
         string studentId;
         string fullName;
         string nationalId;
@@ -25,6 +26,7 @@ contract StudentIdentity is ProfessorIdentity {
     struct StudentIdentityData {
         bytes32 studentIdHash;
         bytes32 nationalIdHash;
+        bytes publicKey;
         string fullName;
 
         string nationality;
@@ -37,8 +39,8 @@ contract StudentIdentity is ProfessorIdentity {
         bool isNotRevoked;
         uint64 issuedAt;
         uint64 revokedAt;
-        bytes issuer;
-        bytes revoker;
+        address issuer;
+        address revoker;
         string revocationReason;
     }
     struct Student {
@@ -55,26 +57,28 @@ contract StudentIdentity is ProfessorIdentity {
 
     // Events
     event StudentIssued(
-        bytes indexed studentPublicKey,
-        bytes indexed issuerPublicKey, // => academy public key <=
+        address indexed studentAddress,
+        address indexed issuerAddress, // => academy address <=
         bytes32 studentIdHash,
         uint64 issuedAt
     );
     event StudentRevoked(
-        bytes indexed studentPublicKey,
-        bytes indexed revokerPublicKey, // => academy public key <=
+        address indexed studentAddress,
+        address indexed revokerAddress, // => academy address <=
         uint64 revokedAt
     );
 
     // Mappers
-    mapping(bytes => Student) public students;
+    mapping(address => Student) public students;
 
     // Uniqueness indexes
-    mapping(bytes32 => bytes) private studentByIdInAcademyHash;
-    mapping(bytes32 => bytes) private studentByNationalIdHash;
+    mapping(bytes32 => address) private studentByIdInAcademyHash;
+    mapping(bytes32 => address) private studentByNationalIdHash;
     
     // Validations
     function _validateStudentInfos(StudentIssueArgs calldata i, uint256 _currentTime) internal pure {
+        _validatePublicKeySet(i.publicKey);
+
         _validateStringIsNotShort(i.studentId, MIN_STUDENT_ID_LENGTH, "Invalid student: studentId is too short.");
         _validateStringIsNotLong(i.studentId, MAX_STUDENT_ID_LENGTH, "Invalid student: studentId is too long.");
 
@@ -93,47 +97,48 @@ contract StudentIdentity is ProfessorIdentity {
         _validateTime1BeforeTime2(i.enrollmentDate, _currentTime, "Invalid student: enrollmentDate cannot be in the future.");
     }
     function _validateStudentIssue(
-        bytes calldata _publicKey,
-        bytes calldata _academyPublicKey,
+        address _studentAddress,
+        address _academyAddress,
         StudentIssueArgs calldata args,
         uint256 _currentTime
     ) internal pure {
-        _validatePublicKeySet(_publicKey);
-        _validatePublicKeySet(_academyPublicKey);
+        _validateAddressSet(_studentAddress);
+        _validateAddressSet(_academyAddress);
 
         _validateStudentInfos(args, _currentTime);
     }
 
     // External / Public Functions
     function issueStudentIdentity(
-        bytes calldata _publicKey,
-        bytes calldata _academyPublicKey,
+        address _studentAddress,
+        address _academyAddress,
         StudentIssueArgs calldata args
-    ) public onlyOwner onlyAcademy(_academyPublicKey) {
-        _validateStudentIssue(_publicKey, _academyPublicKey, args, block.timestamp);
+    ) public onlyOwner onlyAcademy(_academyAddress) {
+        _validateStudentIssue(_studentAddress, _academyAddress, args, block.timestamp);
 
         // Student Uniqueness checks
-        if (students[_publicKey].status.issuer.length != 0) {
+        if (students[_studentAddress].status.issuer != address(0)) {
             revert StudentIdentityAlreadyIssued();
         }
 
         bytes32 studentIdHash = keccak256(abi.encodePacked(args.studentId));
         bytes32 nationalIdHash = keccak256(abi.encodePacked(args.nationalId));
-        bytes32 studentInAcademyHash = keccak256(abi.encodePacked(_academyPublicKey, studentIdHash));
+        bytes32 studentInAcademyHash = keccak256(abi.encodePacked(_academyAddress, studentIdHash));
 
-        if (studentByIdInAcademyHash[studentInAcademyHash].length != 0) {
+        if (studentByIdInAcademyHash[studentInAcademyHash] != address(0)) {
             revert StudentIdAlreadyUsed();
         }
-        if (studentByNationalIdHash[nationalIdHash].length != 0) {
+        if (studentByNationalIdHash[nationalIdHash] != address(0)) {
             revert StudentNationalIdAlreadyUsed();
         }
 
-        string memory academyName = academies[_academyPublicKey].identity.name;
+        string memory academyName = academies[_academyAddress].identity.name;
 
-        students[_publicKey] = Student({
+        students[_studentAddress] = Student({
             identity: StudentIdentityData({
                 studentIdHash: studentIdHash,
                 nationalIdHash: nationalIdHash,
+                publicKey: args.publicKey,
                 fullName: args.fullName,
                 nationality: args.nationality,
                 academyName: academyName,
@@ -145,39 +150,39 @@ contract StudentIdentity is ProfessorIdentity {
                 isNotRevoked: true,
                 issuedAt: uint64(block.timestamp),
                 revokedAt: 0,
-                issuer: _academyPublicKey,
-                revoker: "",
+                issuer: _academyAddress,
+                revoker: address(0),
                 revocationReason: ""
             })
         });
 
-        studentByIdInAcademyHash[studentInAcademyHash] = _publicKey;
-        studentByNationalIdHash[nationalIdHash] = _publicKey;
+        studentByIdInAcademyHash[studentInAcademyHash] = _studentAddress;
+        studentByNationalIdHash[nationalIdHash] = _studentAddress;
 
-        emit StudentIssued(_publicKey, _academyPublicKey, studentIdHash, uint64(block.timestamp));
+        emit StudentIssued(_studentAddress, _academyAddress, studentIdHash, uint64(block.timestamp));
     }
 
     function revokeStudentIdentity(
-        bytes calldata _publicKey,
-        bytes calldata _revokerPublicKey,
+        address _studentAddress,
+        address _revokerAddress,
         string calldata _reason
-    ) public onlyOwner onlyAcademy(_revokerPublicKey) {
-        _validatePublicKeySet(_publicKey);
+    ) public onlyOwner onlyAcademy(_revokerAddress) {
+        _validateAddressSet(_studentAddress);
 
-        StudentStatusData storage s = students[_publicKey].status;
-        if (s.issuer.length == 0) revert StudentIdentityNotIssued();
+        StudentStatusData storage s = students[_studentAddress].status;
+        if (s.issuer == address(0)) revert StudentIdentityNotIssued();
         if (!s.isNotRevoked) revert StudentIdentityAlreadyRevoked();
 
         require(
-            _publicKeysEqual(_revokerPublicKey, s.issuer),
+            _revokerAddress == s.issuer,
             "Invalid revoker: must be the issuing academy."
         );
 
         s.isNotRevoked = false;
         s.revokedAt = uint64(block.timestamp);
-        s.revoker = _revokerPublicKey;
+        s.revoker = _revokerAddress;
         s.revocationReason = _reason;
 
-        emit StudentRevoked(_publicKey, _revokerPublicKey, s.revokedAt);
+        emit StudentRevoked(_studentAddress, _revokerAddress, s.revokedAt);
     }
 }

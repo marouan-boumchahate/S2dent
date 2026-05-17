@@ -3,18 +3,20 @@ import { env } from '../../config/env.js'
 import { platformWallet } from '../../config/blockchain.js'
 import S2dentABI from '../contracts/S2dent.json' with { type: 'json' }
 
+// constants
 const blockchain = env.blockchain
 
 const GAS_MARGIN_NUM = 120n; // +20%
 const GAS_MARGIN_DEN = 100n;
 
+
+// Helpers
 const getContract = () =>
     new ethers.Contract(
         blockchain.deployedContractAddress,
         S2dentABI.abi,
         platformWallet
     )
-
 const getGasLimit = async (contract, methodName, params) => {
     const gasEstimate = 
         await contract[methodName].estimateGas(...params)
@@ -23,7 +25,6 @@ const getGasLimit = async (contract, methodName, params) => {
         ? (gasEstimate * GAS_MARGIN_NUM) / GAS_MARGIN_DEN
         : gasEstimate.mul(GAS_MARGIN_NUM).div(GAS_MARGIN_DEN)
 }
-
 const toUnixSeconds = (value) => {
     if (value instanceof Date) 
         return Math.floor(value.getTime() / 1000)
@@ -31,13 +32,16 @@ const toUnixSeconds = (value) => {
     return Math.floor(new Date(value).getTime() / 1000)
 }
 
+
+// Services
 const issueStudentIdentity = async (payload) => {
     try {
         const contract = getContract()
 
         const {
-            studentPublicKey,
-            academyPublicKey,
+            studentAddress,
+            academyAddress,
+            publicKey,
             
             studentId,
             nationalId,
@@ -50,6 +54,7 @@ const issueStudentIdentity = async (payload) => {
         } = payload
 
         const args = {
+            publicKey,
             studentId,
             nationalId,
             fullName,
@@ -60,7 +65,7 @@ const issueStudentIdentity = async (payload) => {
         }
         
         
-        const params = [studentPublicKey, academyPublicKey, args]
+        const params = [studentAddress, academyAddress, args]
         
         const gasLimit = await getGasLimit(contract, 'issueStudentIdentity', params)
         
@@ -79,18 +84,17 @@ const issueStudentIdentity = async (payload) => {
         throw wrapped
     }
 }
-
 const revokeStudentIdentity = async (payload) => {
     try {
         const contract = getContract()
 
         const {
-            studentPublicKey,
-            academyPublicKey,
+            studentAddress,
+            academyAddress,
             reason
         } = payload
 
-        const params = [studentPublicKey, academyPublicKey, reason]
+        const params = [studentAddress, academyAddress, reason]
 
         const gasLimit = await getGasLimit(contract, 'revokeStudentIdentity', params)
 
@@ -109,12 +113,11 @@ const revokeStudentIdentity = async (payload) => {
         throw wrapped
     }
 }
-
-const getStudentIdentity = async (publicKey) => {
+const getStudentIdentity = async (studentAddress) => {
     try {
         const contract = getContract()
 
-        const [identity, status] = await contract.students(publicKey)
+        const [identity, status] = await contract.students(studentAddress)
 
         if (status.issuedAt === 0n) {
             return null
@@ -124,6 +127,7 @@ const getStudentIdentity = async (publicKey) => {
             identity: {
                 studentIdHash: identity.studentIdHash,
                 nationalIdHash: identity.nationalIdHash,
+                publicKey: identity.publicKey.toString(),
                 fullName: identity.fullName,
                 nationality: identity.nationality,
                 academyName: identity.academyName,

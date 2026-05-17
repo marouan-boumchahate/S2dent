@@ -42,7 +42,7 @@ const isNonceExpired = (nonce, nonce_expires_at) => {
     }
 }
 
-const fetchIdentityByAddress = async (wallet_address) => { // used for: role, public_key
+const fetchIdentityByAddress = async (wallet_address) => { // used for: role
     const { rows: [identity] } = await db.query(`
         SELECT * 
         FROM identities 
@@ -59,18 +59,18 @@ const fetchIdentityByAddress = async (wallet_address) => { // used for: role, pu
 
     return identity;
 }
-const ensureIdentityExistsInBlockchain = async (public_key, role) => {
+const ensureIdentityExistsInBlockchain = async (wallet_address, role) => {
     let result;
 
     switch (role) {
         case 'student':
-            result = await getStudentIdentity(public_key);
+            result = await getStudentIdentity(wallet_address);
             break;
         case 'professor':
-            result = await getProfessorIdentity(public_key);
+            result = await getProfessorIdentity(wallet_address);
             break;
         case 'academy':
-            result = await getAcademyIdentity(public_key);
+            result = await getAcademyIdentity(wallet_address);
             break;
         default:
             const err = new Error('Invalid role');
@@ -236,9 +236,9 @@ const getUserByEmail = async (email) => {
 // Services
 const generateNonceService = async (wallet_address) => {
     const checksumAddr = ethers.getAddress(wallet_address);
-    const { role, public_key } = await fetchIdentityByAddress(checksumAddr);
+    const { role } = await fetchIdentityByAddress(checksumAddr);
 
-    await ensureIdentityExistsInBlockchain(public_key, role);
+    await ensureIdentityExistsInBlockchain(checksumAddr, role);
 
     const nonce = getNonce(64);
     await storeNonce(checksumAddr, nonce);
@@ -252,11 +252,10 @@ const verifySignatureService = async (wallet_address, signature, { ip, device })
         user_id, 
         role, 
         nonce, 
-        nonce_expires_at, 
-        public_key 
+        nonce_expires_at,
     } = await fetchIdentityByAddress(checksumAddr);
 
-    await ensureIdentityExistsInBlockchain(public_key, role);
+    await ensureIdentityExistsInBlockchain(checksumAddr, role);
 
     isNonceExpired(nonce, nonce_expires_at);
     isSignatureValid(checksumAddr, nonce, signature);
@@ -276,8 +275,7 @@ const refreshTokenService = async (refresh_token, { ip, device }) => {
 
     const { sub, uid, role, rid } = await isRefreshTokenValid(refresh_token);
 
-    const { public_key } = await fetchIdentityByAddress(sub);
-    await ensureIdentityExistsInBlockchain(public_key, role);
+    await ensureIdentityExistsInBlockchain(sub, role);
     
     const payload = { sub, uid, role, rid };
     const options = createJwtOptions(role);

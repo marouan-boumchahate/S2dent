@@ -22,13 +22,12 @@ describe("StudentIdentity", () => {
     const ONE_DAY_SECS  = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (65 bytes hex strings) for entity identification
+    // Public keys (65 bytes hex strings) stored as identity data on-chain
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
-    const FAKE_ACADEMY_PK = "0x04" + "ff".repeat(64);
     const STUDENT_PK = "0x04" + "c1".repeat(64);
     const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
-    const EMPTY_PK = "0x04";
+    const SHORT_PK = "0x04"; // Invalid public-key length
 
 
     async function deployFixture() {
@@ -45,8 +44,9 @@ describe("StudentIdentity", () => {
         const instance = await StudentIdentity.deploy();
         await instance.waitForDeployment();
 
-        await instance.issueAcademyIdentity(ACADEMY_PK, {
+        await instance.issueAcademyIdentity(academy.address, {
             infos: {
+                publicKey: ACADEMY_PK,
                 academyId: ACADEMY_ID,
                 name: ACADEMY_NAME,
                 shortName: ACADEMY_CODE,
@@ -78,23 +78,29 @@ describe("StudentIdentity", () => {
         };
     }
 
+    function studentIssueArgs(overrides: any = {}) {
+        return {
+            publicKey: STUDENT_PK,
+            studentId: STUDENT_ID,
+            fullName: STUDENT_NAME,
+            nationality: STUDENT_NATIONALITY,
+            department: STUDENT_DEPARTMENT,
+            country: STUDENT_COUNTRY,
+            nationalId: STUDENT_NATIONAL_ID,
+            enrollmentDate: STUDENT_ENROLLMENT_DATE,
+            ...overrides,
+        };
+    }
+
     async function deployWithStudentFixture() {
         const { networkHelpers } = await hre.network.connect();
         const base = await networkHelpers.loadFixture(deployFixture);
         const { instance, owner, academy, student } = base;
 
         await instance.connect(owner).issueStudentIdentity(
-            STUDENT_PK,
-            ACADEMY_PK,
-            {
-                studentId: STUDENT_ID,
-                fullName: STUDENT_NAME,
-                nationality: STUDENT_NATIONALITY,
-                department: STUDENT_DEPARTMENT,
-                country: STUDENT_COUNTRY,
-                nationalId: STUDENT_NATIONAL_ID,
-                enrollmentDate: STUDENT_ENROLLMENT_DATE,
-            }
+            student.address,
+            academy.address,
+            studentIssueArgs(),
         );
 
         return base;
@@ -109,21 +115,14 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                STUDENT_PK,
-                ACADEMY_PK,
-                {
-                    studentId: STUDENT_ID,
-                    fullName: STUDENT_NAME,
-                    nationality: STUDENT_NATIONALITY,
-                    department: STUDENT_DEPARTMENT,
-                    country: STUDENT_COUNTRY,
-                    nationalId: STUDENT_NATIONAL_ID,
-                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                }
+                student.address,
+                academy.address,
+                studentIssueArgs(),
             );
 
-            const record = await instance.students(STUDENT_PK);
+            const record = await instance.students(student.address);
 
+            expect(record.identity.publicKey).to.equal(STUDENT_PK);
             expect(record.identity.fullName).to.equal(STUDENT_NAME);
             expect(record.identity.nationality).to.equal(STUDENT_NATIONALITY);
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
@@ -132,9 +131,9 @@ describe("StudentIdentity", () => {
 
             expect(record.status.isNotRevoked).to.equal(true);
             expect(record.status.revokedAt).to.equal(0);
-            expect(record.status.issuer).to.equal(ACADEMY_PK);
+            expect(record.status.issuer).to.equal(academy.address);
             expect(record.status.issuedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal("0x");
+            expect(record.status.revoker).to.equal(ethers.ZeroAddress);
             expect(record.status.revocationReason).to.equal("");
         });
 
@@ -144,20 +143,12 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                STUDENT_PK,
-                ACADEMY_PK,
-                {
-                    studentId: STUDENT_ID,
-                    fullName: STUDENT_NAME,
-                    nationality: STUDENT_NATIONALITY,
-                    department: STUDENT_DEPARTMENT,
-                    country: STUDENT_COUNTRY,
-                    nationalId: STUDENT_NATIONAL_ID,
-                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                }
+                student.address,
+                academy.address,
+                studentIssueArgs(),
             );
 
-            const record = await instance.students(STUDENT_PK);
+            const record = await instance.students(student.address);
             const expectedHash = ethers.keccak256(ethers.toUtf8Bytes(STUDENT_ID));
 
             expect(record.identity.studentIdHash).to.equal(expectedHash);
@@ -169,20 +160,12 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await instance.connect(owner).issueStudentIdentity(
-                STUDENT_PK,
-                ACADEMY_PK,
-                {
-                    studentId: STUDENT_ID,
-                    fullName: STUDENT_NAME,
-                    nationality: STUDENT_NATIONALITY,
-                    department: STUDENT_DEPARTMENT,
-                    country: STUDENT_COUNTRY,
-                    nationalId: STUDENT_NATIONAL_ID,
-                    enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                }
+                student.address,
+                academy.address,
+                studentIssueArgs(),
             );
 
-            const record = await instance.students(STUDENT_PK);
+            const record = await instance.students(student.address);
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
         });
 
@@ -193,17 +176,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(academy).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs(),
                 )
             ).to.be.revertedWith(
                 "Not authorized: Only owner can perform this operation."
@@ -217,18 +192,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    FAKE_ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-
-                    }
+                    student.address,
+                    fakeAcademy.address,
+                    studentIssueArgs(),
                 )
             ).to.be.revertedWith(
                 "Not authorized: Only a registered academy can perform this operation."
@@ -242,61 +208,55 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({
                         fullName: "Renamed Student",
                         nationality: "German",
                         department: "Mathematics",
                         country: "Germany",
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    }),
                 )
             ).to.be.revertedWithCustomError(instance, "StudentIdentityAlreadyIssued");
         });
 
         it("Should revert when studentId is already used in the same academy", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, student, secondStudent } =
+            const { instance, owner, academy, secondStudent } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    SECOND_STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
+                    secondStudent.address,
+                    academy.address,
+                    studentIssueArgs({
+                        publicKey: SECOND_STUDENT_PK,
                         fullName: "Second Student",
                         nationality: "Canadian",
                         department: "Physics",
                         country: "Canada",
-                        nationalId: "NAT-2067612",
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    }),
                 )
             ).to.be.revertedWithCustomError(instance, "StudentIdAlreadyUsed");
         });
 
         it("Should revert when nationalId is already used", async () => {
             const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, academy, student, secondStudent } =
+            const { instance, owner, academy, secondStudent } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    SECOND_STUDENT_PK,
-                    ACADEMY_PK,
-                    {
+                    secondStudent.address,
+                    academy.address,
+                    studentIssueArgs({
+                        publicKey: SECOND_STUDENT_PK,
                         studentId: "STD-2067613",
                         fullName: "Second Student",
                         nationality: "Canadian",
                         department: "Physics",
                         country: "Canada",
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    }),
                 )
             ).to.be.revertedWithCustomError(instance, "StudentNationalIdAlreadyUsed");
         });
@@ -304,24 +264,30 @@ describe("StudentIdentity", () => {
 
     describe("Input validation", () => {
 
-        it("Should revert on zero student public key", async () => {
+        it("Should revert on zero student address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    EMPTY_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    ethers.ZeroAddress,
+                    academy.address,
+                    studentIssueArgs(),
+                )
+            ).to.be.revertedWithCustomError(instance, "InvalidAddress").withArgs("Address must not be the zero address.");
+        });
+
+        it("Should revert on invalid public key length", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, student } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            await expect(
+                instance.connect(owner).issueStudentIdentity(
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ publicKey: SHORT_PK }),
                 )
             ).to.be.revertedWithCustomError(instance, "InvalidPublicKey").withArgs("Public key must be 65 bytes.");
         });
@@ -333,17 +299,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: "",
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ studentId: "" }),
                 )
             ).to.be.revertedWith("Invalid student: studentId is too short.");
         });
@@ -355,17 +313,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: "AB",
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ studentId: "AB" }),
                 )
             ).to.be.revertedWith("Invalid student: studentId is too short.");
         });
@@ -377,17 +327,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: "STU_ID_THAT_IS_TOO_LONG_456",
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ studentId: "STU_ID_THAT_IS_TOO_LONG_456" }),
                 )
             ).to.be.revertedWith("Invalid student: studentId is too long.");
         });
@@ -399,17 +341,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: "",
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ fullName: "" }),
                 )
             ).to.be.revertedWith("Invalid student: fullName is required.");
         });
@@ -423,17 +357,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: tooLongName,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ fullName: tooLongName }),
                 )
             ).to.be.revertedWith("Invalid student: fullName is too long.");
         });
@@ -445,17 +371,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: "",
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ nationality: "" }),
                 )
             ).to.be.revertedWith("Invalid student: nationality is too short.");
         });
@@ -467,17 +385,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: "US",
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ nationality: "US" }),
                 )
             ).to.be.revertedWith("Invalid student: nationality is too short.");
         });
@@ -491,17 +401,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: tooLongNationality,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ nationality: tooLongNationality }),
                 )
             ).to.be.revertedWith("Invalid student: nationality is too long.");
         });
@@ -513,17 +415,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: "",
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ department: "" }),
                 )
             ).to.be.revertedWith("Invalid student: department is required.");
         });
@@ -537,17 +431,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: tooLongDept,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ department: tooLongDept }),
                 )
             ).to.be.revertedWith("Invalid student: department is too long.");
         });
@@ -559,17 +445,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: "",
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ country: "" }),
                 )
             ).to.be.revertedWith("Invalid student: country is required.");
         });
@@ -583,17 +461,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: tooLongCountry,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: STUDENT_ENROLLMENT_DATE,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ country: tooLongCountry }),
                 )
             ).to.be.revertedWith("Invalid student: country is too long.");
         });
@@ -607,17 +477,9 @@ describe("StudentIdentity", () => {
 
             await expect(
                 instance.connect(owner).issueStudentIdentity(
-                    STUDENT_PK,
-                    ACADEMY_PK,
-                    {
-                        studentId: STUDENT_ID,
-                        fullName: STUDENT_NAME,
-                        nationality: STUDENT_NATIONALITY,
-                        department: STUDENT_DEPARTMENT,
-                        country: STUDENT_COUNTRY,
-                        nationalId: STUDENT_NATIONAL_ID,
-                        enrollmentDate: futureEnrollmentDate,
-                    }
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ enrollmentDate: futureEnrollmentDate }),
                 )
             ).to.be.revertedWith("Invalid student: enrollmentDate cannot be in the future.");
         });
@@ -625,9 +487,10 @@ describe("StudentIdentity", () => {
     });
 
     describe("revokeStudentIdentity", () => {
-        async function issueSecondAcademy(instance: any, owner: any, publicKey: string, now: number) {
-            await instance.connect(owner).issueAcademyIdentity(publicKey, {
+        async function issueSecondAcademy(instance: any, owner: any, academyAddress: string, now: number) {
+            await instance.connect(owner).issueAcademyIdentity(academyAddress, {
                 infos: {
+                    publicKey: SECOND_ACADEMY_PK,
                     academyId: "ACADEMY002",
                     name: "Second University",
                     shortName: "SU",
@@ -654,13 +517,13 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason");
 
-            const record = await instance.students(STUDENT_PK);
+            const record = await instance.students(student.address);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
-            expect(record.status.revoker).to.equal(ACADEMY_PK);
-            expect(record.status.issuer).to.equal(ACADEMY_PK);
+            expect(record.status.revoker).to.equal(academy.address);
+            expect(record.status.issuer).to.equal(academy.address);
             expect(record.status.issuedAt).to.be.gt(0);
             expect(record.status.revocationReason).to.equal("Reason");
         });
@@ -671,29 +534,30 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(academy).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
+                instance.connect(academy).revokeStudentIdentity(student.address, academy.address, "Reason")
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
 
-        it("Should revert when _revokerPublicKey is not a registered academy", async () => {
+        it("Should revert when _revokerAddress is not a registered academy", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, owner, fakeAcademy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, FAKE_ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(student.address, fakeAcademy.address, "Reason")
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("Should revert when _revokerPublicKey is a different registered academy", async () => {
-            const { networkHelpers } = await hre.network.connect();
-            const { instance, owner, now } =
+        it("Should revert when _revokerAddress is a different registered academy", async () => {
+            const { networkHelpers, ethers } = await hre.network.connect();
+            const { instance, owner, student, now } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await issueSecondAcademy(instance, owner, SECOND_ACADEMY_PK, now);
+            const secondAcademy = ethers.Wallet.createRandom().address;
+            await issueSecondAcademy(instance, owner, secondAcademy, now);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, SECOND_ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(student.address, secondAcademy, "Reason")
             ).to.be.revertedWith("Invalid revoker: must be the issuing academy.");
         });
 
@@ -702,23 +566,23 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeAcademyIdentity(academy.address, "Reason");
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason")
             ).to.be.revertedWith("Not authorized: Only a registered academy can perform this operation.");
         });
 
-        it("Should revert on zero student public key", async () => {
+        it("Should revert on zero student address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(EMPTY_PK, ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(ethers.ZeroAddress, academy.address, "Reason")
             )
-                .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
-                .withArgs("Public key must be 65 bytes.");
+                .to.be.revertedWithCustomError(instance, "InvalidAddress")
+                .withArgs("Address must not be the zero address.");
         });
 
         it("Should revert when the student was never issued", async () => {
@@ -727,7 +591,7 @@ describe("StudentIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason")
             ).to.be.revertedWithCustomError(instance, "StudentIdentityNotIssued");
         });
 
@@ -736,10 +600,10 @@ describe("StudentIdentity", () => {
             const { instance, owner, academy, student } =
                 await networkHelpers.loadFixture(deployWithStudentFixture);
 
-            await instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason");
 
             await expect(
-                instance.connect(owner).revokeStudentIdentity(STUDENT_PK, ACADEMY_PK, "Reason")
+                instance.connect(owner).revokeStudentIdentity(student.address, academy.address, "Reason")
             ).to.be.revertedWithCustomError(instance, "StudentIdentityAlreadyRevoked");
         });
     });

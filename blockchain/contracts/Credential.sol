@@ -28,7 +28,7 @@ contract Credential is StudentIdentity {
     }
     struct CredentialPayloadArgs {
         bytes32 payloadHash;
-        bytes32 payloadSignature;
+        bytes payloadSignature;
         string encryptedPayload;
     }
     struct CredentialIssueArgs {
@@ -46,16 +46,16 @@ contract Credential is StudentIdentity {
     }
     struct CredentialPayloadData {
         bytes32 payloadHash;
-        bytes32 payloadSignature;
+        bytes payloadSignature;
         string encryptedPayload;
     }
     struct CredentialStatusData {
         bool isNotRevoked;
         uint64 issuedAt;
         uint64 revokedAt;
-        bytes academy;
-        bytes issuer;
-        bytes revoker;
+        address academy;
+        address issuer;
+        address revoker;
         string revocationReason;
     }
     struct CredentialData {
@@ -74,22 +74,22 @@ contract Credential is StudentIdentity {
     error CredentialAlreadyRevoked();
 
     // Mappings
-    mapping(bytes => CredentialData[]) public credentials;
+    mapping(address => CredentialData[]) public credentials;
 
     // Uniqueness indexes
     mapping(bytes32 => bool) private credentialIssuedForPayloadHash;
 
     // Events
     event CredentialIssued(
-        bytes indexed studentPublicKey,
-        bytes indexed issuerPublicKey,
+        address indexed studentAddress,
+        address indexed issuerAddress,
         bytes32 payloadHash,
         uint256 index,
         uint64 issuedAt
     );
     event CredentialRevoked(
-        bytes indexed studentPublicKey,
-        bytes indexed revokerPublicKey,
+        address indexed studentAddress,
+        address indexed revokerAddress,
         uint256 index,
         uint64 revokedAt
     );
@@ -108,33 +108,33 @@ contract Credential is StudentIdentity {
     }
     function _validateCredentialPayload(CredentialPayloadArgs calldata p) internal pure {
         if (p.payloadHash == bytes32(0)) revert InvalidPayloadHash();
-        if (p.payloadSignature == bytes32(0)) revert InvalidPayloadSignature();
+        if (p.payloadSignature.length == 0) revert InvalidPayloadSignature();
         if (bytes(p.encryptedPayload).length == 0) revert InvalidEncryptedPayload();
     }
     function _validateCredentialAuthorities(
-        bytes calldata _student,
-        bytes calldata _issuer,
-        bytes calldata _academy
+        address _studentAddress,
+        address _issuerAddress,
+        address _academyAddress
     ) internal view {
-        _validatePublicKeySet(_student);
-        _validatePublicKeySet(_issuer);
-        _validatePublicKeySet(_academy);
+        _validateAddressSet(_studentAddress);
+        _validateAddressSet(_issuerAddress);
+        _validateAddressSet(_academyAddress);
 
-        if (academies[_academy].status.issuer == address(0)) revert AcademyIdentityNotIssued();
-        if (!academies[_academy].status.isNotRevoked) revert AcademyIdentityAlreadyRevoked();
+        if (academies[_academyAddress].status.issuer == address(0)) revert AcademyIdentityNotIssued();
+        if (!academies[_academyAddress].status.isNotRevoked) revert AcademyIdentityAlreadyRevoked();
 
-        if (students[_student].status.issuer.length == 0) revert StudentIdentityNotIssued();
-        if (!students[_student].status.isNotRevoked) revert StudentIdentityAlreadyRevoked();
+        if (students[_studentAddress].status.issuer == address(0)) revert StudentIdentityNotIssued();
+        if (!students[_studentAddress].status.isNotRevoked) revert StudentIdentityAlreadyRevoked();
         require(
-            _publicKeysEqual(students[_student].status.issuer, _academy),
+            students[_studentAddress].status.issuer == _academyAddress,
             "Invalid credential: student does not belong to the credentialing academy."
         );
 
-        if (!_publicKeysEqual(_issuer, _academy)) {
-            if (professors[_issuer].status.issuer.length == 0) revert ProfessorIdentityNotIssued();
-            if (!professors[_issuer].status.isNotRevoked) revert ProfessorIdentityAlreadyRevoked();
+        if (_issuerAddress != _academyAddress) {
+            if (professors[_issuerAddress].status.issuer == address(0)) revert ProfessorIdentityNotIssued();
+            if (!professors[_issuerAddress].status.isNotRevoked) revert ProfessorIdentityAlreadyRevoked();
             require(
-                _publicKeysEqual(professors[_issuer].status.issuer, _academy),
+                professors[_issuerAddress].status.issuer == _academyAddress,
                 "Invalid credential: professor does not belong to the credentialing academy."
             );
         }
@@ -142,12 +142,12 @@ contract Credential is StudentIdentity {
 
     // External Functions
     function issueCredential(
-        bytes calldata _student,
-        bytes calldata _issuer,
-        bytes calldata _academy,
+        address _studentAddress,
+        address _issuerAddress,
+        address _academyAddress,
         CredentialIssueArgs calldata args
     ) external onlyOwner {
-        _validateCredentialAuthorities(_student, _issuer, _academy);
+        _validateCredentialAuthorities(_studentAddress, _issuerAddress, _academyAddress);
         _validateCredentialInfos(args.infos);
         _validateCredentialPayload(args.payload);
 
@@ -155,9 +155,9 @@ contract Credential is StudentIdentity {
             revert CredentialPayloadAlreadyUsed();
         }
 
-        string memory academyName = academies[_academy].identity.name;
+        string memory academyName = academies[_academyAddress].identity.name;
 
-        credentials[_student].push(
+        credentials[_studentAddress].push(
             CredentialData({
                 identity: CredentialIdentityData({
                     title: args.infos.title,
@@ -175,9 +175,9 @@ contract Credential is StudentIdentity {
                     isNotRevoked: true,
                     issuedAt: uint64(block.timestamp),
                     revokedAt: 0,
-                    academy: _academy,
-                    issuer: _issuer,
-                    revoker: "",
+                    academy: _academyAddress,
+                    issuer: _issuerAddress,
+                    revoker: address(0),
                     revocationReason: ""
                 })
             })
@@ -185,10 +185,10 @@ contract Credential is StudentIdentity {
 
         credentialIssuedForPayloadHash[args.payload.payloadHash] = true;
 
-        uint256 index = credentials[_student].length - 1;
+        uint256 index = credentials[_studentAddress].length - 1;
         emit CredentialIssued(
-            _student,
-            _issuer,
+            _studentAddress,
+            _issuerAddress,
             args.payload.payloadHash,
             index,
             uint64(block.timestamp)
@@ -196,44 +196,44 @@ contract Credential is StudentIdentity {
     }
 
     function revokeCredential(
-        bytes calldata _student,
+        address _studentAddress,
         uint256 _index,
-        bytes calldata _revokerPublicKey,
+        address _revokerAddress,
         string calldata _reason
-    ) external onlyOwner onlyAcademy(_revokerPublicKey) {
-        _validatePublicKeySet(_student);
+    ) external onlyOwner onlyAcademy(_revokerAddress) {
+        _validateAddressSet(_studentAddress);
 
-        CredentialData[] storage list = credentials[_student];
+        CredentialData[] storage list = credentials[_studentAddress];
         if (_index >= list.length) revert CredentialIndexOutOfRange();
 
         CredentialStatusData storage s = list[_index].status;
         if (!s.isNotRevoked) revert CredentialAlreadyRevoked();
 
         require(
-            _publicKeysEqual(_revokerPublicKey, s.academy),
+            _revokerAddress == s.academy,
             "Invalid revoker: must be the issuing academy."
         );
 
         s.isNotRevoked = false;
         s.revokedAt = uint64(block.timestamp);
-        s.revoker = _revokerPublicKey;
+        s.revoker = _revokerAddress;
         s.revocationReason = _reason;
 
-        emit CredentialRevoked(_student, _revokerPublicKey, _index, s.revokedAt);
+        emit CredentialRevoked(_studentAddress, _revokerAddress, _index, s.revokedAt);
     }
 
     // View Functions
-    function getCredentialCount(bytes calldata _student) external view returns (uint256) {
-        return credentials[_student].length;
+    function getCredentialCount(address _studentAddress) external view returns (uint256) {
+        return credentials[_studentAddress].length;
     }
 
     function getCredential(
-        bytes calldata _student,
+        address _studentAddress,
         uint256 _index
     ) external view returns (CredentialData memory) {
-        _validatePublicKeySet(_student);
+        _validateAddressSet(_studentAddress);
 
-        CredentialData[] storage list = credentials[_student];
+        CredentialData[] storage list = credentials[_studentAddress];
         if (_index >= list.length) revert CredentialIndexOutOfRange();
 
         return list[_index];

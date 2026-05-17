@@ -30,10 +30,10 @@ describe("AcademyIdentity", () => {
     const ONE_DAY_SECS = 86_400;
     const ONE_YEAR_SECS = 365 * ONE_DAY_SECS;
 
-    // Public keys (65 bytes hex strings) for entity identification
+    // Public keys (65 bytes hex strings) stored as identity data on-chain
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
-    const EMPTY_PK = "0x04";
+    const SHORT_PK = "0x04"; // Invalid public-key length (used for InvalidPublicKey checks)
 
     async function deployFixture() {
         const { ethers } = await hre.network.connect();
@@ -55,10 +55,11 @@ describe("AcademyIdentity", () => {
     }
 
     async function issueArgs(
-        publicKey: string,
+        academyAddress: string,
         notBefore: bigint | number,
         notAfter: bigint | number,
         overrides?: Partial<{
+            publicKey: string;
             academyId: string;
             name: string;
             shortName: string;
@@ -72,9 +73,8 @@ describe("AcademyIdentity", () => {
             chainPem: string;
         }>
     ) {
-        const { ethers } = await hre.network.connect();
-
         const o = {
+            publicKey: ACADEMY_PK,
             academyId: ACADEMY_ID,
             name: ACADEMY_NAME,
             shortName: SHORT_NAME,
@@ -89,12 +89,11 @@ describe("AcademyIdentity", () => {
             ...overrides,
         };
 
-        const academyIdHash = ethers.solidityPackedKeccak256(["string"], [o.academyId]);
-
         return [
-            publicKey,
+            academyAddress,
             {
                 infos: {
+                    publicKey: o.publicKey,
                     academyId: o.academyId,
                     name: o.name,
                     shortName: o.shortName,
@@ -122,18 +121,19 @@ describe("AcademyIdentity", () => {
         const base = await networkHelpers.loadFixture(deployFixture);
         const { instance, academy, notBefore, notAfter } = base;
 
-        await instance.issueAcademyIdentity(...(await issueArgs(ACADEMY_PK, notBefore, notAfter)));
+        await instance.issueAcademyIdentity(...(await issueArgs(academy.address, notBefore, notAfter)));
 
         return base;
     }
 
     async function issueArgs2(
-        publicKey: string,
+        academyAddress: string,
         notBefore: bigint | number,
         notAfter: bigint | number,
         overrides?: Parameters<typeof issueArgs>[3]
     ) {
-        return issueArgs(publicKey, notBefore, notAfter, {
+        return issueArgs(academyAddress, notBefore, notAfter, {
+            publicKey: SECOND_ACADEMY_PK,
             academyId: ACADEMY_ID_2,
             name: ACADEMY_NAME_2,
             shortName: SHORT_NAME_2,
@@ -152,12 +152,13 @@ describe("AcademyIdentity", () => {
             const { instance, owner, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter);
-            await instance.issueAcademyIdentity(publicKey, args);
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter);
+            await instance.issueAcademyIdentity(academyAddress, args);
 
-            const record = await instance.academies(ACADEMY_PK);
+            const record = await instance.academies(academy.address);
 
             expect(record.identity.academyIdHash).to.equal(ethers.solidityPackedKeccak256(["string"], [args.infos.academyId]));
+            expect(record.identity.publicKey).to.equal(ACADEMY_PK);
             expect(record.identity.name).to.equal(ACADEMY_NAME);
             expect(record.identity.shortName).to.equal(SHORT_NAME);
             expect(record.identity.academyType).to.equal(BigInt(ACADEMY_TYPE));
@@ -187,10 +188,10 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             const customId = "ACADEMY00002";
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { academyId: customId });
-            await instance.issueAcademyIdentity(publicKey, args);
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { academyId: customId });
+            await instance.issueAcademyIdentity(academyAddress, args);
 
-            const record = await instance.academies(ACADEMY_PK);
+            const record = await instance.academies(academy.address);
             const { ethers } = await hre.network.connect();
             const expectedHash = ethers.solidityPackedKeccak256(["string"], [customId]);
             expect(record.identity.academyIdHash).to.equal(expectedHash);
@@ -203,7 +204,7 @@ describe("AcademyIdentity", () => {
 
             await expect(
                 instance.connect(fakeOwner).issueAcademyIdentity(
-                    ...(await issueArgs(ACADEMY_PK, notBefore, notAfter))
+                    ...(await issueArgs(academy.address, notBefore, notAfter))
                 )
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
@@ -215,7 +216,7 @@ describe("AcademyIdentity", () => {
 
             await expect(
                 instance.issueAcademyIdentity(
-                    ...(await issueArgs(ACADEMY_PK, notBefore, notAfter, {
+                    ...(await issueArgs(academy.address, notBefore, notAfter, {
                         name: "Renamed University",
                         shortName: "RNU",
                     }))
@@ -229,10 +230,10 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
             await instance.issueAcademyIdentity(
-                ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter))
+                ...(await issueArgs2(secondAcademy.address, notBefore, notAfter))
             );
 
-            const record = await instance.academies(SECOND_ACADEMY_PK);
+            const record = await instance.academies(secondAcademy.address);
             expect(record.identity.name).to.equal(ACADEMY_NAME_2);
             expect(record.identity.shortName).to.equal(SHORT_NAME_2);
         });
@@ -244,7 +245,7 @@ describe("AcademyIdentity", () => {
 
             await expect(
                 instance.issueAcademyIdentity(
-                    ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, { academyId: ACADEMY_ID }))
+                    ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, { academyId: ACADEMY_ID }))
                 )
             ).to.be.revertedWithCustomError(instance, "AcademyIdAlreadyUsed");
         });
@@ -255,13 +256,13 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
             await instance.issueAcademyIdentity(
-                ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, {
+                ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, {
                     name: ACADEMY_NAME,
                     shortName: SHORT_NAME_2,
                 }))
             );
 
-            const record = await instance.academies(SECOND_ACADEMY_PK);
+            const record = await instance.academies(secondAcademy.address);
             expect(record.identity.name).to.equal(ACADEMY_NAME);
             expect(record.identity.shortName).to.equal(SHORT_NAME_2);
         });
@@ -273,7 +274,7 @@ describe("AcademyIdentity", () => {
 
             await expect(
                 instance.issueAcademyIdentity(
-                    ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, {
+                    ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, {
                         name: ACADEMY_NAME,
                         shortName: SHORT_NAME,
                     }))
@@ -287,7 +288,7 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
             await instance.issueAcademyIdentity(
-                ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, {
+                ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, {
                     taxId: TAX_ID,
                     registrationNumber: REGISTRATION_NUMBER_2,
                     legalName: LEGAL_NAME_2,
@@ -295,7 +296,7 @@ describe("AcademyIdentity", () => {
                 }))
             );
 
-            const record = await instance.academies(SECOND_ACADEMY_PK);
+            const record = await instance.academies(secondAcademy.address);
             expect(record.proofs.taxId).to.equal(TAX_ID);
         });
 
@@ -306,7 +307,7 @@ describe("AcademyIdentity", () => {
 
             await expect(
                 instance.issueAcademyIdentity(
-                    ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, {
+                    ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, {
                         legalName: LEGAL_NAME,
                         registrationNumber: REGISTRATION_NUMBER,
                         taxId: TAX_ID,
@@ -318,15 +319,27 @@ describe("AcademyIdentity", () => {
     });
 
     describe("Input validation", () => {
-        it("Should revert on zero academy public key", async () => {
+        it("Should revert on zero academy address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter);
+            const [, args] = await issueArgs(academy.address, notBefore, notAfter);
 
             await expect(
-                instance.issueAcademyIdentity(EMPTY_PK, args)
+                instance.issueAcademyIdentity(ethers.ZeroAddress, args)
+            ).to.be.revertedWithCustomError(instance, "InvalidAddress");
+        });
+
+        it("Should revert on invalid public key length", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, academy, notBefore, notAfter } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { publicKey: SHORT_PK });
+
+            await expect(
+                instance.issueAcademyIdentity(academyAddress, args)
             ).to.be.revertedWithCustomError(instance, "InvalidPublicKey");
         });
 
@@ -335,9 +348,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { academyId: "" });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { academyId: "" });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: academyId is required."
             );
         });
@@ -347,9 +360,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { name: "" });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { name: "" });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: name is empty."
             );
         });
@@ -360,9 +373,9 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             const tooLongName = "A".repeat(257);
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { name: tooLongName });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { name: tooLongName });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: name too long."
             );
         });
@@ -372,9 +385,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { shortName: "" });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { shortName: "" });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: shortName is empty."
             );
         });
@@ -385,9 +398,9 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployFixture);
 
             const tooLongShort = "S".repeat(257);
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { shortName: tooLongShort });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { shortName: tooLongShort });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: shortName too long."
             );
         });
@@ -397,9 +410,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { academyType: 99 });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { academyType: 99 });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid: unknown academyType."
             );
         });
@@ -409,9 +422,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { legalName: "" });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { legalName: "" });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid proofs: legalName is required."
             );
         });
@@ -421,11 +434,11 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, {
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, {
                 fingerprint: ethers.ZeroHash,
             });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid certificate: fingerprint is required."
             );
         });
@@ -435,9 +448,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, notBefore, notAfter, { certificatePem: "" });
+            const [academyAddress, args] = await issueArgs(academy.address, notBefore, notAfter, { certificatePem: "" });
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid certificate: certificate is empty."
             );
         });
@@ -447,9 +460,9 @@ describe("AcademyIdentity", () => {
             const { instance, academy, notAfter } =
                 await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, 0, notAfter);
+            const [academyAddress, args] = await issueArgs(academy.address, 0, notAfter);
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid certificate: notBefore must be set."
             );
         });
@@ -458,9 +471,9 @@ describe("AcademyIdentity", () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, academy } = await networkHelpers.loadFixture(deployFixture);
 
-            const [publicKey, args] = await issueArgs(ACADEMY_PK, 100, 100);
+            const [academyAddress, args] = await issueArgs(academy.address, 100, 100);
 
-            await expect(instance.issueAcademyIdentity(publicKey, args)).to.be.revertedWith(
+            await expect(instance.issueAcademyIdentity(academyAddress, args)).to.be.revertedWith(
                 "Invalid certificate: notAfter must be greater than notBefore."
             );
         });
@@ -472,9 +485,9 @@ describe("AcademyIdentity", () => {
             const { instance, owner, academy } =
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
-            await instance.connect(owner).revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.connect(owner).revokeAcademyIdentity(academy.address, "Reason");
 
-            const record = await instance.academies(ACADEMY_PK);
+            const record = await instance.academies(academy.address);
             expect(record.status.isNotRevoked).to.equal(false);
             expect(record.status.revokedAt).to.be.gt(0);
             expect(record.status.revoker).to.equal(owner.address);
@@ -489,17 +502,17 @@ describe("AcademyIdentity", () => {
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
             await expect(
-                instance.connect(fakeOwner).revokeAcademyIdentity(ACADEMY_PK, "Reason")
+                instance.connect(fakeOwner).revokeAcademyIdentity(academy.address, "Reason")
             ).to.be.revertedWith("Not authorized: Only owner can perform this operation.");
         });
 
-        it("Should revert on zero academy public key", async () => {
+        it("Should revert on zero academy address", async () => {
             const { networkHelpers, ethers } = await hre.network.connect();
             const { instance } = await networkHelpers.loadFixture(deployWithAcademyFixture);
 
             await expect(
-                instance.revokeAcademyIdentity(EMPTY_PK, "Reason")
-            ).to.be.revertedWithCustomError(instance, "InvalidPublicKey");
+                instance.revokeAcademyIdentity(ethers.ZeroAddress, "Reason")
+            ).to.be.revertedWithCustomError(instance, "InvalidAddress");
         });
 
         it("Should revert when the academy was never issued", async () => {
@@ -507,7 +520,7 @@ describe("AcademyIdentity", () => {
             const { instance, secondAcademy } = await networkHelpers.loadFixture(deployFixture);
 
             await expect(
-                instance.revokeAcademyIdentity(SECOND_ACADEMY_PK, "Reason")
+                instance.revokeAcademyIdentity(secondAcademy.address, "Reason")
             ).to.be.revertedWithCustomError(instance, "AcademyIdentityNotIssued");
         });
 
@@ -516,23 +529,23 @@ describe("AcademyIdentity", () => {
             const { instance, academy } =
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
-            await instance.revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.revokeAcademyIdentity(academy.address, "Reason");
 
             await expect(
-                instance.revokeAcademyIdentity(ACADEMY_PK, "Reason")
+                instance.revokeAcademyIdentity(academy.address, "Reason")
             ).to.be.revertedWithCustomError(instance, "AcademyIdentityAlreadyRevoked");
         });
 
-        it("Should keep the academyId locked after revoke (no reissue with a new public key)", async () => {
+        it("Should keep the academyId locked after revoke (no reissue with a new address)", async () => {
             const { networkHelpers } = await hre.network.connect();
             const { instance, academy, secondAcademy, notBefore, notAfter } =
                 await networkHelpers.loadFixture(deployWithAcademyFixture);
 
-            await instance.revokeAcademyIdentity(ACADEMY_PK, "Reason");
+            await instance.revokeAcademyIdentity(academy.address, "Reason");
 
             await expect(
                 instance.issueAcademyIdentity(
-                    ...(await issueArgs2(SECOND_ACADEMY_PK, notBefore, notAfter, { academyId: ACADEMY_ID }))
+                    ...(await issueArgs2(secondAcademy.address, notBefore, notAfter, { academyId: ACADEMY_ID }))
                 )
             ).to.be.revertedWithCustomError(instance, "AcademyIdAlreadyUsed");
         });

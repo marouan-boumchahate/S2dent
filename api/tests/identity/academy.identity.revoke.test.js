@@ -192,7 +192,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         assert.equal(res.status, 200);
         assert.equal(calls.length, 1);
-        assert.equal(calls[0].publicKey, ACADEMY_IDENTITY_PUBLIC_KEY);
+        assert.equal(calls[0].academyAddress, WALLET_ADDRESS);
         assert.equal(calls[0].reason, REVOCATION_REASON);
     });
 
