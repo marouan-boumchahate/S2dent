@@ -9,7 +9,7 @@ END $$;
 
 DO $$ BEGIN
     CREATE TYPE credential_status AS ENUM (
-        'pending','issued', 'revoked'
+        'pending', 'issued', 'revoked'
     );
 EXCEPTION
     WHEN duplicate_object THEN NULL;
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS credentials (
     payload JSONB NOT NULL,
     payload_hash VARCHAR(66),
     encrypted_payload Text,
+    
     signature VARCHAR(132),
 
     created_at TIMESTAMPTZ DEFAULT NOW(),

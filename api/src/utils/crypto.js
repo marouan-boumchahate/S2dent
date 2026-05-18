@@ -1,9 +1,9 @@
 import { ethers, keccak256 } from 'ethers';
 import crypto from 'crypto';
+import { encrypt } from 'eciesjs';
 
 const ALGORITHM = 'aes-256-gcm';
 
-const getNonce = (byteLength = 32) => crypto.randomBytes(byteLength).toString('hex');
 const recoverSigner = (message, signature) => {
     const msgHash = ethers.hashMessage(message);
 
@@ -12,9 +12,16 @@ const recoverSigner = (message, signature) => {
 
     return { signerPublicKey, signerAddress };
 };
-const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
+const recoverSignerFromTypedData = (domain, types, message, signature) => {
+    const signerAddress = ethers.verifyTypedData(domain, types, message, signature);
+    return signerAddress;
+};
 
-const encrypt = (text, SECRET) => {
+const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
+const getPayloadHash = (payload) => keccak256(hash(JSON.stringify(payload)));
+const getNonce = (byteLength = 32) => crypto.randomBytes(byteLength).toString('hex');
+
+const encryptBySecretKey = (text, SECRET) => {
     try{
         const iv = crypto.randomBytes(12);
         const cipher = crypto.createCipheriv(ALGORITHM, SECRET, iv);
@@ -29,7 +36,7 @@ const encrypt = (text, SECRET) => {
         throw new Error('Failed to encrypt data');
     }
 };
-const decrypt = (payload, SECRET) => {
+const decryptBySecretKey = (payload, SECRET) => {
     const [ivHex, tagHex, encryptedHex] = payload.split(':');
 
     const iv = Buffer.from(ivHex, 'hex');
@@ -42,5 +49,29 @@ const decrypt = (payload, SECRET) => {
     return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 };
 
+const encryptWithPublicKey = async (payloadJson, publicKey) => {
+    const pubKeyBuffer = Buffer.from(
+        publicKey.startsWith('0x') 
+            ? publicKey.slice(2) 
+            : publicKey, 
+        'hex'
+    );
 
-export { recoverSigner, getNonce, encrypt, decrypt, hash };
+    const jsonString = JSON.stringify(payloadJson, Object.keys(payloadJson).sort());
+    
+    const data = Buffer.from(jsonString, 'utf8');
+    const encrypted = encrypt(pubKeyBuffer, data);
+    
+    return encrypted.toString('hex');
+};
+
+
+export { 
+    recoverSigner, 
+    getNonce, 
+    encryptBySecretKey, 
+    decryptBySecretKey, 
+    hash, 
+    encryptWithPublicKey, 
+    recoverSignerFromTypedData
+};

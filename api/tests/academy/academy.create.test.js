@@ -18,22 +18,45 @@ const validBody = (overrides = {}) => ({
 });
 
 const cleanupDB = async () => {
+    const matchClause = `
+        email LIKE '%@fenerbahce%'
+           OR email LIKE '%@test%'
+           OR name LIKE 'Fenerbahce%'
+           OR name LIKE 'Test Academy%'
+           OR registration_number LIKE 'REG-FBU%'
+    `;
+
+    await db.query(`
+        DELETE FROM students
+        WHERE academy_id IN (
+            SELECT id FROM academies WHERE ${matchClause}
+        )
+    `);
+
     await db.query(`
         DELETE FROM professors
         WHERE academy_id IN (
-            SELECT id FROM academies
-            WHERE email LIKE '%@fenerbahce%'
-               OR email LIKE '%@test%'
+            SELECT id FROM academies WHERE ${matchClause}
+        )
+    `);
+
+    await db.query(`
+        DELETE FROM identities
+        WHERE academy_id IN (
+            SELECT id FROM academies WHERE ${matchClause}
+        )
+    `);
+
+    await db.query(`
+        DELETE FROM departments
+        WHERE academy_id IN (
+            SELECT id FROM academies WHERE ${matchClause}
         )
     `);
 
     await db.query(`
         DELETE FROM academies
-        WHERE email LIKE '%@fenerbahce%'
-           OR email LIKE '%@test%'
-           OR name LIKE 'Fenerbahce%'
-           OR name LIKE 'Test Academy%'
-           OR registration_number LIKE 'REG-FBU%'
+        WHERE ${matchClause}
     `);
 };
 

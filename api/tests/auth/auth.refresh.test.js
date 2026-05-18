@@ -3,7 +3,7 @@ import request from 'supertest';
 import sinon from 'sinon';
 import crypto from 'crypto';
 import { strict as assert } from 'assert';
-import { ethers } from 'ethers';
+import { ethers, keccak256 } from 'ethers';
 import { signTokens, verifyAccessToken } from '../../src/utils/jwt.js';
 
 
@@ -417,10 +417,10 @@ describe('POST /api/auth/refresh', function () {
 
     // ── Cache integration (sinon-stubbed cache layer) ──────────────────────────
     describe('cache integration', () => {
-        const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
-        const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
+        const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
+        const cacheKeyFor = (token) => `refresh:${hash(token)}`;
 
-        it('looks up the refresh token in cache under key `refresh:{sha256(token)}`', async () => {
+        it('looks up the refresh token in cache under key `refresh:{hash(token)}`', async () => {
             const refreshToken = issueRefreshToken(address, 'professor');
             const { app, cache } = await makeApp();
 

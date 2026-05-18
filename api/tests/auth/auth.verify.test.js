@@ -3,7 +3,7 @@ import request from 'supertest';
 import sinon from 'sinon';
 import crypto from 'crypto';
 import { strict as assert } from 'assert';
-import { ethers } from 'ethers';
+import { ethers, keccak256 } from 'ethers';
 import db from '../../src/config/db.js';
 import { verifyAccessToken, verifyRefreshToken } from '../../src/utils/jwt.js';
 import { ACADEMY_REFRESH_TOKEN_TTL, STUDENT_REFRESH_TOKEN_TTL } from '../../src/cache/cache.ttl.js';
@@ -723,8 +723,8 @@ describe('POST /api/auth/verify', function () {
         const TEST_IP = '127.0.0.1';
         const TEST_UA = 'verify-cache-test/1.0';
 
-        const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
-        const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
+        const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
+        const cacheKeyFor = (token) => `refresh:${hash(token)}`;
 
         const makeCacheStubs = () => ({
             getCache: sinon.stub().resolves(null),
@@ -739,7 +739,7 @@ describe('POST /api/auth/verify', function () {
                 .set('X-Forwarded-For', TEST_IP)
                 .send({ wallet_address: addr, signature: sig });
 
-        it('saves the refresh token in cache under key `refresh:{sha256(token)}`', async () => {
+        it('saves the refresh token in cache under key `refresh:{hash(token)}`', async () => {
             const nonce = await seedIdentity(address, 'professor');
             const signature = await signNonce(wallet, nonce);
             const cache = makeCacheStubs();
