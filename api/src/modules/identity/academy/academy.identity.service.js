@@ -157,11 +157,6 @@ const getCertificate = async (
     return certificate
 }
 
-const getRandomPublicKey = () => {
-    const randomWallet = ethers.Wallet.createRandom()
-    return randomWallet.signingKey.publicKey
-}
-
 
 // Issuance
 // --------

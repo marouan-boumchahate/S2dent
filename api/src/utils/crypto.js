@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { ethers, keccak256 } from 'ethers';
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -12,7 +12,7 @@ const recoverSigner = (message, signature) => {
 
     return { signerPublicKey, signerAddress };
 };
-const hash = (text) => crypto.createHash('sha256').update(text).digest('hex');
+const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
 
 const encrypt = (text, SECRET) => {
     try{

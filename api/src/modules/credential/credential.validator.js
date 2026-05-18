@@ -59,19 +59,15 @@ const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/
 
 const payloadSchemas = {
     enrollment: Joi.object({
-        academic_year: Joi.string().pattern(/^\d{4}-\d{4}$/).required(),
-        semester: Joi.string().valid(...semesters).required(),
-        enrollment_date: Joi.date().iso().required(),
         course_name: Joi.string().required(),
         course_code: Joi.string().required(),
-        advisor_name: Joi.string().required(),
-        advisor_wallet: Joi.string().pattern(ETH_ADDRESS).required()
-            .messages({
-                'string.pattern.base': 'advisor_wallet must be a valid Ethereum address (0x…)',
-            }),
+        academic_year: Joi.string().pattern(/^\d{4}-\d{4}$/).required(),
+        semester: Joi.string().valid(...semesters).required(),
+        enrollment_date: Joi.date().iso().required()
     }),
     attendance: Joi.object({
         course_code: Joi.string().required(),
+        course_name: Joi.string().required(),
         academic_year: Joi.string().pattern(/^\d{4}-\d{4}$/).required(),
         semester: Joi.string().valid(...semesters).required(),
         total_sessions: Joi.number().integer().min(1).required(),
@@ -105,7 +101,7 @@ const payloadSchemas = {
         start_date: Joi.date().iso().required(),
         end_date: Joi.date().iso().required(),
         final_score: Joi.number().min(0).max(100),
-        passing_score: Joi.number().min(0).max(100).required(),
+        passing_score: Joi.number().min(0).max(100),
         instructor_name: Joi.string().required(),
     }),
     achievement: Joi.object({
@@ -116,8 +112,8 @@ const payloadSchemas = {
         event_organizer: Joi.string().required(),
         event_date: Joi.date().iso().required(),
         event_location: Joi.string(),
-        placement: Joi.string(),
         score: Joi.number().allow(null),
+        placement: Joi.string(),
         team_name: Joi.string().allow('', null),
         project_title: Joi.string(),
         project_description: Joi.string(),
@@ -130,8 +126,7 @@ const payloadSchemas = {
         cumulative_gpa: Joi.number().min(0).required(),
         gpa_scale: Joi.number().valid(4.0, 5.0, 100).required(),
         total_credits_attempted: Joi.number().integer().required(),
-        total_credits_earned: Joi.number().integer().required(),
-        stamp_seal_reference: Joi.string()
+        total_credits_earned: Joi.number().integer().required()
     }),
 };
 
@@ -139,7 +134,7 @@ export const createCredentialSchema = Joi.object({
     title: Joi.string().max(255).required(),
     credential_type: Joi.string().valid(...credentialTypes).required(),
     description: Joi.string().optional(),
-    student_wallet: Joi.string().pattern(ETH_ADDRESS).required()
+    student_address: Joi.string().pattern(ETH_ADDRESS).required()
         .messages({
           'string.pattern.base': 'student_wallet must be a valid Ethereum address (0x…)',
         }),
