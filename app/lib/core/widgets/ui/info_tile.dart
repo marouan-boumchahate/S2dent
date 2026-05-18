@@ -27,7 +27,7 @@ class InfoTile extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 label,
-                style: TextStyle(fontSize: 16),
+                style: context.texts.bodyLarge,
               ),
             ],
           ),

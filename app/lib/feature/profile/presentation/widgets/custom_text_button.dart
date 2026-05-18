@@ -1,3 +1,4 @@
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class CustomTextButton extends StatelessWidget {
@@ -19,8 +20,10 @@ class CustomTextButton extends StatelessWidget {
       onTap: enable ? onTap : null,
       child: Text(
         label,
-        style:
-            TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold),
+        style: context.texts.labelLarge!.copyWith(
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

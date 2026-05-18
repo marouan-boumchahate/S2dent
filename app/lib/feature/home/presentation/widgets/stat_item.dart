@@ -1,3 +1,4 @@
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class StatItem extends StatelessWidget {
@@ -16,12 +17,12 @@ class StatItem extends StatelessWidget {
       children: [
         Text(
           stat,
-          style: TextStyle(
-            fontSize: 20,
-            color: color,
-          ),
+          style: context.texts.titleLarge!.copyWith(color: color),
         ),
-        Text(label),
+        Text(
+          label,
+          style: context.texts.bodySmall,
+        ),
       ],
     );
   }

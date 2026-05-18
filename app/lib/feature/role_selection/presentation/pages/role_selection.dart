@@ -133,17 +133,18 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               const SizedBox(width: 12),
               Text(
                 "S2dent",
-                style: TextStyle(
-                  fontSize: 32,
+                style: context.texts.headlineLarge!.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        const Text(
+        Text(
           "Choose your identity",
-          style: TextStyle(color: Colors.blueGrey),
+          style: context.texts.bodyMedium!.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
       ],
     );

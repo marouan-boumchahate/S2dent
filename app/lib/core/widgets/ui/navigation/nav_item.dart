@@ -50,8 +50,7 @@ class NavItem extends StatelessWidget {
             ),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 10,
+              style: context.texts.labelSmall!.copyWith(
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color:
                     isSelected ? context.colors.primary : AppColors.textMuted,

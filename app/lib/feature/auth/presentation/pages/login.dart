@@ -136,7 +136,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           Text(
             "New student ?",
-            style: TextStyle(
+            style: context.texts.bodyMedium!.copyWith(
               color: context.colors.onSurface.withAlpha(150),
             ),
           )
@@ -156,14 +156,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           Text(
             "Welcome Back",
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 32,
-                color: context.colors.onSurface),
+            style: context.texts.headlineLarge!.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.colors.onSurface,
+            ),
           ),
           Text(
             "Sign in to your student wallet",
-            style: TextStyle(
+            style: context.texts.bodyMedium!.copyWith(
               height: 2,
               color: context.colors.onSurface.withAlpha(200),
             ),

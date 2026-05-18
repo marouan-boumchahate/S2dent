@@ -19,7 +19,7 @@ class HeaderSection extends StatelessWidget {
         _userAvatar(context, student),
         Text(
           student.user?.fullName() ?? "",
-          style: TextStyle(fontSize: 24),
+          style: context.texts.headlineSmall,
           textAlign: TextAlign.center,
         ),
         _infoBadges(context, student),
@@ -66,8 +66,7 @@ class HeaderSection extends StatelessWidget {
         child: image == null
             ? Text(
                 _initials(student),
-                style: TextStyle(
-                  fontSize: 24,
+                style: context.texts.headlineSmall!.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               )

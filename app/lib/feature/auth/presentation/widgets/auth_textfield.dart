@@ -26,7 +26,7 @@ class AuthTextfield extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               label,
-              style: TextStyle(
+              style: context.texts.labelLarge!.copyWith(
                 color: context.colors.onSurfaceVariant.withAlpha(200),
               ),
             ),
@@ -35,7 +35,7 @@ class AuthTextfield extends StatelessWidget {
             controller: controller,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(
+              hintStyle: context.texts.bodyLarge!.copyWith(
                 color: context.colors.onSurfaceVariant.withAlpha(200),
               ),
               filled: true,

@@ -30,14 +30,13 @@ class CredentialsBottomSheet extends StatelessWidget {
                 children: [
                   Text(
                     "All Credentials",
-                    style: TextStyle(fontSize: 20),
+                    style: context.texts.titleLarge,
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
                       "${credentials.length}",
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: context.texts.bodyLarge!.copyWith(
                         color: context.colors.primary,
                       ),
                     ),

@@ -1,3 +1,4 @@
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class InfoBadge extends StatelessWidget {
@@ -20,7 +21,7 @@ class InfoBadge extends StatelessWidget {
       ),
       child: Text(
         info,
-        style: TextStyle(
+        style: context.texts.labelMedium!.copyWith(
           color: color,
           fontWeight: FontWeight.bold,
         ),

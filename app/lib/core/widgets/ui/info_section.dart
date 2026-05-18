@@ -30,8 +30,7 @@ class InfoSection extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 18,
+                style: context.texts.titleLarge!.copyWith(
                   color: context.colors.onSurface.withAlpha(180),
                   fontWeight: FontWeight.bold,
                 ),

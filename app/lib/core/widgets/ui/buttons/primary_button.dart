@@ -29,9 +29,8 @@ class PrimaryButton extends StatelessWidget {
           width: double.infinity,
           child: Text(
             label,
-            style: TextStyle(
+            style: context.texts.titleLarge!.copyWith(
               color: context.colors.onPrimary,
-              fontSize: 20,
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,

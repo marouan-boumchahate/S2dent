@@ -35,8 +35,7 @@ class PhotoPicker extends StatelessWidget {
               child: image == null
                   ? Text(
                       initials,
-                      style: const TextStyle(
-                        fontSize: 24,
+                      style: context.texts.headlineSmall!.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     )
