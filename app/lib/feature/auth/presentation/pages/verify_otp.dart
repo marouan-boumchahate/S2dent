@@ -51,8 +51,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
             padding: const EdgeInsets.only(top: 16, bottom: 32),
             child: Text(
               "A code have been sent to your email",
-              style: TextStyle(
-                fontSize: context.texts.titleLarge?.fontSize,
+              style: context.texts.titleLarge!.copyWith(
                 overflow: TextOverflow.clip,
               ),
             ),
@@ -83,7 +82,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
             width: 2,
           ),
         ),
-        textStyle: TextStyle(fontSize: 16),
+        textStyle: context.texts.bodyLarge!,
       ),
       focusedPinTheme: PinTheme(
         width: 60,
@@ -96,8 +95,7 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
             width: 2,
           ),
         ),
-        textStyle: TextStyle(
-          fontSize: 16,
+        textStyle: context.texts.bodyLarge!.copyWith(
           color: context.colors.primary.withAlpha(160),
         ),
       ),

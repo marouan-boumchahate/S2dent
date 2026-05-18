@@ -50,9 +50,8 @@ class SecondaryButton extends StatelessWidget {
   Text _labelTextWidget(BuildContext context) {
     return Text(
       label,
-      style: TextStyle(
+      style: context.texts.titleLarge!.copyWith(
         color: context.colors.primary,
-        fontSize: 20,
       ),
       textAlign: TextAlign.center,
     );

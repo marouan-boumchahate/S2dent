@@ -37,8 +37,8 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   @override
   Widget build(BuildContext context) {
     final image = Theme.of(context).brightness == Brightness.dark
-        ? "assets/images/email_dark.png"
-        : "assets/images/email_light.png";
+        ? "assets/images/env_dark.png"
+        : "assets/images/env_light.png";
     return AuthLayout(
       children: [
         _headerSection(context, image),
@@ -60,14 +60,12 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
       key: _formKey,
       child: Column(
         children: [
-          Image.asset(image, width: 130),
+          Image.asset(image, width: 110),
           Padding(
             padding: const EdgeInsets.only(bottom: 32, top: 12),
             child: Text(
               "Verify your student identity",
-              style: TextStyle(
-                fontSize: context.texts.titleLarge!.fontSize,
-              ),
+              style: context.texts.titleLarge,
             ),
           ),
           AuthTextfield(

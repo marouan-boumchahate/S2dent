@@ -65,7 +65,7 @@ class _ScannerPageState extends State<ScannerPage> {
                   child: Text(
                     "Scan Credentials",
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
+                    style: context.texts.bodyLarge,
                   ),
                 )),
             Positioned(

@@ -53,7 +53,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       appBar: AppBar(
         title: Text(
           "Settings",
-          style: TextStyle(color: context.colors.onPrimaryContainer),
+          style: context.texts.titleLarge!.copyWith(
+            color: context.colors.onPrimaryContainer,
+          ),
         ),
         backgroundColor: context.colors.onPrimary,
         leading: CustomBackButton(),

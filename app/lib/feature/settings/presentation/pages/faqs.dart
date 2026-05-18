@@ -14,7 +14,9 @@ class FaqsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           "FAQs",
-          style: TextStyle(color: context.colors.onPrimaryContainer),
+          style: context.texts.titleLarge!.copyWith(
+            color: context.colors.onPrimaryContainer,
+          ),
         ),
         backgroundColor: context.colors.onPrimary,
         leading: CustomBackButton(),

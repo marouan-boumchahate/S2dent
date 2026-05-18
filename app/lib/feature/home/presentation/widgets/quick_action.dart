@@ -1,3 +1,4 @@
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class QuickAction extends StatelessWidget {
@@ -30,7 +31,7 @@ class QuickAction extends StatelessWidget {
                 Icon(icon, color: color),
                 Text(
                   label,
-                  style: TextStyle(color: color),
+                  style: context.texts.labelLarge!.copyWith(color: color),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

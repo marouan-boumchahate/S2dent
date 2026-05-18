@@ -105,11 +105,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           Text(
             "Welcome back,",
-            style: TextStyle(fontSize: 16),
+            style: context.texts.bodyLarge,
           ),
           Text(
             data.firstName ?? "",
-            style: TextStyle(fontSize: 40),
+            style: context.texts.displaySmall,
           ),
         ],
       ),
@@ -135,7 +135,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       children: [
         Text(
           "Quick Actions",
-          style: TextStyle(fontSize: 20),
+          style: context.texts.titleLarge,
         ),
         const SizedBox(height: 8),
         CustomHorizontalContainer(
@@ -176,7 +176,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Recent Activites", style: TextStyle(fontSize: 20)),
+            Text("Recent Activites", style: context.texts.titleLarge),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: CustomTextButton(
@@ -219,7 +219,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           Text(
             "Wallet address",
-            style: TextStyle(fontSize: 16),
+            style: context.texts.bodyLarge,
             textAlign: TextAlign.start,
           ),
           _walletAddressField(context, data),

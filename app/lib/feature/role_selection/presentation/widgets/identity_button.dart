@@ -48,12 +48,14 @@ class IdentityButton extends StatelessWidget {
           ),
           title: Text(
             title,
-            style: TextStyle(
+            style: context.texts.titleLarge!.copyWith(
               fontWeight: FontWeight.bold,
-              fontSize: 18,
             ),
           ),
-          subtitle: Text(subtitle),
+          subtitle: Text(
+            subtitle,
+            style: context.texts.bodyMedium,
+          ),
         ),
       ),
     );

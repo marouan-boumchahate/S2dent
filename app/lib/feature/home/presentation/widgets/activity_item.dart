@@ -32,14 +32,11 @@ class ActivityItem extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: context.texts.titleLarge!.fontSize,
-                  ),
+                  style: context.texts.titleLarge,
                 ),
                 Text(
                   subTitle,
-                  style: TextStyle(
-                    fontSize: context.texts.bodyLarge!.fontSize,
+                  style: context.texts.bodyLarge!.copyWith(
                     color: Colors.grey,
                   ),
                 ),
