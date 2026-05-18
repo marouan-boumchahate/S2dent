@@ -384,7 +384,7 @@ describe('POST /api/identity/professors/issue', function () {
 
         assert.equal(res.status, 200);
         assert.equal(cacheCalls.length, 1);
-        const expectedKey = `otp:${crypto.createHash('sha256').update(`${PROFESSOR_EMAIL.toLowerCase()}:${ISSUE_OTP}`).digest('hex')}`;
+        const expectedKey = `otp:${ethers.keccak256(Buffer.from(`${PROFESSOR_EMAIL.toLowerCase()}:${ISSUE_OTP}`, 'utf8'))}`;
         assert.equal(cacheCalls[0], expectedKey);
     });
 

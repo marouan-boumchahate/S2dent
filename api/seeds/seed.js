@@ -31,13 +31,14 @@ const printTokens = (label, { accessToken, refreshToken }) => {
 // Seeders
 // -------
 const seedAcademy = async () => {
-  const id = await createAcademy(academyProfile(WALLETS.academy.address));
+  const profile = academyProfile();
+  const id = await createAcademy(profile);
   log('academy', `created → id=${id}`);
 
   await createAddress({ academy_id: id, ...addressProfile() });
   log('address', `created for academy=${id}`);
 
-  await issueIdentity('academy', { wallet_address: WALLETS.academy.address });
+  await issueIdentity('academy', { email: profile.email, privateKey: WALLETS.academy.privateKey });
   log('identity', `issued for academy=${WALLETS.academy.address}`);
 
   await wait(1500);
@@ -61,7 +62,7 @@ const seedStudent = async ({ academyId, departmentId, academyToken }) => {
   );
   log('student', `created → id=${id}`);
 
-  await issueIdentity('student', { email: profile.email, wallet_address: WALLETS.student.address });
+  await issueIdentity('student', { email: profile.email, privateKey: WALLETS.student.privateKey });
   log('identity', `issued for student=${WALLETS.student.address}`);
 
   await wait(1500);
@@ -85,7 +86,7 @@ const seedProfessor = async ({ academyId, departmentId, academyToken }) => {
   );
   log('professor', `created → id=${id}`);
 
-  await issueIdentity('professor', { email: profile.email, wallet_address: WALLETS.professor.address });
+  await issueIdentity('professor', { email: profile.email, privateKey: WALLETS.professor.privateKey });
   log('identity', `issued for professor=${WALLETS.professor.address}`);
 
   await wait(1500);
@@ -104,7 +105,7 @@ const main = async () => {
   const academy = await seedAcademy();
 
   const departmentId = await createDepartment(
-    { academy_id: academy.id, ...departmentProfile() },
+    departmentProfile(),
     academy.tokens.accessToken,
   );
   log('department', `created → id=${departmentId}`);

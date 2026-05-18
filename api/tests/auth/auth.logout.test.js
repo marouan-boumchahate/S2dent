@@ -3,7 +3,7 @@ import request from 'supertest';
 import sinon from 'sinon';
 import crypto from 'crypto';
 import { strict as assert } from 'assert';
-import { ethers } from 'ethers';
+import { ethers, keccak256 } from 'ethers';
 import { signTokens } from '../../src/utils/jwt.js';
 
 
@@ -30,8 +30,8 @@ const DEFAULT_BLOCKCHAIN = {
 const TEST_IP = '127.0.0.1';
 const TEST_UA = 'logout-test-agent/1.0';
 
-const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
-const cacheKeyFor = (token) => `refresh:${sha256(token)}`;
+const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
+const cacheKeyFor = (token) => `refresh:${hash(token)}`;
 
 const makeCacheStubs = (overrides = {}) => ({
     getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: TEST_UA })),

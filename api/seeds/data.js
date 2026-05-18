@@ -22,8 +22,7 @@ const LAST_NAMES  = ['Boumchahate', 'Aydin', 'Karaca', 'Demir', 'Yilmaz', 'Kaya'
 const NATIONALITIES = ['Moroccan', 'Turkish', 'French', 'Tunisian', 'Spanish'];
 const GENDERS = ['male', 'female'];
 
-export const academyProfile = (wallet_address) => ({
-  wallet_address,
+export const academyProfile = () => ({
   name: `Innovation Institute ${rand(4)}`,
   short_name: `II${rand(3)}`.toUpperCase(),
   type: 'college',

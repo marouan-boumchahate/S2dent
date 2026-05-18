@@ -1,8 +1,8 @@
 import { ok } from '../../utils/response.js';
-import { createCredentialService } from './credential.service.js';
+import { createCredentialService, issueCredentialService } from './credential.service.js';
 
-export const issue = async (req, res, next) => {
-    const { sub: issuer_address, role } = req.user;
+const createCredentialController = async (req, res, next) => {
+    const { sub: issuer_address } = req.user;
     const {
         title,
         credential_type,
@@ -12,7 +12,7 @@ export const issue = async (req, res, next) => {
     } = req.body;
 
 
-    const result = await createCredentialService(issuer_address, role, {
+    const result = await createCredentialService(issuer_address, {
         title,
         credential_type,
         description,
@@ -22,3 +22,19 @@ export const issue = async (req, res, next) => {
 
     return ok(res, result, 'Credential signing data generated successfully');
 };
+const issueCredentialController = async (req, res, next) => {
+    const { sub: issuer_address } = req.user;
+    const { id: credentialId } = req.params;
+    const { signature } = req.body;
+
+    const result = await issueCredentialService(issuer_address, credentialId, signature);
+
+    return ok(res, result, 'Credential issued successfully');
+};
+
+
+export {
+    createCredentialController,
+    issueCredentialController
+};
+

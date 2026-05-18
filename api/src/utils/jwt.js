@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { encrypt, decrypt } from './crypto.js';
+import { encryptBySecretKey, decryptBySecretKey } from './crypto.js';
 
 const ALGORITHM = 'HS256';
 
@@ -8,7 +8,7 @@ const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_ENCRYPTION_SECRET = Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex');
 
 const signTokens = (payload, options, onlyAccess = false) => { // options: { accessExpiresIn, refreshExpiresIn }
-    const accessToken = encrypt(
+    const accessToken = encryptBySecretKey(
         jwt.sign(payload, ACCESS_SECRET, {
             expiresIn: options?.accessExpiresIn || '15m',
             algorithm: ALGORITHM,
@@ -17,7 +17,7 @@ const signTokens = (payload, options, onlyAccess = false) => { // options: { acc
 
     if(onlyAccess) return { accessToken }
 
-    const refreshToken = encrypt(
+    const refreshToken = encryptBySecretKey(
         jwt.sign(payload, REFRESH_SECRET, {
             expiresIn: options?.refreshExpiresIn || '1d',
             algorithm: ALGORITHM,
@@ -28,11 +28,11 @@ const signTokens = (payload, options, onlyAccess = false) => { // options: { acc
 }
 
 const verifyAccessToken = (token) => {
-    const decryptedToken = decrypt(token, JWT_ENCRYPTION_SECRET);
+    const decryptedToken = decryptBySecretKey(token, JWT_ENCRYPTION_SECRET);
     return jwt.verify(decryptedToken, ACCESS_SECRET);
 };
 const verifyRefreshToken = (token) => {
-    const decryptedToken = decrypt(token, JWT_ENCRYPTION_SECRET);
+    const decryptedToken = decryptBySecretKey(token, JWT_ENCRYPTION_SECRET);
     return jwt.verify(decryptedToken, REFRESH_SECRET);
 };
 

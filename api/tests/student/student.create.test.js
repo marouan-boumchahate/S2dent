@@ -6,7 +6,7 @@ import db from '../../src/config/db.js';
 import { signTokens } from '../../src/utils/jwt.js';
 
 const SEED_EMAIL = 'seed.student@seed.internal';
-const SEED_WALLET = '0xcccccccccccccccccccccccccccccccccccccccc';
+const SEED_WALLET = '0x9999999999999999999999999999999999999999';
 const SEED_ACADEMY_NUMBER = 'ACD_STU_0001';
 
 let ACADEMY_ID;

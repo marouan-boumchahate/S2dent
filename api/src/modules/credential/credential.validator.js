@@ -1,3 +1,4 @@
+import { Signature } from 'ethers';
 import Joi from 'joi';
 
 const semesters = [
@@ -56,6 +57,7 @@ const credentialTypes = [
 ];
 
 const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/
+const SIGNATURE = /^0x[0-9a-fA-F]{130}$/
 
 const payloadSchemas = {
     enrollment: Joi.object({
@@ -145,4 +147,11 @@ export const createCredentialSchema = Joi.object({
         })),
         otherwise: Joi.forbidden(),
     }),
+});
+
+export const issueCredentialSchema = Joi.object({
+    signature: Joi.string().pattern(SIGNATURE).required()
+        .messages({
+          'string.pattern.base': 'Signature must be a valid Ethereum signature (0x…)',
+        }),
 });
