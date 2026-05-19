@@ -1,12 +1,17 @@
 import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
-import { generateNonceSchema, verifySignatureSchema, refreshTokenSchema, sendOtpSchema } from './auth.validator.js';
+import { 
+    generateNonceSchema, 
+    verifySignatureSchema, 
+    refreshTokenSchema, 
+    sendOtpSchema
+} from './auth.validator.js';
 import { 
     generateNonceController, 
     verifySignatureController, 
     refreshTokenController, 
     logoutController, 
-    sendOtpController 
+    sendOtpController
 } from './auth.controller.js';
 
 const router = Router();

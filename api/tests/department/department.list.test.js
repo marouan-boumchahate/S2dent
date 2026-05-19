@@ -151,25 +151,24 @@ const teardownSeed = async () => {
   );
 };
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  ACADEMY_TOKEN = issueAccessToken();
-});
-
-beforeEach(async () => {
-  await cleanupDepartments(ACADEMY_ID);
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupDepartments(ACADEMY_ID);
-  await teardownSeed();
-});
-
 describe('GET /api/departments', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    ACADEMY_TOKEN = issueAccessToken();
+  });
+
+  beforeEach(async () => {
+    await cleanupDepartments(ACADEMY_ID);
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupDepartments(ACADEMY_ID);
+    await teardownSeed();
+  });
   it('returns 200 and a list of departments for a valid academy_id', async () => {
     // Seed some departments
     await db.query(

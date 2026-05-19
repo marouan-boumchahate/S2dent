@@ -155,3 +155,7 @@ export const issueCredentialSchema = Joi.object({
           'string.pattern.base': 'Signature must be a valid Ethereum signature (0x…)',
         }),
 });
+
+export const revokeCredentialSchema = Joi.object({
+    reason: Joi.string().max(500).required()
+});

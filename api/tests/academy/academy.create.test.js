@@ -60,18 +60,17 @@ const cleanupDB = async () => {
     `);
 };
 
-beforeEach(async () => {
-    await cleanupDB();
-});
-
-afterEach(async () => {
-    sinon.restore();
-    await cleanupDB();
-});
-
 // MY TESTS
 // ========
 describe('POST /api/academies', () => {
+    beforeEach(async () => {
+        await cleanupDB();
+    });
+
+    afterEach(async () => {
+        sinon.restore();
+        await cleanupDB();
+    });
 
     it('returns 201 and the academy DTO on valid input', async () => {
         const body = validBody();

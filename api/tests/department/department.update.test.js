@@ -152,33 +152,32 @@ const teardownSeed = async () => {
   );
 };
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  ACADEMY_TOKEN = issueAccessToken();
-});
-
-beforeEach(async () => {
-  await cleanupDepartments(ACADEMY_ID);
-  
-  const { rows: [dept] } = await db.query(
-    `INSERT INTO departments (academy_id, code, name, faculty, total_years, description)
-     VALUES ($1, 'UPDT', 'Update Test', 'Test Faculty', 4, 'Old description')
-     RETURNING id`,
-    [ACADEMY_ID],
-  );
-  DEPARTMENT_ID = dept.id;
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupDepartments(ACADEMY_ID);
-  await teardownSeed();
-});
-
 describe('PUT /api/departments/:id', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    ACADEMY_TOKEN = issueAccessToken();
+  });
+
+  beforeEach(async () => {
+    await cleanupDepartments(ACADEMY_ID);
+
+    const { rows: [dept] } = await db.query(
+      `INSERT INTO departments (academy_id, code, name, faculty, total_years, description)
+       VALUES ($1, 'UPDT', 'Update Test', 'Test Faculty', 4, 'Old description')
+       RETURNING id`,
+      [ACADEMY_ID],
+    );
+    DEPARTMENT_ID = dept.id;
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupDepartments(ACADEMY_ID);
+    await teardownSeed();
+  });
   it('returns 200 and the updated department DTO on valid input', async () => {
     const payload = {
       description: 'New description',

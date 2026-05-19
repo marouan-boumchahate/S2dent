@@ -129,13 +129,19 @@ const revokeCredential = async (payload) => {
 
         const {
             studentAddress,
-            index,
+            credentialIndex,
             revokerAddress,
             reason,
         } = payload
 
-        const params = [studentAddress, index, revokerAddress, reason]
+        const params = [studentAddress, BigInt(credentialIndex), revokerAddress, reason]
 
+        console.log('Estimating gas for revokeCredential with params:', {
+            studentAddress,
+            credentialIndex: credentialIndex.toString(),
+            revokerAddress,
+            reason,
+        })
         const gasLimit = await getGasLimit(contract, 'revokeCredential', params)
 
         const tx = await contract.revokeCredential(...params, { gasLimit })
@@ -144,6 +150,7 @@ const revokeCredential = async (payload) => {
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
+        console.error('Error in revokeCredential:', reason, err)
         const wrapped = new Error(`revokeCredential failed: ${reason.includes('revert') ? 'Already revoked or does not exist' : reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
@@ -156,7 +163,7 @@ const getCredential = async (studentAddress, index) => {
         const contract = getContract()
 
         const count = await contract.getCredentialCount(studentAddress)
-        const credentialIndex = typeof index === 'bigint' ? index : BigInt(index)
+        const credentialIndex = BigInt(index)
 
         if (credentialIndex >= count) {
             return null

@@ -59,15 +59,14 @@ const postUser = (body) => request(app)
   .set('Authorization', `Bearer ${academyToken}`)
   .send(body);
 
-beforeEach(async () => {
-  await cleanupUsers();
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
 describe('POST /api/users', () => {
+  beforeEach(async () => {
+    await cleanupUsers();
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
   it('returns 201 and the user DTO on valid input', async () => {
     const body = validBody();
 

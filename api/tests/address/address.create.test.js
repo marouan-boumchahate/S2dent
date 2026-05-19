@@ -99,23 +99,22 @@ const issueAccessToken = (payload = {}) => signTokens(
   true,
 ).accessToken;
 
-before(async () => {
-  await cleanupAddresses();
-  USER_ID = await seedTUser();
-  ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
-});
-
-beforeEach(async () => {
-  await cleanupAddresses();
-  USER_ID = await seedTUser();
-  ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
 describe('POST /api/addresses', () => {
+  before(async () => {
+    await cleanupAddresses();
+    USER_ID = await seedTUser();
+    ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
+  });
+
+  beforeEach(async () => {
+    await cleanupAddresses();
+    USER_ID = await seedTUser();
+    ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
   it('returns 201 and the address DTO on valid input', async () => {
     const body = validBody({ user_id: USER_ID });
 

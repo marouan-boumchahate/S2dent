@@ -1,5 +1,9 @@
 import { ok } from '../../utils/response.js';
-import { createCredentialService, issueCredentialService } from './credential.service.js';
+import { 
+    createCredentialService, 
+    issueCredentialService,
+    revokeCredentialService
+} from './credential.service.js';
 
 const createCredentialController = async (req, res, next) => {
     const { sub: issuer_address } = req.user;
@@ -31,10 +35,19 @@ const issueCredentialController = async (req, res, next) => {
 
     return ok(res, result, 'Credential issued successfully');
 };
+const revokeCredentialController = async (req, res, next) => {
+    const { sub: issuer_address } = req.user;
+    const { id: credential_id } = req.params;
+    const { reason } = req.body;
+
+    const result = await revokeCredentialService(issuer_address, credential_id, reason);
+
+    return ok(res, result, 'Credential revoked successfully');
+};
 
 
 export {
     createCredentialController,
-    issueCredentialController
+    issueCredentialController,
+    revokeCredentialController
 };
-

@@ -109,17 +109,16 @@ const createAddress = async (overrides = {}) => {
   return res.body.data.address;
 };
 
-beforeEach(async () => {
-  await cleanupAddresses();
-  USER_ID = await seedTUser();
-  ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
 describe('PUT /api/addresses', () => {
+  beforeEach(async () => {
+    await cleanupAddresses();
+    USER_ID = await seedTUser();
+    ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
   it('returns 200 and the updated address DTO on valid input', async () => {
     const existing = await createAddress();
 

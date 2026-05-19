@@ -296,6 +296,9 @@ const sendOtpService = async (email) => {
     const otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
     const message = `Sign this nonce to verify your identity: ${getNonce()}`;
 
+    // const otp = "000000";
+    // const message = 'Sign this nonce to verify your identity: Testing Nonce';
+
     const cacheKey = otpKey(email, otp);
     const payload = { id, message, role };
 
@@ -316,5 +319,5 @@ export {
     verifySignatureService, 
     refreshTokenService, 
     logoutService, 
-    sendOtpService 
+    sendOtpService
 };

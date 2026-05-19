@@ -34,7 +34,7 @@ const revokeIdentityOffChain = async ({ wallet_address, revoke_identity_tx_hash 
 const saveCredentialOffChain = async ({ credential_code, credential_index, issue_credential_tx_hash }) => {
     await db.query(`
         UPDATE credentials
-        SET issue_tx_hash = $2, issued_at = NOW(), status = 'issued', credential_index = $3
+        SET issue_tx_hash = $2, issued_at = NOW(), status = 'issued', credential_index = $3, updated_at = NOW()
         WHERE code = $1
         `, [credential_code, issue_credential_tx_hash, credential_index]
     );
@@ -42,8 +42,8 @@ const saveCredentialOffChain = async ({ credential_code, credential_index, issue
 const revokeCredentialOffChain = async ({ credential_code, revocation_reason, revoke_credential_tx_hash }) => {
     await db.query(`
         UPDATE credentials
-        SET revoke_tx_hash = $2, revoked_at = NOW(), status = 'revoked', revocation_reason = $3
-        WHERE credential_code = $1
+        SET revoke_tx_hash = $2, revoked_at = NOW(), status = 'revoked', revocation_reason = $3, updated_at = NOW()
+        WHERE code = $1
         `, [credential_code, revoke_credential_tx_hash, revocation_reason]
     );
 }
@@ -99,6 +99,7 @@ export const listenOnTransaction = (tx) => {
         .then(async (receipt) => {
             const { payload } = await setTransactionStatus(tx.hash, 'confirmed')
 
+            console.log('Logs of the transaction receipt:', receipt.logs)
             await performAction(payload, tx.hash, receipt)
 
             emitToUser(payload.wallet_address, 'identity:confirmed', {
