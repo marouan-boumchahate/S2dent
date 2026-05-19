@@ -76,7 +76,7 @@ const handleStep3Submit = (e: React.FormEvent) => {
               value={department}
               onChange={setDepartment}
               required
-              options={['', 'Nursing', 'Pharmacy', 'Economics', 'Marketing', 'Mathematics', 'Physics', 'Biology', 'History', 'Computer Engineering', 'Mechanical Engineering', 'Civil Engineering']}
+              options={['', 'Nursing', 'Pharmacy', 'Economics', 'Marketing', 'Mathematics', 'Physics', 'Biology', 'History', 'Computer Engineering', 'Mechanical Engineering', 'Computer Science', 'Civil Engineering']}
             />
             <FormField
               label="Title (e.g. Dr.)"

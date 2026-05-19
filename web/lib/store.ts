@@ -46,9 +46,21 @@ export type Professor = {
   createdAt: string;
 };
 
+export type Department = {
+  id: string;
+  code: string;
+  name: string;
+  faculty: string;
+  totalYears: number;
+  description: string;
+  status: 'Active' | 'Inactive';
+  createdAt: string;
+};
+
 export const store = {
   students: [] as Student[],
   professors: [] as Professor[],
+  departments: [] as Department[],
 
   addStudent(s: Omit<Student, 'id' | 'createdAt'>) {
     const newStudent: Student = {
@@ -76,5 +88,27 @@ export const store = {
 
   removeProfessor(id: string) {
     this.professors = this.professors.filter(p => p.id !== id);
+  },
+
+  addDepartment(d: Omit<Department, 'id' | 'createdAt'>) {
+    const newDepartment: Department = {
+      ...d,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    this.departments.unshift(newDepartment);
+    return newDepartment;
+  },
+
+  updateDepartment(id: string, updates: Partial<Omit<Department, 'id' | 'createdAt'>>) {
+    const idx = this.departments.findIndex(d => d.id === id);
+    if (idx !== -1) {
+      this.departments[idx] = { ...this.departments[idx], ...updates };
+    }
+    return this.departments[idx];
+  },
+
+  removeDepartment(id: string) {
+    this.departments = this.departments.filter(d => d.id !== id);
   },
 };
