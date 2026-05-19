@@ -34,7 +34,7 @@ const revokeIdentityOffChain = async ({ wallet_address, revoke_identity_tx_hash 
 const saveCredentialOffChain = async ({ credential_code, credential_index, issue_credential_tx_hash }) => {
     await db.query(`
         UPDATE credentials
-        SET issue_tx_hash = $2, issued_at = NOW(), status = 'issued', credential_index = $3, updated_at = NOW()
+        SET issue_tx_hash = $2, issued_at = NOW(), credential_index = $3, updated_at = NOW()
         WHERE code = $1
         `, [credential_code, issue_credential_tx_hash, credential_index]
     );
@@ -42,7 +42,7 @@ const saveCredentialOffChain = async ({ credential_code, credential_index, issue
 const revokeCredentialOffChain = async ({ credential_code, revocation_reason, revoke_credential_tx_hash }) => {
     await db.query(`
         UPDATE credentials
-        SET revoke_tx_hash = $2, revoked_at = NOW(), status = 'revoked', revocation_reason = $3, updated_at = NOW()
+        SET revoke_tx_hash = $2, revoked_at = NOW(), revocation_reason = $3, updated_at = NOW()
         WHERE code = $1
         `, [credential_code, revoke_credential_tx_hash, revocation_reason]
     );
@@ -97,14 +97,14 @@ const notifyUser = async ({
 export const listenOnTransaction = (tx) => {
     tx.wait(1) // Wait for a block confirmation
         .then(async (receipt) => {
-            const { payload } = await setTransactionStatus(tx.hash, 'confirmed')
+            const { payload } = await setTransactionStatus(tx.hash, 'verified')
 
-            console.log('Logs of the transaction receipt:', receipt.logs)
+            //console.log('Logs of the transaction receipt:', receipt.logs)
             await performAction(payload, tx.hash, receipt)
 
-            emitToUser(payload.wallet_address, 'identity:confirmed', {
+            emitToUser(payload.wallet_address, 'identity:verified', {
                 tx_hash: tx.hash,
-                status: 'confirmed'
+                status: 'verified'
             })
             await notifyUser({
                 email: payload.email,

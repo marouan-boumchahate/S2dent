@@ -1,6 +1,7 @@
 import { Signature } from 'ethers';
 import Joi from 'joi';
 
+
 const semesters = [
     'fall',
     'spring',
@@ -58,6 +59,7 @@ const credentialTypes = [
 
 const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/
 const SIGNATURE = /^0x[0-9a-fA-F]{130}$/
+
 
 const payloadSchemas = {
     enrollment: Joi.object({
@@ -132,7 +134,8 @@ const payloadSchemas = {
     }),
 };
 
-export const createCredentialSchema = Joi.object({
+
+const createCredentialSchema = Joi.object({
     title: Joi.string().max(255).required(),
     credential_type: Joi.string().valid(...credentialTypes).required(),
     description: Joi.string().optional(),
@@ -148,14 +151,19 @@ export const createCredentialSchema = Joi.object({
         otherwise: Joi.forbidden(),
     }),
 });
-
-export const issueCredentialSchema = Joi.object({
+const issueCredentialSchema = Joi.object({
     signature: Joi.string().pattern(SIGNATURE).required()
         .messages({
           'string.pattern.base': 'Signature must be a valid Ethereum signature (0x…)',
         }),
 });
-
-export const revokeCredentialSchema = Joi.object({
+const revokeCredentialSchema = Joi.object({
     reason: Joi.string().max(500).required()
 });
+
+
+export {
+    createCredentialSchema,
+    issueCredentialSchema,
+    revokeCredentialSchema
+}

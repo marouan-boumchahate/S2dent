@@ -1,9 +1,81 @@
 import { ethers, recoverAddress } from 'ethers';
 import db from '../../config/db.js';
 import { env } from '../../config/env.js';
-import { issueCredential, revokeCredential } from '../../blockchain/credential.blockchain.js';
+import { issueCredential, revokeCredential, getCredential } from '../../blockchain/credential.blockchain.js';
 import { listenOnTransaction } from '../../blockchain/listener.js';
 import { hash, recoverSignerFromTypedData, encryptWithPublicKey } from '../../utils/crypto.js';
+import { get } from 'http';
+
+
+// DTOs
+const credentialSummaryDTO = (credential) => ({
+    id: credential.id,
+    title: credential.title,
+    code: credential.code,
+    type: credential.type,
+    student_name: credential.student_name,
+    issued_at: credential.issued_at,
+    is_revoked: credential.revoked_at !== null,
+    status: credential.status
+});
+const credentialDTO = (credential) => ({
+    meta: {
+        id: credential.id,
+        title: credential.title,
+        code: credential.code,
+        type: credential.type,
+        description: credential.description,
+        locale: credential.locale,
+        issued_at: credential.issued_at,
+        is_revoked: credential.revoked_at !== null,
+    },
+    student: {
+        address: credential.student_address,
+        name: credential.student_name,
+    },
+    blockchain: {
+        issue_tx_hash: credential.issue_tx_hash,
+        revoke_tx_hash: credential.revoke_tx_hash,
+        revocation_reason: credential.revocation_reason,
+        credential_index: credential.credential_index,
+        academy_address: credential.academy_address,
+        issuer_address: credential.issuer_address,
+    },
+    verification: {
+        payload_hash: credential.payload_hash,
+        signature: credential.signature,
+    },
+    payload: credential.payload
+});
+const studentCredentialDTO = (credential) => ({
+    meta: {
+        id: credential.id,
+        title: credential.title,
+        code: credential.code,
+        type: credential.type,
+        description: credential.description,
+        locale: credential.locale,
+        issued_at: credential.issued_at,
+        is_revoked: credential.revoked_at !== null,
+    },
+    student: {
+        address: credential.student_address,
+        name: credential.student_name,
+    },
+    blockchain: {
+        issue_tx_hash: credential.issue_tx_hash,
+        revoke_tx_hash: credential.revoke_tx_hash,
+        revocation_reason: credential.revocation_reason,
+        credential_index: credential.credential_index,
+        academy_address: credential.academy_address,
+        issuer_address: credential.issuer_address,
+    },
+    verification: {
+        payload_hash: credential.payload_hash,
+        signature: credential.signature,
+    },
+    encryptedPayload: credential.encrypted_payload
+});
 
 
 // constants
@@ -29,6 +101,21 @@ const REVOKE_ON_FAILURE = {
 
 
 // Helpers
+const canIssueTargetCredentialType = (issuerRole, credentialType) => {
+    if(issuerRole === 'professor' && credentialType !== 'attendance') {
+        const err = new Error('Professors can only issue attendance credentials');
+        err.statusCode = 400;
+        err.code = 'INVALID_CREDENTIAL_TYPE_FOR_PROFESSOR';
+        throw err;
+    }
+
+    if(issuerRole === 'academy' && credentialType === 'attendance') {
+        const err = new Error('Academies cannot issue attendance credentials'); 
+        err.statusCode = 400;
+        err.code = 'INVALID_CREDENTIAL_TYPE_FOR_ACADEMY';
+        throw err;
+    }
+}
 const getStudentAndAcademyData = async (student_address) => {
     const { rows: [identity] } = await db.query(
         `SELECT s.academy_id, u.full_name AS student_name, a.name AS academy_name, ai.wallet_address AS academy_wallet_address
@@ -157,14 +244,19 @@ const insertCredentialToDB = async (data) => {
 const updateCredential = async (credentialId, data) => {
     const {
         signature,
-        encryptedPayload
+        encryptedPayload,
+        issue_tx_hash,
+        revoke_tx_hash
     } = data;
 
     await db.query(
         `UPDATE credentials
-         SET signature = $2, encrypted_payload = $3, updated_at = NOW(), status = 'pending'
+         SET signature = COALESCE($2, signature), encrypted_payload = COALESCE($3, encrypted_payload), 
+             issue_tx_hash = COALESCE($4, issue_tx_hash), 
+             revoke_tx_hash = COALESCE($5, revoke_tx_hash), 
+             updated_at = NOW()
          WHERE id = $1`,
-        [credentialId, signature, encryptedPayload]
+        [credentialId, signature, encryptedPayload, issue_tx_hash, revoke_tx_hash]
     );
 };
 const getCredentialSigningData = (credential) => {
@@ -253,9 +345,9 @@ const fetchCredentialByIdForRevocation = async (credentialId) => {
     const { rows: [credential] } = await db.query(
         `SELECT c.authorizer_wallet_address, c.student_wallet_address, c.credential_index, c.code, u.email AS student_email
          FROM credentials c
-         JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student' AND i.is_active = TRUE
+         JOIN identities i ON LOWER(c.student_wallet_address) = LOWER(i.wallet_address) AND i.role = 'student' AND i.is_active = TRUE
          JOIN users u ON u.id = i.user_id
-         WHERE c.id = $1 AND c.status = 'issued' AND c.revoked_at IS NULL`,
+         WHERE c.id = $1 AND (c.issued_at IS NOT NULL OR c.issue_tx_hash IS NOT NULL) AND c.revoked_at IS NULL`,
         [credentialId]
     );
 
@@ -317,8 +409,96 @@ const compareTwoAddresses = (revokerAddress, academyAddress, errMsg, errCode) =>
     }
 }
 
+const getCredentialById = async (credential_id, wallet_address, role) => {
+    let whereClause;
+    switch(role) {
+        case 'student':
+            whereClause = 'WHERE c.id = $1 AND LOWER(c.student_wallet_address) = LOWER($2)';
+            break;
+        case 'academy':
+            whereClause = 'WHERE c.id = $1 AND LOWER(c.authorizer_wallet_address) = LOWER($2)';
+            break;
+        case 'professor':
+            whereClause = 'WHERE c.id = $1 AND LOWER(c.issuer_wallet_address) = LOWER($2)';
+            break;
+        default:
+            const err = new Error('Invalid role for credential access');
+            err.statusCode = 400;
+            err.code = 'INVALID_ROLE';
+            throw err;
+    }
+
+    const { rows: [credential] } = await db.query(
+        `SELECT c.id, c.title, c.code,
+                c.type, c.description, c.locale,
+                c.student_wallet_address as student_address, u.full_name as student_name,
+                c.issue_tx_hash, c.revoke_tx_hash, c.authorizer_wallet_address as academy_address,
+                c.credential_index, c.payload,
+                i2.public_key as issuer_public_key
+         FROM credentials c
+         JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student'
+         JOIN identities i2 ON c.issuer_wallet_address = i2.wallet_address
+         JOIN users u ON i.user_id = u.id
+         ${whereClause}`,
+        [credential_id, wallet_address]
+    );
+
+    if (!credential) {
+        const err = new Error('Credential not found');
+        err.statusCode = 404;
+        err.code = 'CREDENTIAL_NOT_FOUND';
+        throw err;
+    }
+
+    return credential;
+};
+const isPayloadTamperedWith = (payload, payloadHash) => {
+    const computedHash = getPayloadHash(payload);
+
+    if(computedHash !== payloadHash) {
+        const err = new Error('Credential payload has been tampered with. Data integrity cannot be verified.');
+        err.statusCode = 500;
+        err.code = 'CREDENTIAL_DATA_INTEGRITY_ERROR';
+        throw err;
+    }
+};
+const getAllCredentials = async (wallet_address, role) => {
+    let whereClause;
+    switch(role) {
+        case 'student':
+            whereClause = 'WHERE LOWER(c.student_wallet_address) = LOWER($1) AND c.issued_at IS NOT NULL';
+            break;
+        case 'academy':
+            whereClause = 'WHERE LOWER(c.authorizer_wallet_address) = LOWER($1)';
+            break;
+        case 'professor':
+            whereClause = 'WHERE LOWER(c.issuer_wallet_address) = LOWER($1)';
+            break;
+        default:
+            const err = new Error('Invalid role for credential access');
+            err.statusCode = 400;
+            err.code = 'INVALID_ROLE';
+            throw err;
+    }
+
+    const { rows: credentials } = await db.query(`
+        SELECT c.id, c.title, c.code, c.type,
+               u.full_name as student_name,
+               c.issued_at, c.revoked_at, pt.status
+        FROM credentials c
+        JOIN pending_transactions pt ON COALESCE(c.revoke_tx_hash, c.issue_tx_hash) = pt.tx_hash
+        JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student'
+        JOIN users u ON i.user_id = u.id
+        ${whereClause}`,
+        [wallet_address]
+    );
+
+    return credentials;
+}
+
+
 // Services
-const createCredentialService = async (issuer_address, data) => {
+const createCredentialService = async (issuer_address, role, data) => {
     const {
         title,
         credential_type,
@@ -326,6 +506,8 @@ const createCredentialService = async (issuer_address, data) => {
         student_address,
         payload
     } = data;
+
+    canIssueTargetCredentialType(role, credential_type);
 
     const checksumStudentAddr = ethers.getAddress(student_address);
     const {
@@ -402,7 +584,7 @@ const issueCredentialService = async (issuer_address, credential_id, signature) 
         encryptedPayload
     });
 
-    await updateCredential(credential.id, { signature, encryptedPayload });
+    await updateCredential(credential.id, { signature, encryptedPayload, issue_tx_hash: tx.hash });
 
     const pendingPayload = {
         action: 'credential_issue',
@@ -452,6 +634,8 @@ const revokeCredentialService = async (revoker_address, credential_id, reason) =
         reason
     });
 
+    await updateCredential(credential_id, { revoke_tx_hash: tx.hash });
+
     const pendingPayload = {
         action: 'credential_revoke',
         credential_code: credentialCode,
@@ -475,6 +659,68 @@ const revokeCredentialService = async (revoker_address, credential_id, reason) =
         }
     };
 }
+const fetchCredentialService = async (credential_id, caller_address, role) => {
+    const {
+        id: credentialId,
+        title,
+        code,
+        type,
+        description,
+        locale,
+        student_address,
+        student_name,
+        issue_tx_hash,
+        revoke_tx_hash,
+        credential_index,
+        issuer_public_key,
+        payload: originalPayload
+    } = await getCredentialById(credential_id, caller_address, role);
+
+    const { identity, payload, status } = await getCredential(student_address, credential_index);
+
+    isPayloadTamperedWith(originalPayload, payload.payloadHash);
+
+    const credential = {
+        id: credentialId,
+        title: title,
+        code: code,
+        type: type,
+        description: description,
+        locale: locale,
+        issued_at: status.issuedAt,
+        revoked_at: status.revokedAt,
+        student_address: student_address,
+        student_name: student_name,
+        issue_tx_hash: issue_tx_hash,
+        revoke_tx_hash: revoke_tx_hash,
+        revocation_reason: status.revocationReason,
+        credential_index: credential_index,
+        academy_address: status.academyAddress,
+        issuer_address: status.issuerAddress,
+        payload_hash: payload.payloadHash,
+        signature: payload.payloadSignature,
+        payload: originalPayload,
+        encrypted_payload: payload.encryptedPayload,
+    };
+
+    return (role === 'student') 
+        ? studentCredentialDTO(credential) 
+        : credentialDTO(credential);
+}
+const fetchAllCredentialsService = async (wallet_address, role) => {
+    const credentials = await getAllCredentials(wallet_address, role);
+    return { 
+        credentials: credentials.map(credential => 
+            credentialSummaryDTO(credential)
+        ) 
+    };
+}
 
 
-export { createCredentialService, issueCredentialService, revokeCredentialService };
+export { 
+    createCredentialService, 
+    issueCredentialService, 
+    revokeCredentialService, 
+    fetchCredentialService,
+    fetchAllCredentialsService
+};

@@ -87,7 +87,7 @@ describe('DELETE /api/credentials/:id/revoke', function () {
   const seedCredentialIssued = async ({
     authorizerWallet = SEED_WALLET,
     studentWallet = STUDENT_WALLET,
-    status = 'issued',
+    isIssued = true,
     revokedAt = null,
   } = {}) => {
     const credentialCode = 'CRD_R_' + Date.now();
@@ -103,7 +103,7 @@ describe('DELETE /api/credentials/:id/revoke', function () {
           issuer_wallet_address,
           student_wallet_address,
           credential_index,
-          status,
+          issue_tx_hash,
           revoked_at,
           payload,
           payload_hash
@@ -119,7 +119,7 @@ describe('DELETE /api/credentials/:id/revoke', function () {
         ethers.getAddress(authorizerWallet),
         ethers.getAddress(studentWallet),
         1,
-        status,
+        isIssued ? '0x' + '1'.repeat(64) : null,
         revokedAt,
         payload,
         '0x' + 'a'.repeat(64),
@@ -263,7 +263,7 @@ describe('DELETE /api/credentials/:id/revoke', function () {
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ reason: 'Not found' });
 
-    const { id: notIssuedId } = await seedCredentialIssued({ status: 'pending' });
+    const { id: notIssuedId } = await seedCredentialIssued({ isIssued: false });
     const notIssuedRes = await request(app)
       .delete(`/api/credentials/${notIssuedId}/revoke`)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)

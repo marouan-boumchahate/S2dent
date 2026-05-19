@@ -3,6 +3,33 @@ import { env } from '../config/env.js'
 import { platformWallet } from '../config/blockchain.js'
 import S2dentABI from './contracts/S2dent.json' with { type: 'json' }
 
+
+// DTOs
+const toCredentialData = (record) => ({
+    identity: {
+        title: record.identity.title.toString(),
+        code: record.identity.code.toString(),
+        credentialType: getCredentialTypeFromUint8(record.identity.credentialType),
+        description: record.identity.description.toString(),
+        academyName: record.identity.academyName.toString(),
+    },
+    payload: {
+        payloadHash: record.payload.payloadHash,
+        payloadSignature: record.payload.payloadSignature,
+        encryptedPayload: record.payload.encryptedPayload,
+    },
+    status: {
+        issuedAt: new Date(Number(record.status.issuedAt) * 1000),
+        revokedAt: record.status.revokedAt === 0n ? null : new Date(Number(record.status.revokedAt) * 1000),
+        academyAddress: record.status.academy.toString(),
+        issuerAddress: record.status.issuer.toString(),
+        revokerAddress: record.status.revokedAt === 0n ? null : record.status.revoker.toString(),
+        isRevoked: !record.status.isNotRevoked,
+        revocationReason: record.status.revocationReason,
+    },
+})
+
+
 // constants
 const blockchain = env.blockchain
 
@@ -47,29 +74,19 @@ const normalizeCredentialType = (value) => {
 
     return normalized
 }
-const toCredentialData = (record) => ({
-    identity: {
-        title: record.identity.title,
-        code: record.identity.code,
-        credentialType: Number(record.identity.credentialType),
-        description: record.identity.description,
-        academyName: record.identity.academyName,
-    },
-    payload: {
-        payloadHash: record.payload.payloadHash,
-        payloadSignature: record.payload.payloadSignature,
-        encryptedPayload: record.payload.encryptedPayload,
-    },
-    status: {
-        issuedAt: new Date(Number(record.status.issuedAt) * 1000),
-        revokedAt: record.status.revokedAt === 0n ? null : new Date(Number(record.status.revokedAt) * 1000),
-        academy: record.status.academy.toString(),
-        issuer: record.status.issuer.toString(),
-        revoker: record.status.revokedAt === 0n ? null : record.status.revoker.toString(),
-        isRevoked: !record.status.isNotRevoked,
-        revocationReason: record.status.revocationReason,
-    },
-})
+const getCredentialTypeFromUint8 = (value) => {
+    const num = (typeof value === 'bigint') ? Number(value) : Number(value)
+
+    if (!Number.isInteger(num) || num < 0) {
+        throw new Error(`Invalid credential type value: ${value}`)
+    }
+
+    for (const [key, val] of Object.entries(CREDENTIAL_TYPE_TO_UINT8)) {
+        if (val === num) return key
+    }
+
+    throw new Error(`Unsupported credential type value: ${value}`)
+}
 
 
 // Services
@@ -183,32 +200,6 @@ const getCredential = async (studentAddress, index) => {
         throw wrapped
     }
 }
-// const getCredentialsForStudent = async (studentAddress) => {
-//     try {
-//         const contract = getContract()
 
-//         const count = await contract.getCredentialCount(studentAddress)
-//         const credentials = []
 
-//         for (let index = 0n; index < count; index += 1n) {
-//             const record = await contract.getCredential(studentAddress, index)
-//             credentials.push({
-//                 index: Number(index),
-//                 ...toCredentialData(record),
-//             })
-//         }
-
-//         return credentials
-
-//     } catch (err) {
-//         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
-
-//         const wrapped = new Error(`getCredentialsForStudent failed: ${reason}`)
-//         wrapped.statusCode = 502
-//         wrapped.code = 'BLOCKCHAIN_ERROR'
-//         wrapped.cause = err
-//         throw wrapped
-//     }
-// }
-
-export { issueCredential, revokeCredential, getCredential }
+export { issueCredential, revokeCredential, getCredential, getCredentialTypeFromUint8 }
