@@ -76,13 +76,13 @@ class CredentialDetailsDialog extends StatelessWidget {
               context,
               "assets/icons/issuer.svg",
               "Issuer",
-              credential?.issuerName ?? "",
+              credential?.issuerAddress ?? "",
             ),
             _credentialInfoTile(
               context,
               "assets/icons/person.svg",
               "Issued to",
-              credential?.issuedTo ?? "",
+              credential?.studentAddress ?? "",
             ),
             _credentialInfoTile(
               context,
@@ -90,12 +90,13 @@ class CredentialDetailsDialog extends StatelessWidget {
               "Issued at",
               dateFormatter(credential?.issuedAt),
             ),
-            _credentialInfoTile(
-              context,
-              "assets/icons/expires_at.svg",
-              "Expires at",
-              dateFormatter(credential?.expiresAt),
-            ),
+            if (credential?.status == CredentialStatus.revoked)
+              _credentialInfoTile(
+                context,
+                "assets/icons/expires_at.svg",
+                "Revocation reason",
+                credential?.revocationReason ?? "",
+              ),
             const Divider(
               thickness: 2,
             ),
