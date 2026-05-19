@@ -2,11 +2,14 @@ import { ok } from '../../utils/response.js';
 import { 
     createCredentialService, 
     issueCredentialService,
-    revokeCredentialService
+    revokeCredentialService,
+    fetchCredentialService,
+    fetchAllCredentialsService
 } from './credential.service.js';
 
+
 const createCredentialController = async (req, res, next) => {
-    const { sub: issuer_address } = req.user;
+    const { sub: issuer_address, role } = req.user;
     const {
         title,
         credential_type,
@@ -16,7 +19,7 @@ const createCredentialController = async (req, res, next) => {
     } = req.body;
 
 
-    const result = await createCredentialService(issuer_address, {
+    const result = await createCredentialService(issuer_address, role, {
         title,
         credential_type,
         description,
@@ -44,10 +47,27 @@ const revokeCredentialController = async (req, res, next) => {
 
     return ok(res, result, 'Credential revoked successfully');
 };
+const fetchCredentialController = async (req, res, next) => {
+    const { sub, role } = req.user;
+    const { id: credential_id } = req.params;
+
+    const result = await fetchCredentialService( credential_id, sub, role);
+
+    return ok(res, result, 'Credential fetched successfully');
+};
+const fetchAllCredentialsController = async (req, res, next) => {
+    const { sub, role } = req.user;
+
+    const result = await fetchAllCredentialsService(sub, role);
+
+    return ok(res, result, 'Credentials fetched successfully');
+};
 
 
 export {
     createCredentialController,
     issueCredentialController,
-    revokeCredentialController
+    revokeCredentialController,
+    fetchCredentialController,
+    fetchAllCredentialsController
 };

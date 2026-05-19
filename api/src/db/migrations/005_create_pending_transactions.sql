@@ -1,7 +1,7 @@
 DO $$ BEGIN
     CREATE TYPE transaction_status AS ENUM (
         'pending',
-        'confirmed',
+        'verified',
         'failed'
     );
 EXCEPTION

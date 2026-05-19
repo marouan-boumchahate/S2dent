@@ -7,14 +7,6 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    CREATE TYPE credential_status AS ENUM (
-        'pending', 'issued', 'revoked'
-    );
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-END $$;
-
 CREATE TABLE IF NOT EXISTS credentials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -38,8 +30,6 @@ CREATE TABLE IF NOT EXISTS credentials (
     revocation_reason TEXT,
     revoked_at TIMESTAMPTZ,
 
-    status credential_status,
-
     payload JSONB NOT NULL,
     payload_hash VARCHAR(66),
     encrypted_payload Text,
@@ -54,5 +44,4 @@ CREATE INDEX idx_credentials_type ON credentials(type);
 CREATE INDEX idx_credentials_authorizer ON credentials(authorizer_wallet_address);
 CREATE INDEX idx_credentials_issuer ON credentials(issuer_wallet_address);
 CREATE INDEX idx_credentials_student ON credentials(student_wallet_address);
-CREATE INDEX idx_credentials_status ON credentials(status);
 CREATE INDEX idx_credentials_payload ON credentials USING GIN(payload);

@@ -10,11 +10,26 @@ import {
 import { 
     createCredentialController,
     issueCredentialController,
-    revokeCredentialController 
+    revokeCredentialController,
+    fetchCredentialController,
+    fetchAllCredentialsController
 } from './credential.controller.js';
 
 const router = Router();
 
+
+router.get(
+    '/',
+    authenticate,
+    requireRole('student', 'professor', 'academy'),
+    fetchAllCredentialsController
+)
+router.get(
+    '/:id',
+    authenticate,
+    requireRole('student', 'professor', 'academy'),
+    fetchCredentialController
+)
 router.post(
     '/',
     authenticate,
@@ -36,5 +51,6 @@ router.delete(
     validate(revokeCredentialSchema),
     revokeCredentialController
 );
+
 
 export default router;

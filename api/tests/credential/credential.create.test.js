@@ -105,7 +105,7 @@ describe('POST /api/credentials', () => {
       `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
        VALUES ($1, $2, $3, 'student', TRUE)
        ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
-      [user.id, ethers.getAddress(STUDENT_WALLET), '0x04studpub' + 'b'.repeat(120)]
+      [user.id, ethers.getAddress(STUDENT_WALLET), '0x04studpub' + STUDENT_WALLET.slice(2, 10).padEnd(120, '0')]
     );
 
     return user.id;
@@ -209,16 +209,18 @@ describe('POST /api/credentials', () => {
 
     const body = {
       title: 'Professor Endorsement',
-      credential_type: 'certificate',
+      credential_type: 'attendance',
       student_address: ethers.getAddress(STUDENT_WALLET),
       payload: {
-        certificate_name: 'Lab Excellence',
-        certificate_code: 'LAB-101',
-        certificate_category: 'technical',
-        delivery_mode: 'in_person',
-        start_date: '2024-01-01',
-        end_date: '2024-02-01',
-        instructor_name: 'Prof Test'
+        course_code: 'CS101',
+        course_name: 'Intro to Logic',
+        academic_year: '2023-2024',
+        semester: 'fall',
+        total_sessions: 30,
+        attended_sessions: 28,
+        excused_absences: 2,
+        period_from: '2023-09-01',
+        period_to: '2023-12-30'
       }
     };
 
@@ -229,6 +231,56 @@ describe('POST /api/credentials', () => {
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
+  });
+  
+  it('returns 400 when an academy tries to create an attendance credential', async () => {
+    const res = await request(app)
+      .post('/api/credentials')
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .send({
+        title: 'Academy Attendance',
+        credential_type: 'attendance',
+        student_address: ethers.getAddress(STUDENT_WALLET),
+        payload: {
+          course_code: 'CS101',
+          course_name: 'Intro to Logic',
+          academic_year: '2023-2024',
+          semester: 'fall',
+          total_sessions: 30,
+          attended_sessions: 28,
+          excused_absences: 2,
+          period_from: '2023-09-01',
+          period_to: '2023-12-30'
+        }
+      });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.code, 'INVALID_CREDENTIAL_TYPE_FOR_ACADEMY');
+  });
+  
+  it('returns 400 when a professor tries to create a non-attendance credential', async () => {
+    const profToken = issueAccessToken({ sub: PROFESSOR_WALLET, role: 'professor' });
+    const res = await request(app)
+      .post('/api/credentials')
+      .set('Authorization', `Bearer ${profToken}`)
+      .send({
+        title: 'Professor Certificate',
+        credential_type: 'certificate',
+        student_address: ethers.getAddress(STUDENT_WALLET),
+        payload: {
+          certificate_name: 'Advanced Testing',
+          certificate_code: 'CERT-202',
+          certificate_category: 'professional',
+          program_duration_hours: 12,
+          delivery_mode: 'online',
+          start_date: '2024-01-01',
+          end_date: '2024-02-01',
+          final_score: 88,
+          passing_score: 60,
+          instructor_name: 'Dr. Logic'
+        }
+      });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.code, 'INVALID_CREDENTIAL_TYPE_FOR_PROFESSOR');
   });
 
   it('returns 403 when a student tries to create a credential', async () => {
@@ -296,9 +348,19 @@ describe('POST /api/credentials', () => {
       .set('Authorization', `Bearer ${otherProfToken}`)
       .send({ 
         title: 'X', 
-        credential_type: 'certificate', 
+        credential_type: 'attendance', 
         student_address: ethers.getAddress(STUDENT_WALLET),
-        payload: { certificate_name: 'A', certificate_code: 'B', certificate_category: 'professional', delivery_mode: 'online', start_date: '2024-01-01', end_date: '2024-02-01', instructor_name: 'I' }
+        payload: {
+          course_code: 'CS101',
+          course_name: 'Intro to Logic',
+          academic_year: '2023-2024',
+          semester: 'fall',
+          total_sessions: 30,
+          attended_sessions: 28,
+          excused_absences: 2,
+          period_from: '2023-09-01',
+          period_to: '2023-12-30'
+        }
       });
 
     assert.equal(res.status, 401);
