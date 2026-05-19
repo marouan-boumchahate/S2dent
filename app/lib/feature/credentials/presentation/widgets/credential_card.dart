@@ -45,7 +45,7 @@ class CredentialCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      credential?.issuerName ?? "",
+                      credential?.issuerAddress ?? "",
                       style: context.texts.bodyLarge?.copyWith(
                         color: Colors.grey,
                       ),

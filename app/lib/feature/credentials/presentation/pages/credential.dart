@@ -134,23 +134,27 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
 
   Widget _body(List<Credential> data) {
     final filtered = _applyFilters(data);
-    return MainLayout(
-      children: [
-        _HeaderSection(
-          searchController: _searchController,
-          hasActiveFilters: _hasActiveFilters,
-          onFilterTap: _showFilterSheet,
-          credentialCount: filtered.length,
-        ),
-        const SizedBox(height: 16),
-        ...List.generate(
-          filtered.length,
-          (index) => CredentialCard(
-            credential: filtered[index],
-            onTap: () => showCredentialDetails(filtered[index]),
+    return RefreshIndicator(
+      onRefresh: () =>
+          ref.read(credentialControllerProvider.notifier).loadCredentials(),
+      child: MainLayout(
+        children: [
+          _HeaderSection(
+            searchController: _searchController,
+            hasActiveFilters: _hasActiveFilters,
+            onFilterTap: _showFilterSheet,
+            credentialCount: filtered.length,
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          ...List.generate(
+            filtered.length,
+            (index) => CredentialCard(
+              credential: filtered[index],
+              onTap: () => showCredentialDetails(filtered[index]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -186,9 +190,11 @@ class _HeaderSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 16),
           Text(
             "Credentials",
-            style: context.texts.displaySmall!
+            style: context.texts.displaySmall
+                ?.copyWith(fontSize: 28)
                 .copyWith(color: context.colors.primary),
           ),
           Text(

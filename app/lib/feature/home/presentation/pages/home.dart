@@ -199,7 +199,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       credential: data.recentCredentials?[index]),
                 ),
                 title: data.recentCredentials?[index].title ?? "",
-                subTitle: data.recentCredentials?[index].issuerName ?? "",
+                subTitle: data.recentCredentials?[index].type.name ?? "",
                 icon: CredentialIcon(
                     type: data.recentCredentials?[index].type ??
                         CredentialType.unknown),
