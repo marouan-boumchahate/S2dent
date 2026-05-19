@@ -180,29 +180,28 @@ const teardownSeed = async () => {
   );
 };
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
-});
-
-beforeEach(async () => {
-  await cleanupStudents();
-  USER_ID = await seedUser();
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupStudents();
-  await teardownSeed();
-});
-
 const endpoint = "/api/students"
 
 describe('POST /api/students', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+  });
+
+  beforeEach(async () => {
+    await cleanupStudents();
+    USER_ID = await seedUser();
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupStudents();
+    await teardownSeed();
+  });
   const formatLocalDateOnly = (isoStringOrDate) => {
     const d = new Date(isoStringOrDate);
     const yyyy = d.getFullYear();

@@ -250,30 +250,29 @@ const teardownSeed = async () => {
   );
 };
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
-});
-
-beforeEach(async () => {
-  await cleanupStudents();
-  USER_ID = await seedUser();
-  STUDENT_ID = await seedStudent(USER_ID, ACADEMY_ID, DEPARTMENT_ID);
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupStudents();
-  await teardownSeed();
-});
-
 const endpoint = "/api/students"
 
 describe('PUT /api/students/:id', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+  });
+
+  beforeEach(async () => {
+    await cleanupStudents();
+    USER_ID = await seedUser();
+    STUDENT_ID = await seedStudent(USER_ID, ACADEMY_ID, DEPARTMENT_ID);
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupStudents();
+    await teardownSeed();
+  });
   it('returns 201 and the student DTO on valid cgpa update', async () => {
     const body = {
       cgpa: 3.75,

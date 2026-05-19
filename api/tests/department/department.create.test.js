@@ -162,26 +162,24 @@ const validBody = (overrides = {}) => ({
   ...overrides,
 });
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  ACADEMY_TOKEN = issueAccessToken();
-});
-
-beforeEach(async () => {
-  await cleanupDepartments();
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupDepartments();
-  await teardownSeed();
-});
-
-
 describe('POST /api/departments', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    ACADEMY_TOKEN = issueAccessToken();
+  });
+
+  beforeEach(async () => {
+    await cleanupDepartments();
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupDepartments();
+    await teardownSeed();
+  });
   it('returns 201 and the department DTO on valid input', async () => {
     const body = validBody();
 

@@ -177,29 +177,28 @@ const teardownSeed = async () => {
   await db.query(`DELETE FROM academies WHERE id = $1`, [ACADEMY_ID]);
 };
 
-before(async () => {
-    ACADEMY_ID = await seedAcademy();
-    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
-});
-
-beforeEach(async () => {
-    await cleanupProfessors();
-    TUSER_ID = await seedTUser();
-});
-
-afterEach(async () => {
-    sinon.restore();
-});
-
-after(async () => {
-    await cleanupProfessors();
-    await teardownSeed();
-});
-
 // MY TESTS
 // ========
 describe('POST /api/professors', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+  });
+
+  beforeEach(async () => {
+    await cleanupProfessors();
+    TUSER_ID = await seedTUser();
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupProfessors();
+    await teardownSeed();
+  });
     const formatLocalDateOnly = (isoStringOrDate) => {
       const d = new Date(isoStringOrDate);
       const yyyy = d.getFullYear();

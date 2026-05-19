@@ -60,5 +60,5 @@ export {
   verifySignatureController, 
   refreshTokenController, 
   logoutController, 
-  sendOtpController 
+  sendOtpController
 };

@@ -214,37 +214,36 @@ const teardownSeed = async () => {
   await db.query(`DELETE FROM academies WHERE id = $1`, [ACADEMY_ID]);
 };
 
-before(async () => {
-  ACADEMY_ID = await seedAcademy();
-  DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-  ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
-});
-
-beforeEach(async () => {
-  await cleanupProfessors();
-  TUSER_ID = await seedTUser();
-
-  // Seed identity for professor
-  const profPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
-  await db.query(
-    `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-     VALUES ($1, $2, $3, 'professor', TRUE)`,
-    [TUSER_ID, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
-  );
-
-  PROFESSOR_ID = (await createProfessor()).id;
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
-after(async () => {
-  await cleanupProfessors();
-  await teardownSeed();
-});
-
 describe('PUT /api/professors/:id', () => {
+  before(async () => {
+    ACADEMY_ID = await seedAcademy();
+    DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+  });
+
+  beforeEach(async () => {
+    await cleanupProfessors();
+    TUSER_ID = await seedTUser();
+
+    // Seed identity for professor
+    const profPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
+    await db.query(
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
+       VALUES ($1, $2, $3, 'professor', TRUE)`,
+      [TUSER_ID, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
+    );
+
+    PROFESSOR_ID = (await createProfessor()).id;
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
+
+  after(async () => {
+    await cleanupProfessors();
+    await teardownSeed();
+  });
   it('returns 200 on partial update', async () => {
     const updateBody = { rank: 'Prof' };
 

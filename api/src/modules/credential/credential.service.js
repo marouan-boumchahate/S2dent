@@ -1,7 +1,7 @@
 import { ethers, recoverAddress } from 'ethers';
 import db from '../../config/db.js';
 import { env } from '../../config/env.js';
-import { issueCredential } from '../../blockchain/credential.blockchain.js';
+import { issueCredential, revokeCredential } from '../../blockchain/credential.blockchain.js';
 import { listenOnTransaction } from '../../blockchain/listener.js';
 import { hash, recoverSignerFromTypedData, encryptWithPublicKey } from '../../utils/crypto.js';
 
@@ -17,6 +17,16 @@ const ISSUE_ON_FAILURE = {
     subject: 'Credential Issuance Pending Resolution',
     message: 'We encountered a temporary issue while confirming your credential issuance transaction. Our team is reviewing it and will resolve it shortly.'
 };
+
+const REVOKE_ON_SUCCESS = {
+    subject: 'Credential Revocation Confirmed',
+    message: 'Your credential has been successfully revoked on-chain and is no longer active in S2dent.'
+};
+const REVOKE_ON_FAILURE = {
+    subject: 'Credential Revocation Pending Resolution',
+    message: 'We encountered a temporary issue while processing your credential revocation transaction. Our team is reviewing it and will resolve it shortly.'
+};
+
 
 // Helpers
 const getStudentAndAcademyData = async (student_address) => {
@@ -212,7 +222,7 @@ const getCredentialSigningData = (credential) => {
     return signingData;
 }   
 
-const fetchCredentialById = async (credentialId) => {
+const fetchCredentialByIdForIssuance = async (credentialId) => {
     const { rows: [credential] } = await db.query(
         `SELECT c.id, c.title, c.code, c.type, c.description, 
                 c.authorizer_wallet_address, c.issuer_wallet_address, c.student_wallet_address, 
@@ -226,7 +236,7 @@ const fetchCredentialById = async (credentialId) => {
          JOIN academies a ON i.academy_id = a.id
          JOIN identities ii ON LOWER(c.student_wallet_address) = LOWER(ii.wallet_address) AND ii.role = 'student' AND ii.is_active = TRUE
          JOIN users u ON ii.user_id = u.id
-         WHERE c.id = $1`,
+         WHERE c.id = $1 AND c.revoked_at IS NULL AND c.issued_at IS NULL`,
         [credentialId]
     );
 
@@ -234,6 +244,25 @@ const fetchCredentialById = async (credentialId) => {
         const err = new Error('Credential not found or associated identities are inactive');
         err.statusCode = 404;
         err.code = 'CREDENTIAL_NOT_FOUND_OR_INACTIVE_IDENTITIES';
+        throw err;
+    }
+
+    return credential;
+}
+const fetchCredentialByIdForRevocation = async (credentialId) => {
+    const { rows: [credential] } = await db.query(
+        `SELECT c.authorizer_wallet_address, c.student_wallet_address, c.credential_index, c.code, u.email AS student_email
+         FROM credentials c
+         JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student' AND i.is_active = TRUE
+         JOIN users u ON u.id = i.user_id
+         WHERE c.id = $1 AND c.status = 'issued' AND c.revoked_at IS NULL`,
+        [credentialId]
+    );
+
+    if (!credential) {
+        const err = new Error('Credential not found');
+        err.statusCode = 404;
+        err.code = 'CREDENTIAL_NOT_FOUND';
         throw err;
     }
 
@@ -279,7 +308,14 @@ const validateSignature = async (credential, signature) => {
 
     return true;
 };
-
+const compareTwoAddresses = (revokerAddress, academyAddress, errMsg, errCode) => {
+    if(revokerAddress.toLowerCase() !== academyAddress.toLowerCase()) {
+        const err = new Error(errMsg);
+        err.statusCode = 403;
+        err.code = errCode;
+        throw err;
+    }
+}
 
 // Services
 const createCredentialService = async (issuer_address, data) => {
@@ -336,17 +372,18 @@ const createCredentialService = async (issuer_address, data) => {
     return { credential_id: insertedCredential.id, signing_data: signingData };
 };
 const issueCredentialService = async (issuer_address, credential_id, signature) => {
-    const credential = await fetchCredentialById(credential_id);
+    const credential = await fetchCredentialByIdForIssuance(credential_id);
 
     const checksumIssuerAddr = ethers.getAddress(issuer_address);
-    if(checksumIssuerAddr !== credential.issuer_wallet_address) {
-        const err = new Error('Only the issuer can issue this credential');
-        err.statusCode = 403;
-        err.code = 'FORBIDDEN_ISSUANCE';
-        throw err;
-    }
+    compareTwoAddresses(
+        checksumIssuerAddr, 
+        credential.issuer_wallet_address, 
+        'Only the issuer can issue this credential', 
+        'FORBIDDEN_ISSUANCE'
+    );
 
-    if(checksumIssuerAddr !== credential.authorizer_wallet_address) await validateIssuerIdentity(checksumIssuerAddr);
+    if(checksumIssuerAddr !== credential.authorizer_wallet_address)
+        await validateIssuerIdentity(checksumIssuerAddr);
 
     await validateSignature(credential, signature);
     const encryptedPayload = await encryptWithPublicKey(credential.payload, credential.student_public_key);
@@ -390,6 +427,54 @@ const issueCredentialService = async (issuer_address, credential_id, signature) 
         }
     };
 };
+const revokeCredentialService = async (revoker_address, credential_id, reason) => {
+    const { 
+        credential_index: credentialIndex,
+        authorizer_wallet_address: academyAddress, 
+        student_wallet_address: studentAddress,
+        code: credentialCode,
+        student_email: studentEmail
+    } = await fetchCredentialByIdForRevocation(credential_id);
+
+    const checksumRevokerAddr = ethers.getAddress(revoker_address);
+    compareTwoAddresses(
+        checksumRevokerAddr, 
+        academyAddress, 
+        'Only the academy can revoke this credential', 
+        'FORBIDDEN_REVOCATION'
+    );
+
+    //console.log('Revoking credential with index:', credentialIndex.toString(), 'for student:', studentAddress, 'by revoker:', checksumRevokerAddr);
+    const tx = await revokeCredential({
+        studentAddress,
+        credentialIndex,
+        revokerAddress: academyAddress,
+        reason
+    });
+
+    const pendingPayload = {
+        action: 'credential_revoke',
+        credential_code: credentialCode,
+        revocation_reason: reason,
+        wallet_address: studentAddress,
+        email: studentEmail,
+        onSuccess: REVOKE_ON_SUCCESS,
+        onFailure: REVOKE_ON_FAILURE
+    };
+
+    await saveTransaction(tx.hash, pendingPayload);
+
+    listenOnTransaction(tx);
+
+    return {
+        credential_id,
+        credential_code: credentialCode,
+        blockchain_transaction: {
+            tx_hash: tx.hash,
+            status: 'pending'
+        }
+    };
+}
 
 
-export { createCredentialService, issueCredentialService };
+export { createCredentialService, issueCredentialService, revokeCredentialService };

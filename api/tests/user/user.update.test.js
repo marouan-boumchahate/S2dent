@@ -93,17 +93,16 @@ const seedTUser = async () => {
 let USER_ID;
 let userToken;
 
-beforeEach(async () => {
-  await cleanupUsers();
-  USER_ID = await seedTUser();
-  userToken = issueAccessToken({ role: 'student', uid: USER_ID });
-});
-
-afterEach(async () => {
-  sinon.restore();
-});
-
 describe('PUT /api/users', () => {
+  beforeEach(async () => {
+    await cleanupUsers();
+    USER_ID = await seedTUser();
+    userToken = issueAccessToken({ role: 'student', uid: USER_ID });
+  });
+
+  afterEach(async () => {
+    sinon.restore();
+  });
   it('returns 200 and the updated user DTO on valid full update', async () => {
     const body = validBody();
 

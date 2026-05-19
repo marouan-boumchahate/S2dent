@@ -15,6 +15,8 @@ import academyIdentityRouter from './modules/identity/academy/academy.identity.r
 import professorIdentityRouter from './modules/identity/professor/professor.identity.routes.js'
 import studentIdentityRouter from './modules/identity/student/student.identity.routes.js'
 
+import helperRouter from './modules/helper/helper.routes.js'
+
 
 const app = express()
 app.set('trust proxy', true); // fetching client IP from req.ip instead of the proxy's IP
@@ -36,6 +38,8 @@ app.use('/api/identity/professors', professorIdentityRouter)
 app.use('/api/identity/students', studentIdentityRouter)
 
 app.use('/api/credentials', credentialRouter)
+
+app.use('/api/helper', helperRouter)
 
 app.use(errorMiddleware)
 
