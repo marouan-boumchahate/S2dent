@@ -10,7 +10,15 @@ class NotificationController
   NotificationController(this.notificationRepo)
       : super(const AsyncValue.loading()) {
     loadNotifications();
+    // _subscribeToSocket();
   }
+
+  // void _subscribeToSocket() {
+  //   notificationRepo.notificationStream.listen((notification) {
+  //     final current = state.asData?.value ?? [];
+  //     state = AsyncValue.data([notification, ...current]);
+  //   });
+  // }
 
   final NotificationRepo notificationRepo;
 
@@ -28,25 +36,13 @@ class NotificationController
     final notifications = state.asData?.value;
     if (notifications == null) return;
     state = AsyncValue.data(
-      notifications
-          .map((notification) => notification.id == id
-              ? notification.copyWith(isRead: true)
-              : notification)
-          .toList(),
+      notifications.where((n) => n.id != id).toList(),
     );
     await notificationRepo.markAsRead(id);
   }
 
   Future<void> markAllAsRead() async {
-    final notifications = state.asData?.value;
-    if (notifications == null) return;
-    state = AsyncValue.data(
-      notifications
-          .map(
-            (notification) => notification.copyWith(isRead: true),
-          )
-          .toList(),
-    );
+    state = const AsyncValue.data([]);
     await notificationRepo.markAllAsRead();
   }
 }
@@ -66,11 +62,5 @@ final notificationControllerProvider = StateNotifierProvider<
 
 final unreadCountProvider = Provider<int>(
   (ref) =>
-      ref
-          .watch(notificationControllerProvider)
-          .asData
-          ?.value
-          .where((notification) => !notification.isRead)
-          .length ??
-      0,
+      ref.watch(notificationControllerProvider).asData?.value.length ?? 0,
 );
