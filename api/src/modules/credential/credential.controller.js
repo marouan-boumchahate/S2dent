@@ -4,7 +4,8 @@ import {
     issueCredentialService,
     revokeCredentialService,
     fetchCredentialService,
-    fetchAllCredentialsService
+    fetchAllCredentialsService,
+    getCredentialSignatureSchemaService
 } from './credential.service.js';
 
 
@@ -62,6 +63,13 @@ const fetchAllCredentialsController = async (req, res, next) => {
 
     return ok(res, result, 'Credentials fetched successfully');
 };
+const getCredentialSignatureSchemaController = async (req, res, next) => {
+    const { id: credential_id } = req.params;
+
+    const result = await getCredentialSignatureSchemaService(credential_id);
+
+    return ok(res, result, 'Credential signature schema fetched successfully');
+};
 
 
 export {
@@ -69,5 +77,6 @@ export {
     issueCredentialController,
     revokeCredentialController,
     fetchCredentialController,
-    fetchAllCredentialsController
+    fetchAllCredentialsController,
+    getCredentialSignatureSchemaController
 };

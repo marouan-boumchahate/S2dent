@@ -55,7 +55,7 @@ describe("Credential", () => {
         credentialType: number;
         description: string;
         payloadHash: string;
-        payloadSignature: string;
+        signature: string;
         encryptedPayload: string;
     }> = {}) {
         const o = {
@@ -64,7 +64,7 @@ describe("Credential", () => {
             credentialType: CRED_TYPE_DEGREE,
             description: CRED_DESCRIPTION,
             payloadHash: CRED_PAYLOAD_HASH,
-            payloadSignature: CRED_PAYLOAD_SIG,
+            signature: CRED_PAYLOAD_SIG,
             encryptedPayload: CRED_ENCRYPTED,
             ...overrides,
         };
@@ -77,9 +77,9 @@ describe("Credential", () => {
             },
             payload: {
                 payloadHash: o.payloadHash,
-                payloadSignature: o.payloadSignature,
                 encryptedPayload: o.encryptedPayload,
             },
+            signature: o.signature,
         };
     }
 
@@ -243,7 +243,7 @@ describe("Credential", () => {
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
 
             expect(record.payload.payloadHash).to.equal(CRED_PAYLOAD_HASH);
-            expect(record.payload.payloadSignature).to.equal(CRED_PAYLOAD_SIG);
+            expect(record.signature).to.equal(CRED_PAYLOAD_SIG);
             expect(record.payload.encryptedPayload).to.equal(CRED_ENCRYPTED);
 
             expect(record.status.isNotRevoked).to.equal(true);
@@ -786,7 +786,7 @@ describe("Credential", () => {
                     student.address,
                     academy.address,
                     academy.address,
-                    defaultIssueArgs({ payloadSignature: "0x" }),
+                    defaultIssueArgs({ signature: "0x" }),
                 ),
             ).to.be.revertedWithCustomError(instance, "InvalidPayloadSignature");
         });
@@ -1078,7 +1078,7 @@ describe("Credential", () => {
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
 
             expect(record.payload.payloadHash).to.equal(CRED_PAYLOAD_HASH);
-            expect(record.payload.payloadSignature).to.equal(CRED_PAYLOAD_SIG);
+            expect(record.signature).to.equal(CRED_PAYLOAD_SIG);
             expect(record.payload.encryptedPayload).to.equal(CRED_ENCRYPTED);
 
             expect(record.status.isNotRevoked).to.equal(true);

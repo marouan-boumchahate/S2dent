@@ -409,7 +409,31 @@ const compareTwoAddresses = (revokerAddress, academyAddress, errMsg, errCode) =>
     }
 }
 
-const getCredentialById = async (credential_id, wallet_address, role) => {
+const getCredentialById = async (credential_id) => {
+    const { rows: [credential] } = await db.query(
+        `SELECT c.id, c.title, c.code, c.type,
+                c.student_wallet_address as student_address, u.full_name as student_name,
+                c.authorizer_wallet_address as academy_address, a.name as academy_name,
+                c.issuer_wallet_address as issuer_address, c.payload_hash
+         FROM credentials c
+         JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student'
+         JOIN identities i2 ON c.authorizer_wallet_address = i2.wallet_address
+         JOIN academies a ON i2.academy_id = a.id
+         JOIN users u ON i.user_id = u.id
+         WHERE c.id = $1`,
+        [credential_id]
+    );
+
+    if (!credential) {
+        const err = new Error('Credential not found');
+        err.statusCode = 404;
+        err.code = 'CREDENTIAL_NOT_FOUND';
+        throw err;
+    }
+
+    return credential;
+};
+const getExactCredential = async (credential_id, wallet_address, role) => {
     let whereClause;
     switch(role) {
         case 'student':
@@ -580,7 +604,7 @@ const issueCredentialService = async (issuer_address, credential_id, signature) 
         credentialType: credential.type,
         description: credential.description || '',
         payloadHash: credential.payload_hash,
-        payloadSignature: signature,
+        signature: signature,
         encryptedPayload
     });
 
@@ -674,9 +698,9 @@ const fetchCredentialService = async (credential_id, caller_address, role) => {
         credential_index,
         issuer_public_key,
         payload: originalPayload
-    } = await getCredentialById(credential_id, caller_address, role);
+    } = await getExactCredential(credential_id, caller_address, role);
 
-    const { identity, payload, status } = await getCredential(student_address, credential_index);
+    const { identity, payload, signature, status } = await getCredential(student_address, credential_index);
 
     isPayloadTamperedWith(originalPayload, payload.payloadHash);
 
@@ -698,7 +722,7 @@ const fetchCredentialService = async (credential_id, caller_address, role) => {
         academy_address: status.academyAddress,
         issuer_address: status.issuerAddress,
         payload_hash: payload.payloadHash,
-        signature: payload.payloadSignature,
+        signature: signature,
         payload: originalPayload,
         encrypted_payload: payload.encryptedPayload,
     };
@@ -715,6 +739,24 @@ const fetchAllCredentialsService = async (wallet_address, role) => {
         ) 
     };
 }
+const getCredentialSignatureSchemaService = async (credential_id) => {
+    const credential = await getCredentialById(credential_id);
+
+    const signature_schema = getCredentialSigningData({
+        credentialId: credential.id,
+        title: credential.title,
+        code: credential.code,
+        type: credential.type,
+        academyAddress: credential.academy_address,
+        academyName: credential.academy_name,
+        issuerAddress: credential.issuer_address,
+        studentAddress: credential.student_address,
+        studentName: credential.student_name,
+        payloadHash: credential.payload_hash
+    });
+
+    return { signature_schema };
+}
 
 
 export { 
@@ -722,5 +764,6 @@ export {
     issueCredentialService, 
     revokeCredentialService, 
     fetchCredentialService,
-    fetchAllCredentialsService
+    fetchAllCredentialsService,
+    getCredentialSignatureSchemaService
 };

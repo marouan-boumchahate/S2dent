@@ -12,11 +12,12 @@ import {
     issueCredentialController,
     revokeCredentialController,
     fetchCredentialController,
-    fetchAllCredentialsController
+    fetchAllCredentialsController,
+    getCredentialSignatureSchemaController
 } from './credential.controller.js';
 
-const router = Router();
 
+const router = Router();
 
 router.get(
     '/',
@@ -29,6 +30,10 @@ router.get(
     authenticate,
     requireRole('student', 'professor', 'academy'),
     fetchCredentialController
+)
+router.get(
+    '/:id/signature-schema',
+    getCredentialSignatureSchemaController
 )
 router.post(
     '/',

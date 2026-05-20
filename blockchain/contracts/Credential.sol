@@ -28,12 +28,12 @@ contract Credential is StudentIdentity {
     }
     struct CredentialPayloadArgs {
         bytes32 payloadHash;
-        bytes payloadSignature;
         string encryptedPayload;
     }
     struct CredentialIssueArgs {
         CredentialInfosArgs infos;
         CredentialPayloadArgs payload;
+        bytes signature;
     }
 
     // Stored Data Structs
@@ -46,7 +46,6 @@ contract Credential is StudentIdentity {
     }
     struct CredentialPayloadData {
         bytes32 payloadHash;
-        bytes payloadSignature;
         string encryptedPayload;
     }
     struct CredentialStatusData {
@@ -62,6 +61,7 @@ contract Credential is StudentIdentity {
         CredentialIdentityData identity;
         CredentialPayloadData payload;
         CredentialStatusData status;
+        bytes signature;
     }
 
     // Errors
@@ -108,7 +108,6 @@ contract Credential is StudentIdentity {
     }
     function _validateCredentialPayload(CredentialPayloadArgs calldata p) internal pure {
         if (p.payloadHash == bytes32(0)) revert InvalidPayloadHash();
-        if (p.payloadSignature.length == 0) revert InvalidPayloadSignature();
         if (bytes(p.encryptedPayload).length == 0) revert InvalidEncryptedPayload();
     }
     function _validateCredentialAuthorities(
@@ -150,6 +149,7 @@ contract Credential is StudentIdentity {
         _validateCredentialAuthorities(_studentAddress, _issuerAddress, _academyAddress);
         _validateCredentialInfos(args.infos);
         _validateCredentialPayload(args.payload);
+        if (args.signature.length == 0) revert InvalidPayloadSignature();
 
         if (credentialIssuedForPayloadHash[args.payload.payloadHash]) {
             revert CredentialPayloadAlreadyUsed();
@@ -168,7 +168,6 @@ contract Credential is StudentIdentity {
                 }),
                 payload: CredentialPayloadData({
                     payloadHash: args.payload.payloadHash,
-                    payloadSignature: args.payload.payloadSignature,
                     encryptedPayload: args.payload.encryptedPayload
                 }),
                 status: CredentialStatusData({
@@ -179,7 +178,8 @@ contract Credential is StudentIdentity {
                     issuer: _issuerAddress,
                     revoker: address(0),
                     revocationReason: ""
-                })
+                }),
+                signature: args.signature
             })
         );
 
@@ -194,7 +194,6 @@ contract Credential is StudentIdentity {
             uint64(block.timestamp)
         );
     }
-
     function revokeCredential(
         address _studentAddress,
         uint256 _index,
@@ -226,7 +225,6 @@ contract Credential is StudentIdentity {
     function getCredentialCount(address _studentAddress) external view returns (uint256) {
         return credentials[_studentAddress].length;
     }
-
     function getCredential(
         address _studentAddress,
         uint256 _index
