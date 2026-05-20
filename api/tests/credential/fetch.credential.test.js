@@ -50,9 +50,9 @@ describe('GET /api/credentials/:id', () => {
     identity: {},
     payload: {
       payloadHash,
-      payloadSignature: '0x' + 'b'.repeat(130),
       encryptedPayload,
     },
+    signature: '0x' + 'b'.repeat(130),
     status: {
       issuedAt: new Date('2024-01-01'),
       revokedAt: null,

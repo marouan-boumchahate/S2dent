@@ -15,9 +15,9 @@ const toCredentialData = (record) => ({
     },
     payload: {
         payloadHash: record.payload.payloadHash,
-        payloadSignature: record.payload.payloadSignature,
         encryptedPayload: record.payload.encryptedPayload,
     },
+    signature: record.signature,
     status: {
         issuedAt: new Date(Number(record.status.issuedAt) * 1000),
         revokedAt: record.status.revokedAt === 0n ? null : new Date(Number(record.status.revokedAt) * 1000),
@@ -105,7 +105,7 @@ const issueCredential = async (payload) => {
             description,
 
             payloadHash,
-            payloadSignature,
+            signature,
             encryptedPayload,
         } = payload
 
@@ -118,9 +118,9 @@ const issueCredential = async (payload) => {
             },
             payload: {
                 payloadHash: payloadHash,
-                payloadSignature: payloadSignature,
                 encryptedPayload: encryptedPayload,
             },
+            signature: signature,
         }
 
         const params = [studentAddress, issuerAddress, academyAddress, args]
