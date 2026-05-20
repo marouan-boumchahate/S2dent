@@ -112,9 +112,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         PrimaryButton(
           onTap: isDisabled ? null : onTapSignIn,
           label: !isModalReady
-              ? "Initializing"
+              ? "Initializing..."
               : isLoading
-                  ? "Connecting"
+                  ? "Connecting..."
                   : "SIGN IN WITH A WALLET",
           isEnable: !isDisabled,
         ),

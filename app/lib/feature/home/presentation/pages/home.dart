@@ -10,9 +10,12 @@ import 'package:app/feature/home/presentation/widgets/credentials_bottom_sheet.d
 import 'package:app/feature/home/presentation/widgets/custom_horizontal_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.dart';
+import 'package:app/feature/home/presentation/widgets/notification_button.dart';
 import 'package:app/feature/home/presentation/widgets/quick_action.dart';
 import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/feature/notifications/presentation/providers/notification_provider.dart';
+import 'package:app/feature/notifications/presentation/widgets/notification_bottom_sheet.dart';
 import 'package:app/feature/profile/presentation/widgets/custom_text_button.dart';
 import 'package:app/feature/settings/presentation/pages/settings.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
@@ -53,7 +56,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void onTapSeeAll(HomeData data) {
+  void onTapSeeAllCredentials(HomeData data) {
     showModalBottomSheet(
       useSafeArea: true,
       isScrollControlled: true,
@@ -63,6 +66,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       builder: (ctx) => CredentialsBottomSheet(
         credentials: data.credentialsList ?? [],
       ),
+    );
+  }
+
+  void onTapShowNotifications() {
+    showModalBottomSheet(
+      useSafeArea: true,
+      isScrollControlled: true,
+      isDismissible: true,
+      showDragHandle: true,
+      context: context,
+      builder: (ctx) => const NotificationsBottomSheet(),
     );
   }
 
@@ -77,10 +91,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final homeDataAsync = ref.watch(homeDataProvider);
+    final hasUnreadNotification = ref.watch(unreadCountProvider) > 0;
+
     return homeDataAsync.when(
       data: (data) => MainLayout(
         children: [
-          _header(data),
+          _header(data, hasUnreadNotification),
           _userInfoContainer(context, data),
           const SizedBox(height: 20),
           _quickActions(),
@@ -97,19 +113,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Padding _header(HomeData data) {
+  Padding _header(HomeData data, bool hasUnreadNotification) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            "Welcome back,",
-            style: context.texts.bodyLarge,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Welcome back,",
+                style: context.texts.bodyLarge,
+              ),
+              Text(
+                data.firstName ?? "",
+                style: context.texts.displaySmall,
+              ),
+            ],
           ),
-          Text(
-            data.firstName ?? "",
-            style: context.texts.displaySmall,
+          NotificationButton(
+            hasUnread: hasUnreadNotification,
+            onTap: () => onTapShowNotifications(),
           ),
         ],
       ),
@@ -182,7 +207,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: CustomTextButton(
                 label: "See all",
                 color: context.colors.primary,
-                onTap: () => onTapSeeAll(data),
+                onTap: () => onTapSeeAllCredentials(data),
               ),
             )
           ],

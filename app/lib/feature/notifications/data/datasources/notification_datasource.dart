@@ -5,7 +5,6 @@ final List<AppNotification> dummyNotification = [
     id: '1',
     title: 'New Certificate Issued',
     body: 'Your Bachelor of Computer Science certificate has been issued.',
-    isRead: false,
     createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
     type: AppNotificationType.credentialIssuance,
   ),
@@ -14,7 +13,6 @@ final List<AppNotification> dummyNotification = [
     title: 'Attendance List Published',
     body:
         'Attendance list for CS401 - Software Engineering has been published.',
-    isRead: false,
     createdAt: DateTime.now().subtract(const Duration(hours: 2)),
     type: AppNotificationType.attendenceIssuance,
   ),
@@ -22,25 +20,8 @@ final List<AppNotification> dummyNotification = [
     id: '3',
     title: 'Certificate Revoked',
     body: 'Your temporary access certificate has been revoked.',
-    isRead: false,
     createdAt: DateTime.now().subtract(const Duration(hours: 5)),
     type: AppNotificationType.credentialsRevoked,
-  ),
-  AppNotification(
-    id: '4',
-    title: 'System Update',
-    body: 'The platform will be under maintenance on Friday at 2:00 AM.',
-    isRead: true,
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    type: AppNotificationType.general,
-  ),
-  AppNotification(
-    id: '5',
-    title: 'New Certificate Issued',
-    body: 'Your academic transcript has been issued.',
-    isRead: true,
-    createdAt: DateTime.now().subtract(const Duration(days: 3)),
-    type: AppNotificationType.credentialIssuance,
   ),
 ];
 
@@ -54,9 +35,10 @@ class NotificationDatasource {
   //     socketService.on('notification').map((data) => AppNotification.fromJson(data));
 
   Future<void> markAllAsRead() async {
-    //await dio.patch('/notifications/readAll);
+    //await dio.delete('/notifications');
   }
+
   Future<void> markAsRead(String id) async {
-    //await dio.patch('/notifications/$id/read);
+    //await dio.delete('/notifications/$id');
   }
 }
