@@ -75,8 +75,8 @@ const seedAcademy = async ({
     );
 
     await db.query(
-        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-         VALUES ($1, $2, $3, 'academy', true)`,
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+         VALUES ($1, $2, $3, 'academy', NOW())`,
         [academy.id, wallet_address, ethers.Wallet.createRandom().signingKey.publicKey],
     );
 
@@ -188,8 +188,8 @@ const seedStudentUser = async ({
 
 const seedStudentIdentity = async ({ user_id, wallet_address = STUDENT_WALLET } = {}) => {
     await db.query(
-        `INSERT INTO identities (user_id, wallet_address, role)
-         VALUES ($1, $2, 'student')`,
+        `INSERT INTO identities (user_id, wallet_address, role, issued_at)
+         VALUES ($1, $2, 'student', NOW())`,
         [user_id, wallet_address],
     );
 };
@@ -325,7 +325,6 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 200);
@@ -357,7 +356,6 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET_UPPER, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET_UPPER, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 200);
@@ -377,7 +375,6 @@ describe('POST /api/identity/students/revoke', function () {
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         const { rows: [pending] } = await db.query(
@@ -410,7 +407,6 @@ describe('POST /api/identity/students/revoke', function () {
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(listenerCalls.length, 1);
@@ -430,7 +426,6 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
@@ -457,7 +452,6 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 502);
@@ -485,7 +479,6 @@ describe('POST /api/identity/students/revoke', function () {
         await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         const { rows } = await db.query(
@@ -527,8 +520,7 @@ describe('POST /api/identity/students/revoke', function () {
         const res = await request(app)
             .post(endpoint)
             .set('Authorization', `Bearer ${studentToken}`)
-            .query({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' })
-            .send({});
+            .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'FORBIDDEN');

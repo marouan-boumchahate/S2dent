@@ -17,7 +17,9 @@ const toDepartmentDto = (department) => ({
 // Helpers
 const ensureAcademyExists = async (academyId) => {
   const { rows } = await db.query(
-    'SELECT id FROM identities WHERE academy_id = $1 AND is_active = TRUE LIMIT 1',
+    `SELECT id FROM identities 
+     WHERE academy_id = $1 AND issued_at IS NOT NULL AND revoked_at IS NULL
+     LIMIT 1`,
     [academyId],
   );
 

@@ -218,7 +218,8 @@ const seedIdentity = async (
     {
         nonce = HEX_NONCE_64_BYTES,
         nonce_expires_at = new Date(Date.now() + 5 * 60 * 1000),
-        is_active = true,
+        issued_at = new Date(),
+        revoked_at = null,
         user_id = null,
         academy_id = null,
     } = {},
@@ -246,9 +247,9 @@ const seedIdentity = async (
 
     const publicKey = '0x04' + crypto.randomBytes(64).toString('hex');
     await db.query(
-        `INSERT INTO identities (wallet_address, public_key, role, user_id, academy_id, nonce, nonce_expires_at, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [walletAddress, publicKey, role, resolvedUserId, resolvedAcademyId, nonce, nonce_expires_at, is_active],
+        `INSERT INTO identities (wallet_address, public_key, role, user_id, academy_id, nonce, nonce_expires_at, issued_at, revoked_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [walletAddress, publicKey, role, resolvedUserId, resolvedAcademyId, nonce, nonce_expires_at, issued_at, revoked_at],
     );
     return nonce;
 };

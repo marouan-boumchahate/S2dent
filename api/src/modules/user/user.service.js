@@ -35,14 +35,17 @@ const ensureUserUnique = async (email, nationalId) => {
 };
 const ensureUserExists = async (user_id) => {
   const { rows: [row] } = await db.query(`
-    SELECT i.is_active 
+    SELECT 1 
     FROM users 
     JOIN identities i ON users.id = i.user_id 
-    WHERE users.id = $1 LIMIT 1`,
+    WHERE users.id = $1
+      AND i.issued_at IS NOT NULL
+      AND i.revoked_at IS NULL
+    LIMIT 1`,
     [user_id]
   );
 
-  if (!row || !row.is_active) {
+  if (!row) {
     const err = new Error('No active user account found for the provided ID');
     err.statusCode = 404;
     err.code = 'USER_NOT_FOUND';

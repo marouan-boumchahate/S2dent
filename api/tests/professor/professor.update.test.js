@@ -75,9 +75,9 @@ const seedAcademy = async () => {
   );
 
   await db.query(
-    `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-     VALUES ($1, $2, $3, 'academy', TRUE)
-     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+    `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+     VALUES ($1, $2, $3, 'academy', NOW())
+     ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
     [academy.id, SEED_WALLET, '0x04profupd' + 'a'.repeat(121)],
   );
 
@@ -228,8 +228,8 @@ describe('PUT /api/professors/:id', () => {
     // Seed identity for professor
     const profPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'professor', TRUE)`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'professor', NOW())`,
       [TUSER_ID, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
     );
 
@@ -366,7 +366,7 @@ describe('PUT /api/professors/:id', () => {
 
   it('returns 500 when the database throws unexpectedly during update', async () => {
     const stub = sinon.stub(db, 'query');
-    stub.onFirstCall().resolves({ rows: [{ is_active: true }] });
+    stub.onFirstCall().resolves({ rows: [{ issued_at: new Date(), revoked_at: null }] });
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)

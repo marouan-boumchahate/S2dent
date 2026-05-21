@@ -123,8 +123,8 @@ const getStudentAndAcademyData = async (student_address) => {
          JOIN students s ON i.user_id = s.user_id
          JOIN users u ON s.user_id = u.id
          JOIN academies a ON s.academy_id = a.id
-         JOIN identities ai ON ai.academy_id = s.academy_id AND ai.role = 'academy' AND ai.is_active = TRUE
-         WHERE LOWER(i.wallet_address) = LOWER($1) AND i.role = 'student' AND i.is_active = TRUE AND ai.is_active = TRUE
+         JOIN identities ai ON ai.academy_id = s.academy_id AND ai.role = 'academy' AND ai.issued_at IS NOT NULL AND ai.revoked_at IS NULL
+         WHERE LOWER(i.wallet_address) = LOWER($1) AND i.role = 'student' AND i.issued_at IS NOT NULL AND i.revoked_at IS NULL AND ai.issued_at IS NOT NULL AND ai.revoked_at IS NULL
          LIMIT 1`,
         [student_address]
     );
@@ -149,7 +149,7 @@ const validateProfessorExistence = async (professorAddress, academyId) => {
         `SELECT 1
          FROM identities i
          JOIN professors p ON i.user_id = p.user_id
-         WHERE LOWER(i.wallet_address) = LOWER($1) AND i.role = 'professor' AND i.is_active = TRUE AND p.academy_id = $2`,
+         WHERE LOWER(i.wallet_address) = LOWER($1) AND i.role = 'professor' AND i.issued_at IS NOT NULL AND i.revoked_at IS NULL AND p.academy_id = $2`,
         [professorAddress, academyId]
     );
 
@@ -324,9 +324,9 @@ const fetchCredentialByIdForIssuance = async (credentialId) => {
                 u.full_name AS student_name,
                 u.email AS student_email
          FROM credentials c
-         JOIN identities i ON LOWER(c.authorizer_wallet_address) = LOWER(i.wallet_address) AND i.role = 'academy' AND i.is_active = TRUE
+         JOIN identities i ON LOWER(c.authorizer_wallet_address) = LOWER(i.wallet_address) AND i.role = 'academy' AND i.issued_at IS NOT NULL AND i.revoked_at IS NULL
          JOIN academies a ON i.academy_id = a.id
-         JOIN identities ii ON LOWER(c.student_wallet_address) = LOWER(ii.wallet_address) AND ii.role = 'student' AND ii.is_active = TRUE
+         JOIN identities ii ON LOWER(c.student_wallet_address) = LOWER(ii.wallet_address) AND ii.role = 'student' AND ii.issued_at IS NOT NULL AND ii.revoked_at IS NULL
          JOIN users u ON ii.user_id = u.id
          WHERE c.id = $1 AND c.revoked_at IS NULL AND c.issued_at IS NULL`,
         [credentialId]
@@ -345,7 +345,7 @@ const fetchCredentialByIdForRevocation = async (credentialId) => {
     const { rows: [credential] } = await db.query(
         `SELECT c.authorizer_wallet_address, c.student_wallet_address, c.credential_index, c.code, u.email AS student_email
          FROM credentials c
-         JOIN identities i ON LOWER(c.student_wallet_address) = LOWER(i.wallet_address) AND i.role = 'student' AND i.is_active = TRUE
+         JOIN identities i ON LOWER(c.student_wallet_address) = LOWER(i.wallet_address) AND i.role = 'student' AND i.issued_at IS NOT NULL AND i.revoked_at IS NULL
          JOIN users u ON u.id = i.user_id
          WHERE c.id = $1 AND (c.issued_at IS NOT NULL OR c.issue_tx_hash IS NOT NULL) AND c.revoked_at IS NULL`,
         [credentialId]
@@ -364,7 +364,7 @@ const validateIssuerIdentity = async (wallet_address) => {
     const { rows: [identity] } = await db.query(
         `SELECT 1 
          FROM identities 
-         WHERE LOWER(wallet_address) = LOWER($1) AND is_active = TRUE`,
+         WHERE LOWER(wallet_address) = LOWER($1) AND issued_at IS NOT NULL AND revoked_at IS NULL`,
         [wallet_address]
     );
 
@@ -511,7 +511,7 @@ const getAllCredentials = async (wallet_address, role) => {
                c.issued_at, c.revoked_at, pt.status
         FROM credentials c
         JOIN pending_transactions pt ON COALESCE(c.revoke_tx_hash, c.issue_tx_hash) = pt.tx_hash
-        JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student'
+        JOIN identities i ON c.student_wallet_address = i.wallet_address AND i.role = 'student' AND i.issued_at IS NOT NULL AND i.revoked_at IS NULL
         JOIN users u ON i.user_id = u.id
         ${whereClause}`,
         [wallet_address]

@@ -14,20 +14,44 @@ const setTransactionStatus = async (txHash, status) => {
     return { payload }
 }
 
-const saveIdentityOffChain = async ({ wallet_address, role, entity_id, issue_identity_tx_hash, public_key }) => {
-    await db.query(
-        `INSERT INTO identities 
-            (wallet_address, role, ${role === 'academy' ? 'academy_id' : 'user_id'}, issue_identity_tx_hash, public_key, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [wallet_address, role, entity_id, issue_identity_tx_hash, public_key]
-    )
-}
-const revokeIdentityOffChain = async ({ wallet_address, revoke_identity_tx_hash }) => {
+const saveIdentityOffChain = async ({ 
+    wallet_address, 
+    public_key,
+    issue_identity_tx_hash
+}) => {
     await db.query(
         `UPDATE identities
-            SET is_active = FALSE, revoke_identity_tx_hash = $2, updated_at = NOW()
+            SET wallet_address = $2, 
+                public_key = $3,
+                issued_at = NOW(),
+                updated_at = NOW()
+            WHERE issue_identity_tx_hash = $1`,
+        [issue_identity_tx_hash, wallet_address, public_key]
+    )
+}
+const revokeIdentityOffChain = async ({ wallet_address, reason }) => {
+    await db.query(
+        `UPDATE identities
+            SET revoked_at = NOW(), updated_at = NOW(), revocation_reason = $2
             WHERE wallet_address = $1`,
-        [wallet_address, revoke_identity_tx_hash]
+        [wallet_address, reason]
+    )
+}
+
+const deactivateStudentOffChain = async ({ user_id }) => {
+    await db.query(
+        `UPDATE students
+            SET enrollment_status = 'inactive', updated_at = NOW()
+            WHERE user_id = $1`,
+        [user_id]
+    )
+}
+const deactivateProfessorOffChain = async ({ user_id }) => {
+    await db.query(
+        `UPDATE professors
+            SET is_active = FALSE, updated_at = NOW()
+            WHERE user_id = $1`,
+        [user_id]
     )
 }
 
@@ -50,20 +74,22 @@ const revokeCredentialOffChain = async ({ credential_code, revocation_reason, re
 
 const performAction = async (payload, tx_hash, receipt) => {
     switch(payload.action) {
-        case 'issue':
+        case 'identity_issue':
             await saveIdentityOffChain({
                 wallet_address: payload.wallet_address,
                 public_key: payload.public_key,
-                role: payload.role,
-                entity_id: payload.entity_id,
                 issue_identity_tx_hash: tx_hash
             })
             break
-        case 'revoke':
-             await revokeIdentityOffChain({
+        case 'identity_revoke':
+            await revokeIdentityOffChain({
                 wallet_address: payload.wallet_address,
-                revoke_identity_tx_hash: tx_hash
+                reason: payload.reason
             })
+            if (payload.role === 'student') 
+                await deactivateStudentOffChain({ user_id: payload.user_id })
+            else if (payload.role === 'professor') 
+                await deactivateProfessorOffChain({ user_id: payload.user_id })
             break
         case 'credential_issue':
             const credential_index = parseInt(receipt.logs[0].args[3])

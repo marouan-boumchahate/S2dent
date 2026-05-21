@@ -88,9 +88,9 @@ const seedAcademy = async () => {
   );
 
   await db.query(
-    `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-     VALUES ($1, $2, $3, 'academy', TRUE)
-     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+    `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+     VALUES ($1, $2, $3, 'academy', NOW())
+     ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
     [academy.id, SEED_WALLET, '0x04022ecd91' + 'a'.repeat(120)],
   );
 

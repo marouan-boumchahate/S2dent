@@ -17,7 +17,7 @@ router.post(
   '/revoke',
   authenticate,
   requireRole('academy'),
-  validate(revokeIdentitySchema, 'query'),
+  validate(revokeIdentitySchema),
   revokeIdentity,
 )
 

@@ -57,8 +57,8 @@ const seedAcademy = async ({
     );
 
     await db.query(
-        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-         VALUES ($1, $2, $3, 'academy', true)`,
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+         VALUES ($1, $2, $3, 'academy', NOW())`,
         [academy.id, wallet_address, ACADEMY_IDENTITY_PUBLIC_KEY],
     );
 
@@ -214,7 +214,7 @@ describe('POST /api/identity/academies/revoke', function () {
         assert.equal(pending.status, 'pending');
         assert.equal(pending.payload.wallet_address, WALLET_ADDRESS);
         assert.equal(pending.payload.reason, REVOCATION_REASON);
-        assert.equal(pending.payload.action, 'revoke');
+        assert.equal(pending.payload.action, 'identity_revoke');
     });
 
     it('fires listenOnTransaction in the background after submission', async () => {

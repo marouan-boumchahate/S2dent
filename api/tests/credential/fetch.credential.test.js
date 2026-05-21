@@ -90,9 +90,9 @@ describe('GET /api/credentials/:id', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'academy', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+      `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'academy', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
       [academy.id, ethers.getAddress(wallet), '0x04acadpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 
@@ -124,9 +124,9 @@ describe('GET /api/credentials/:id', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'student', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'student', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
       [user.id, ethers.getAddress(wallet), '0x04studpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 
@@ -151,9 +151,9 @@ describe('GET /api/credentials/:id', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'professor', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'professor', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
       [user.id, ethers.getAddress(wallet), '0x04profpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 

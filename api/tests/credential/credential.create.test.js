@@ -36,9 +36,9 @@ describe('POST /api/credentials', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'academy', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+      `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'academy', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
       [academy.id, ethers.getAddress(wallet), '0x04pub' + wallet.slice(2).padEnd(120, '0')]
     );
 
@@ -73,9 +73,9 @@ describe('POST /api/credentials', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'professor', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'professor', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
       [user.id, ethers.getAddress(wallet), '0x04profpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 
@@ -102,9 +102,9 @@ describe('POST /api/credentials', () => {
     );
 
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'student', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'student', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
       [user.id, ethers.getAddress(STUDENT_WALLET), '0x04studpub' + STUDENT_WALLET.slice(2, 10).padEnd(120, '0')]
     );
 
@@ -377,7 +377,7 @@ describe('POST /api/credentials', () => {
 
   it('returns 404 when student identity is inactive', async () => {
     await seedStudent(ACADEMY_ID);
-    await db.query(`UPDATE identities SET is_active = FALSE WHERE wallet_address = $1`, [ethers.getAddress(STUDENT_WALLET)]);
+    await db.query(`UPDATE identities SET revoked_at = NOW() WHERE wallet_address = $1`, [ethers.getAddress(STUDENT_WALLET)]);
 
     const res = await request(app)
       .post('/api/credentials')
