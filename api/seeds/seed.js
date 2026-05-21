@@ -48,7 +48,7 @@ const seedAcademy = async () => {
   return { id, tokens };
 };
 
-const seedStudent = async ({ academyId, departmentId, academyToken }) => {
+const seedStudent = async ({ academyId, departmentId, academyToken, advisorId }) => {
   const profile = userProfile();
   const userId = await createUser(profile, academyToken);
   log('user', `student → id=${userId}`);
@@ -57,7 +57,13 @@ const seedStudent = async ({ academyId, departmentId, academyToken }) => {
   log('address', `created for student=${userId}`);
 
   const id = await createStudent(
-    { user_id: userId, academy_id: academyId, department_id: departmentId, ...studentProfile() },
+    {
+      user_id: userId,
+      academy_id: academyId,
+      department_id: departmentId,
+      advisor_id: advisorId,
+      ...studentProfile(),
+    },
     academyToken,
   );
   log('student', `created → id=${id}`);
@@ -111,8 +117,8 @@ const main = async () => {
   log('department', `created → id=${departmentId}`);
 
   const ctx = { academyId: academy.id, departmentId, academyToken: academy.tokens.accessToken };
-  const student = await seedStudent(ctx);
   const professor = await seedProfessor(ctx);
+  const student = await seedStudent({ ...ctx, advisorId: professor.id });
 
   printTokens('academy', academy.tokens);
   printTokens('student', student.tokens);
