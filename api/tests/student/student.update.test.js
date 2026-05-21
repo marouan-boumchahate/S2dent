@@ -13,6 +13,7 @@ let ACADEMY_ID;
 let DEPARTMENT_ID;
 let USER_ID;
 let STUDENT_ID;
+let ADVISOR_ID;
 let ACADEMY_TOKEN;
 
 const issueAccessToken = (payload = {}) => signTokens(
@@ -165,22 +166,87 @@ const seedUser = async () => {
   return u.id;
 };
 
-const seedStudent = async (userId, academyId, departmentId) => {
+const seedProfessor = async (academyId, departmentId) => {
+  const columns = await getUserColumns();
+
+  const insertCols = [
+    'first_name',
+    'middle_name',
+    'last_name',
+    'full_name',
+    'date_of_birth',
+    'gender',
+    'national_id',
+    'email',
+    'phone',
+    'photo_url',
+  ];
+  const insertVals = [
+    'Advisor',
+    'Update',
+    'Professor',
+    'Advisor Update Professor',
+    '1982-02-02',
+    'female',
+    'PROF-UPD-NID-001',
+    'advisor.update@studentcases.test',
+    '+905551234568',
+    null,
+  ];
+
+  if (columns.has('nationality')) {
+    insertCols.push('nationality');
+    insertVals.push('Turkish');
+  }
+
+  if (columns.has('notes')) {
+    insertCols.push('notes');
+    insertVals.push(null);
+  }
+
+  const placeholders = insertVals.map((_, idx) => `$${idx + 1}`).join(', ');
+
+  const { rows: [u] } = await db.query(
+    `INSERT INTO users (${insertCols.join(', ')})
+     VALUES (${placeholders})
+     RETURNING id`,
+    insertVals,
+  );
+
+  const { rows: [professor] } = await db.query(
+    `INSERT INTO professors (user_id, academy_id, department_id, employee_number, title, rank, hire_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id`,
+    [u.id, academyId, departmentId, 'EMP-STU-UPD-001', 'Dr.', 'Prof', '2011-01-01'],
+  );
+
+  await db.query(
+    `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+     VALUES ($1, $2, $3, 'professor', NOW())`,
+    [u.id, '0x' + 'b'.repeat(40), '0x04' + 'b'.repeat(128)],
+  );
+
+  return professor.id;
+};
+
+const seedStudent = async (userId, academyId, departmentId, advisorId) => {
   const { rows: [student] } = await db.query(
     `INSERT INTO students (
       user_id,
       academy_id,
       department_id,
+      advisor_id,
       student_number,
       enrollment_status,
       enrollment_date,
       expected_graduation_date
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING id`,
     [
       userId,
       academyId,
       departmentId,
+      advisorId ?? null,
       'STU_260507_0001',
       'active',
       '2023-09-15',
@@ -205,6 +271,12 @@ const cleanupStudents = async () => {
      WHERE user_id IN (
         SELECT id FROM users WHERE email LIKE '%@studentcases.test'
      )`,
+  );
+  await db.query(
+   `DELETE FROM professors
+    WHERE user_id IN (
+      SELECT id FROM users WHERE email LIKE '%@studentcases.test'
+    )`,
   );
   await db.query(
     `DELETE FROM students
@@ -262,7 +334,8 @@ describe('PUT /api/students/:id', () => {
   beforeEach(async () => {
     await cleanupStudents();
     USER_ID = await seedUser();
-    STUDENT_ID = await seedStudent(USER_ID, ACADEMY_ID, DEPARTMENT_ID);
+    ADVISOR_ID = await seedProfessor(ACADEMY_ID, DEPARTMENT_ID);
+    STUDENT_ID = await seedStudent(USER_ID, ACADEMY_ID, DEPARTMENT_ID, ADVISOR_ID);
   });
 
   afterEach(async () => {
@@ -331,7 +404,7 @@ describe('PUT /api/students/:id', () => {
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 3.5 });
 
-    assert.equal(res.status, 403);d
+    assert.equal(res.status, 403);
     assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
   });
 

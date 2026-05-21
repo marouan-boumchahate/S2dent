@@ -7,6 +7,7 @@ const toStudentDto = (student) => ({
   user_id: student.user_id,
   academy_id: student.academy_id,
   department_id: student.department_id,
+  advisor_id: student.advisor_id,
   student_number: student.student_number,
   current_level: new Date().getFullYear() - new Date(student.enrollment_date).getFullYear() + 1,
   enrollment_status: student.enrollment_status,
@@ -64,6 +65,27 @@ const ensureAcademyExists = async (academy_id) => {
     throw err;
   }
 };
+const ensureAdvisorExists = async (advisor_id, academy_id) => {
+  const { rows: [row] } = await db.query(
+    `SELECT 1
+     FROM professors p
+     JOIN identities i ON p.user_id = i.user_id
+     WHERE p.id = $1
+       AND p.academy_id = $2
+       AND i.role = 'professor'
+       AND i.issued_at IS NOT NULL
+       AND i.revoked_at IS NULL
+     LIMIT 1`,
+    [advisor_id, academy_id],
+  );
+
+  if (!row) {
+    const err = new Error('Advisor not found for the provided academy');
+    err.statusCode = 404;
+    err.code = 'PROFESSOR_NOT_FOUND';
+    throw err;
+  }
+};
 const generateStudentNumber = async () => {
     const result = await db.query(`SELECT nextval('student_seq')`);
     const seq = result.rows[0].nextval;
@@ -85,7 +107,7 @@ const getDepartmentGraduationYears = async (department_id) => {
 }
 const ensureStudentExists = async (student_id) => {
   const { rows: [row] } = await db.query(`
-    SELECT 1
+    SELECT s.academy_id
     FROM students s
     JOIN identities i ON s.user_id = i.user_id
     WHERE s.id = $1
@@ -102,12 +124,15 @@ const ensureStudentExists = async (student_id) => {
     err.code = 'STUDENT_NOT_FOUND';
     throw err;
   }
+
+  return row;
 }
 
 const insertStudentToDB = async ({
   user_id,
   academy_id,
   department_id,
+  advisor_id,
   student_number,
   current_level,
   enrollment_status,
@@ -119,22 +144,24 @@ const insertStudentToDB = async ({
       user_id,
       academy_id,
       department_id,
+      advisor_id,
       student_number,
       enrollment_status,
       enrollment_date,
       expected_graduation_date,
       actual_graduation_date
     ) VALUES (
-      $1, $2, $3, $4,
-      COALESCE($5::enrollment_status, 'active'::enrollment_status),
-      COALESCE($6::date, CURRENT_DATE),
-      COALESCE($6::date, CURRENT_DATE) + make_interval(years => $7),
-      $8
+      $1, $2, $3, $4, $5,
+      COALESCE($6::enrollment_status, 'active'::enrollment_status),
+      COALESCE($7::date, CURRENT_DATE),
+      COALESCE($7::date, CURRENT_DATE) + make_interval(years => $8),
+      $9
     ) RETURNING *`,
     [
       user_id,
       academy_id,
       department_id,
+      advisor_id ?? null,
       student_number,
       enrollment_status ?? null,
       enrollment_date ?? null,
@@ -144,13 +171,15 @@ const insertStudentToDB = async ({
   );
 const updateStudentToDB = async ({
   student_id,
-  cgpa
+  cgpa,
+  advisor_id
 }) => await db.query(
     `UPDATE students
-      SET cgpa = COALESCE($2, cgpa)
+      SET cgpa = COALESCE($2, cgpa),
+          advisor_id = COALESCE($3, advisor_id)
       WHERE id = $1
       RETURNING *`,
-    [student_id, cgpa],
+    [student_id, cgpa, advisor_id ?? null],
   );
 
 
@@ -160,6 +189,7 @@ export const createStudentService = async (payload) => {
     user_id,
     academy_id,
     department_id,
+    advisor_id,
     current_level,
     enrollment_status,
     enrollment_date,
@@ -168,6 +198,7 @@ export const createStudentService = async (payload) => {
 
   await ensureUserExists(user_id);
   await ensureAcademyExists(academy_id);
+  if (advisor_id) await ensureAdvisorExists(advisor_id, academy_id);
   const department = await getDepartmentGraduationYears(department_id);
   
   const studentNumber = await generateStudentNumber();
@@ -183,13 +214,15 @@ export const createStudentService = async (payload) => {
   return { student: toStudentDto(student) };
 };
 export const updateStudentService = async (payload) => {
-  const { student_id, cgpa } = payload;
+  const { student_id, cgpa, advisor_id } = payload;
 
-  await ensureStudentExists(student_id);
+  const existingStudent = await ensureStudentExists(student_id);
+  if (advisor_id) await ensureAdvisorExists(advisor_id, existingStudent.academy_id);
 
   const { rows: [student] } = await updateStudentToDB({
     student_id,
-    cgpa
+    cgpa,
+    advisor_id
   });
 
   return { student: toStudentDto(student) };

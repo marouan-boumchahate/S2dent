@@ -11,9 +11,10 @@ describe('POST /api/credentials', () => {
   const SEED_WALLET = '0xcccccccccccccccccccccccccccccccccccccccc';
   const STUDENT_WALLET = '0xccccccccccccccccccccccccccccccccccccccc1';
   const PROFESSOR_WALLET = '0xccccccccccccccccccccccccccccccccccccccc2';
+  const ADVISOR_WALLET = '0xccccccccccccccccccccccccccccccccccccccc4';
   const OTHER_ACADEMY_WALLET = '0xccccccccccccccccccccccccccccccccccccccc3';
 
-  const ALL_TEST_WALLETS = [SEED_WALLET, STUDENT_WALLET, PROFESSOR_WALLET, OTHER_ACADEMY_WALLET].map(w => ethers.getAddress(w).toLowerCase());
+  const ALL_TEST_WALLETS = [SEED_WALLET, STUDENT_WALLET, PROFESSOR_WALLET, ADVISOR_WALLET, OTHER_ACADEMY_WALLET].map(w => ethers.getAddress(w).toLowerCase());
   const ALL_TEST_EMAILS = [SEED_ACADEMY_EMAIL, 'student.credential.create@credential.test', 'other.create@test.com'];
 
   let ACADEMY_ID;
@@ -65,10 +66,11 @@ describe('POST /api/credentials', () => {
       ['Prof', 'Test', fullName, email, '1980-01-01', 'male', nid, 'Turkish']
     );
 
-    await db.query(
+    const { rows: [professor] } = await db.query(
       `INSERT INTO professors (user_id, academy_id, department_id, employee_number, title, rank, hire_date)
        VALUES ($1, $2, (SELECT id FROM departments WHERE academy_id = $2 LIMIT 1), $3, $4, $5, $6)
-       ON CONFLICT (user_id) DO UPDATE SET academy_id = EXCLUDED.academy_id`,
+       ON CONFLICT (user_id) DO UPDATE SET academy_id = EXCLUDED.academy_id
+       RETURNING id`,
       [user.id, academyId, 'EMP-C-' + wallet.slice(-4), 'Dr.', 'Prof', '2010-01-01']
     );
 
@@ -76,13 +78,13 @@ describe('POST /api/credentials', () => {
       `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
        VALUES ($1, $2, $3, 'professor', NOW())
        ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
-      [user.id, ethers.getAddress(wallet), '0x04profpub' + wallet.slice(2, 10).padEnd(120, '0')]
+      [user.id, ethers.getAddress(wallet), '0x04' + wallet.slice(2).padEnd(128, '0')]
     );
 
-    return user.id;
+    return professor.id;
   };
 
-  const seedStudent = async (academyId) => {
+  const seedStudent = async (academyId, advisorId = null) => {
     const email = 'student.credential.create@credential.test';
     const nid = 'NID-CRD-C-001';
     
@@ -95,10 +97,10 @@ describe('POST /api/credentials', () => {
     );
 
     await db.query(
-      `INSERT INTO students (user_id, academy_id, department_id, student_number, enrollment_status, enrollment_date, expected_graduation_date)
-       VALUES ($1, $2, (SELECT id FROM departments WHERE academy_id = $2 LIMIT 1), $3, 'active', '2022-09-15', '2026-06-30')
+      `INSERT INTO students (user_id, academy_id, department_id, advisor_id, student_number, enrollment_status, enrollment_date, expected_graduation_date)
+       VALUES ($1, $2, (SELECT id FROM departments WHERE academy_id = $2 LIMIT 1), $3, $4, 'active', '2022-09-15', '2026-06-30')
        ON CONFLICT (user_id) DO UPDATE SET academy_id = EXCLUDED.academy_id`,
-      [user.id, academyId, 'STU-CRD-C-001']
+      [user.id, academyId, advisorId, 'STU-CRD-C-001']
     );
 
     await db.query(
@@ -203,8 +205,8 @@ describe('POST /api/credentials', () => {
   });
 
   it('returns 200 when a professor issues for a student in their academy', async () => {
-    await seedStudent(ACADEMY_ID);
-    await seedProfessor(ACADEMY_ID);
+    const professorId = await seedProfessor(ACADEMY_ID);
+    await seedStudent(ACADEMY_ID, professorId);
     const profToken = issueAccessToken({ sub: PROFESSOR_WALLET, role: 'professor' });
 
     const body = {
@@ -231,6 +233,37 @@ describe('POST /api/credentials', () => {
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
+  });
+
+  it('returns 403 when a non-advisor professor tries to issue', async () => {
+    const advisorId = await seedProfessor(ACADEMY_ID, ADVISOR_WALLET);
+    await seedProfessor(ACADEMY_ID, PROFESSOR_WALLET);
+    await seedStudent(ACADEMY_ID, advisorId);
+
+    const profToken = issueAccessToken({ sub: PROFESSOR_WALLET, role: 'professor' });
+
+    const res = await request(app)
+      .post('/api/credentials')
+      .set('Authorization', `Bearer ${profToken}`)
+      .send({
+        title: 'Attendance Record',
+        credential_type: 'attendance',
+        student_address: ethers.getAddress(STUDENT_WALLET),
+        payload: {
+          course_code: 'CS102',
+          course_name: 'Data Structures',
+          academic_year: '2023-2024',
+          semester: 'spring',
+          total_sessions: 28,
+          attended_sessions: 25,
+          excused_absences: 1,
+          period_from: '2024-02-01',
+          period_to: '2024-05-30'
+        }
+      });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, 'NOT_STUDENT_ADVISOR');
   });
   
   it('returns 400 when an academy tries to create an attendance credential', async () => {
