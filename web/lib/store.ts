@@ -57,10 +57,22 @@ export type Department = {
   createdAt: string;
 };
 
+
+export type Credential = {
+  id: string;
+  title: string;
+  issuedTo: string; // student id
+  type: 'Enrollment' | 'Attendance' | 'Degree' | 'Certificate' | 'Achievement' | 'Transcript';
+  code: string;
+  date: string;
+  status: 'Verified' | 'Pending' | 'Failed' | 'Revoked';
+  createdAt: string;
+};
 export const store = {
   students: [] as Student[],
   professors: [] as Professor[],
   departments: [] as Department[],
+  credentials: [] as Credential[],
 
   addStudent(s: Omit<Student, 'id' | 'createdAt'>) {
     const newStudent: Student = {
@@ -110,5 +122,19 @@ export const store = {
 
   removeDepartment(id: string) {
     this.departments = this.departments.filter(d => d.id !== id);
+  },
+
+  addCredential(c: Omit<Credential, 'id' | 'createdAt'>) {
+    const newCredential: Credential = {
+      ...c,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    this.credentials.unshift(newCredential);
+    return newCredential;
+  },
+
+  removeCredential(id: string) {
+    this.credentials = this.credentials.filter(c => c.id !== id);
   },
 };

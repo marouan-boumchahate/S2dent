@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { store, Department } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
+import PageHeader from '@/components/PageHeader';
 
 // modal
 function AddModal({ onConfirm, onCancel }: {
@@ -232,15 +233,7 @@ export default function DepartmentsPage() {
       <div className="flex flex-col h-full">
 
         {/* header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-textLight text-xl font-bold">Departments</h1>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-mint text-navy font-bold rounded-lg hover:opacity-90 transition text-sm"
-          >
-            + Add new
-          </button>
-        </div>
+        <PageHeader title="Departments" onAddNew={() => setShowAddModal(true)} />
 
         {/* stat cards */}
         <div className="flex gap-4 mb-6">
