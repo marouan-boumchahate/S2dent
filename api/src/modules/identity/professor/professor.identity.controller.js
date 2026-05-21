@@ -14,7 +14,7 @@ const issueIdentity = async (req, res) => {
     return ok(res, result, 'Professor identity issuance request submitted successfully')
 }
 const revokeIdentity = async (req, res) => {
-    const { professor_address, revocation_reason } = req.query
+    const { professor_address, revocation_reason } = req.body
     const { sub: academy_address } = req.user
 
     const result = await revokeProfessorIdentityService({ 

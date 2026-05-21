@@ -41,7 +41,11 @@ CREATE TABLE IF NOT EXISTS professors (
     office_location VARCHAR(255),
     office_hours TEXT,
     
-    bio TEXT
+    bio TEXT,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_professors_user_id ON professors(user_id);
@@ -49,3 +53,4 @@ CREATE INDEX IF NOT EXISTS idx_professors_academy_id ON professors(academy_id);
 CREATE INDEX IF NOT EXISTS idx_professors_department_id ON professors(department_id);
 CREATE INDEX IF NOT EXISTS idx_professors_employee_num ON professors(employee_number);
 CREATE INDEX IF NOT EXISTS idx_professors_title ON professors(title);
+CREATE INDEX IF NOT EXISTS idx_professors_is_active ON professors(is_active);

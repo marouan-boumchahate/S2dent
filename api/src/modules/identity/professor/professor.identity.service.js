@@ -10,8 +10,27 @@ import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner } from '../../../utils/crypto.js'
 
 
+// Constants
+const ISSUE_ON_SUCCESS = (title, name, academyName) => ({
+    subject: 'Identity Issuance Confirmed',
+    message: `Congratulations ${title} ${name}! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on ${academyName}!`
+})
+const ISSUE_ON_FAILURE = (title, name) => ({
+    subject: 'Identity Issuance Pending Resolution',
+    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
+})
+
+const REVOKE_ON_SUCCESS = (title, name, academyName) => ({
+    subject: 'Identity Revocation Confirmed',
+    message: `Hello ${title} ${name}, your identity at ${academyName} has been revoked. Your professor identity is no longer active. If this action was unexpected, please reach out to your academy.`
+})
+const REVOKE_ON_FAILURE = (title, name) => ({
+    subject: 'Identity Revocation Pending Resolution',
+    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity revocation. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
+})
+
+
 // Helpers
-// -------
 const formatDateOnly = (value) => {
     if (!value) return ''
     if (typeof value === 'string') return value.slice(0, 10)
@@ -148,19 +167,25 @@ const saveTransaction = async (txHash, payloadObj) => {
         [txHash, payload]
     )
 }
+const insertIdentityRecord = async ({ userId, issueTxHash }) => {
+    await db.query(
+        `INSERT INTO identities
+        (user_id, role, issue_identity_tx_hash)
+        VALUES ($1, $2, $3)`,
+        [userId, "professor", issueTxHash]
+    )
+}
+const updateIdentityRecord = async (revokeTxHash, walletAddress) => {
+    await db.query(
+        `UPDATE identities
+            SET revoke_identity_tx_hash = $1, updated_at = NOW()
+            WHERE wallet_address = $2`,
+        [revokeTxHash, walletAddress]
+    )
+}
 
 
-// Issuance
-// --------
-const ISSUE_ON_SUCCESS = (title, name, academyName) => ({
-    subject: 'Identity Issuance Confirmed',
-    message: `Congratulations ${title} ${name}! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on ${academyName}!`
-})
-const ISSUE_ON_FAILURE = (title, name) => ({
-    subject: 'Identity Issuance Pending Resolution',
-    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
-})
-
+// Services
 export const issueProfessorIdentityService = async ({ otp, email, signature }) => {
     email = email.toLowerCase().trim()
 
@@ -185,14 +210,15 @@ export const issueProfessorIdentityService = async ({ otp, email, signature }) =
         rank: professor.rank,
         employmentType: professor.employment_type
     })
+    await insertIdentityRecord({ userId: professor.user_id, issueTxHash: tx.hash })
 
     const payload = {
-        action: 'issue',
+        action: 'identity_issue',
+        entity_id: professor.user_id,
+        role: 'professor',
 
         wallet_address: checksumAddr,
         public_key: signerPublicKey,
-        entity_id: professor.user_id,
-        role: 'professor',
         
         email: professor.email,
         onSuccess: ISSUE_ON_SUCCESS(professor.title, professor.full_name, professor.academy_name),
@@ -210,19 +236,6 @@ export const issueProfessorIdentityService = async ({ otp, email, signature }) =
         }
     }
 }
-
-
-// Revocation
-// ----------
-const REVOKE_ON_SUCCESS = (title, name, academyName) => ({
-    subject: 'Identity Revocation Confirmed',
-    message: `Hello ${title} ${name}, your identity at ${academyName} has been revoked. Your professor identity is no longer active. If this action was unexpected, please reach out to your academy.`
-})
-const REVOKE_ON_FAILURE = (title, name) => ({
-    subject: 'Identity Revocation Pending Resolution',
-    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity revocation. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
-})
-
 export const revokeProfessorIdentityService = async ({ academy_address, professor_address, reason }) => {
     const professorWallet = ethers.getAddress(professor_address)
     const academyWallet = ethers.getAddress(academy_address)
@@ -234,10 +247,13 @@ export const revokeProfessorIdentityService = async ({ academy_address, professo
         academyAddress: professor.academy_wallet_address,
         reason
     })
+    await updateIdentityRecord(tx.hash, professorWallet)
 
     const payload = {
-        action: 'revoke',
+        action: 'identity_revoke',
 
+        user_id: professor.user_id,
+        role: 'professor',
         wallet_address: professorWallet,
         reason,
 

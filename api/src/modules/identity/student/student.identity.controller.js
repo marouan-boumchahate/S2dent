@@ -13,7 +13,7 @@ export const issueIdentity = async (req, res) => {
     return ok(res, result, 'Student identity issuance request submitted successfully')
 }
 export const revokeIdentity = async (req, res) => {
-    const { student_address, revocation_reason } = req.query
+    const { student_address, revocation_reason } = req.body
     const { sub: academy_address } = req.user
 
     const result = await revokeStudentIdentityService({  academy_address, student_address, reason: revocation_reason })

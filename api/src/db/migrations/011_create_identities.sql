@@ -23,9 +23,13 @@ CREATE TABLE IF NOT EXISTS identities (
     nonce_expires_at TIMESTAMP,
 
     issue_identity_tx_hash VARCHAR(66),
+    issued_at TIMESTAMP,
+
     revoke_identity_tx_hash VARCHAR(66) DEFAULT NULL,
+    revoked_at TIMESTAMP,
+    revocation_reason TEXT,
     
-    is_active BOOLEAN DEFAULT TRUE,
+    --is_active BOOLEAN DEFAULT TRUE,
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),

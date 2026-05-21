@@ -49,7 +49,11 @@ const ensureAcademyExists = async (academy_id) => {
   const { rows: [academy] } = await db.query(
     `SELECT id 
      FROM identities 
-     WHERE academy_id = $1 LIMIT 1`,
+     WHERE academy_id = $1
+       AND role = 'academy'
+       AND issued_at IS NOT NULL
+       AND revoked_at IS NULL
+     LIMIT 1`,
     [academy_id],
   );
 
@@ -81,15 +85,18 @@ const getDepartmentGraduationYears = async (department_id) => {
 }
 const ensureStudentExists = async (student_id) => {
   const { rows: [row] } = await db.query(`
-    SELECT i.is_active
+    SELECT 1
     FROM students s
     JOIN identities i ON s.user_id = i.user_id
     WHERE s.id = $1
+      AND i.role = 'student'
+      AND i.issued_at IS NOT NULL
+      AND i.revoked_at IS NULL
     LIMIT 1
   `, [student_id]);
 
 
-  if (!row || !row.is_active) {
+  if (!row) {
     const err = new Error('No active student account found for the provided ID');
     err.statusCode = 403;
     err.code = 'STUDENT_NOT_FOUND';

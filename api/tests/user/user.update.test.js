@@ -82,9 +82,9 @@ const seedTUser = async () => {
   );
 
   await db.query(
-    `INSERT INTO identities (user_id, role, is_active)
-     VALUES ($1, $2, $3)`,
-    [u.id, 'student', true],
+    `INSERT INTO identities (user_id, role, issued_at)
+     VALUES ($1, $2, NOW())`,
+    [u.id, 'student'],
   );
 
   return u.id;
@@ -220,7 +220,7 @@ describe('PUT /api/users', () => {
 
   it('returns 500 when database throws unexpectedly during update', async () => {
     const stub = sinon.stub(db, 'query');
-    stub.onFirstCall().resolves({ rows: [{ is_active: true }] });
+    stub.onFirstCall().resolves({ rows: [{ issued_at: new Date(), revoked_at: null }] });
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 
     const res = await request(app)

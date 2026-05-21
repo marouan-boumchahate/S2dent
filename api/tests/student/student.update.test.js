@@ -95,9 +95,9 @@ const seedAcademy = async () => {
   );
 
   await db.query(
-    `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-     VALUES ($1, $2, $3, 'academy', TRUE)
-     ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+    `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+     VALUES ($1, $2, $3, 'academy', NOW())
+     ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
     [academy.id, SEED_WALLET, '0x04stuupd' + 'a'.repeat(122)],
   );
 
@@ -191,8 +191,8 @@ const seedStudent = async (userId, academyId, departmentId) => {
   const stuPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
   const stuWallet = '0xst' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30);
   await db.query(
-    `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-     VALUES ($1, $2, $3, 'student', TRUE)`,
+    `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+     VALUES ($1, $2, $3, 'student', NOW())`,
     [userId, stuWallet, stuPubKey]
   );
 
@@ -324,21 +324,21 @@ describe('PUT /api/students/:id', () => {
   });
 
   it('returns 403 STUDENT_NOT_FOUND when student identity is inactive', async () => {
-    await db.query(`UPDATE identities SET is_active = FALSE WHERE user_id = $1`, [USER_ID]);
+    await db.query(`UPDATE identities SET revoked_at = NOW() WHERE user_id = $1`, [USER_ID]);
 
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
       .send({ cgpa: 3.5 });
 
-    assert.equal(res.status, 403);
+    assert.equal(res.status, 403);d
     assert.equal(res.body.code, 'STUDENT_NOT_FOUND');
   });
 
   it('returns 500 when database throws unexpectedly', async () => {
     const stub = sinon.stub(db, 'query');
     // First call is ensureStudentExists check
-    stub.onFirstCall().resolves({ rows: [{ is_active: true }] });
+    stub.onFirstCall().resolves({ rows: [{ issued_at: new Date(), revoked_at: null }] });
     // Second call is the update query
     stub.onSecondCall().rejects(new Error('DB connection lost'));
 

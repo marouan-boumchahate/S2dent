@@ -38,9 +38,9 @@ describe('POST /api/credentials/:id/issue', function () {
     );
 
     await db.query(
-      `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'academy', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, academy_id = EXCLUDED.academy_id`,
+      `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'academy', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, academy_id = EXCLUDED.academy_id`,
       [academy.id, ethers.getAddress(SEED_WALLET), '0x04seedipub' + 'a'.repeat(120)]
     );
 
@@ -65,9 +65,9 @@ describe('POST /api/credentials/:id/issue', function () {
     );
 
     await db.query(
-      `INSERT INTO identities (user_id, wallet_address, public_key, role, is_active)
-       VALUES ($1, $2, $3, 'student', TRUE)
-       ON CONFLICT (wallet_address) DO UPDATE SET is_active = TRUE, user_id = EXCLUDED.user_id`,
+      `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
+       VALUES ($1, $2, $3, 'student', NOW())
+       ON CONFLICT (wallet_address) DO UPDATE SET issued_at = NOW(), revoked_at = NULL, user_id = EXCLUDED.user_id`,
       [user.id, ethers.getAddress(STUDENT_WALLET), '0x04studipub' + 'b'.repeat(120)]
     );
 
@@ -113,7 +113,7 @@ describe('POST /api/credentials/:id/issue', function () {
     await db.query(`DELETE FROM credentials WHERE code LIKE 'CRD_%'`);
     await db.query(`DELETE FROM pending_transactions WHERE payload->>'credential_code' IS NOT NULL`);
     
-    await db.query(`UPDATE identities SET is_active = TRUE WHERE wallet_address = $1`, [ethers.getAddress(SEED_WALLET)]);
+    await db.query(`UPDATE identities SET issued_at = NOW(), revoked_at = NULL WHERE wallet_address = $1`, [ethers.getAddress(SEED_WALLET)]);
     
     await db.query(`DELETE FROM identities WHERE user_id IN (SELECT id FROM users WHERE email = ANY($1))`, [ALL_TEST_EMAILS]);
     await db.query(`DELETE FROM students WHERE academy_id = $1`, [ACADEMY_ID]);
@@ -283,7 +283,7 @@ describe('POST /api/credentials/:id/issue', function () {
       });
 
     const { credential_id } = createRes.body.data;
-    await db.query(`UPDATE identities SET is_active = FALSE WHERE wallet_address = $1`, [ethers.getAddress(SEED_WALLET)]);
+    await db.query(`UPDATE identities SET revoked_at = NOW() WHERE wallet_address = $1`, [ethers.getAddress(SEED_WALLET)]);
 
     const issueRes = await request(app)
       .post(`/api/credentials/${credential_id}/issue`)

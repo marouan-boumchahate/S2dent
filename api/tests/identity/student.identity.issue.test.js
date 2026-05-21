@@ -87,8 +87,8 @@ const seedAcademy = async ({
     );
 
     await db.query(
-        `INSERT INTO identities (academy_id, wallet_address, public_key, role, is_active)
-         VALUES ($1, $2, $3, 'academy', true)`,
+        `INSERT INTO identities (academy_id, wallet_address, public_key, role, issued_at)
+         VALUES ($1, $2, $3, 'academy', NOW())`,
         [academy.id, wallet_address, ACADEMY_PUBLIC_KEY],
     );
 

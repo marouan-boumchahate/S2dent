@@ -128,8 +128,8 @@ const seedIdentityForAddress = async (walletAddress, role) => {
             [`ACR-${suffix}`, `refresh-${suffix}@seed.test`, `Refresh Academy ${suffix}`, `RA${suffix.slice(0,4).toUpperCase()}`, `Refresh Academy ${suffix} Legal`, `REG-RFR-${suffix}`, `TAX-RFR-${suffix}`],
         );
         await db.query(
-            `INSERT INTO identities (wallet_address, public_key, role, academy_id, is_active)
-             VALUES ($1, $2, 'academy', $3, TRUE)`,
+            `INSERT INTO identities (wallet_address, public_key, role, academy_id, issued_at)
+             VALUES ($1, $2, 'academy', $3, NOW())`,
             [walletAddress, publicKey, academy.id],
         );
         return { academy_id: academy.id };
@@ -142,8 +142,8 @@ const seedIdentityForAddress = async (walletAddress, role) => {
         ['Refresh', `User${suffix}`, `Refresh User ${suffix}`, `NID-RFR-${suffix}`, `refresh-user-${suffix}@seed.test`],
     );
     await db.query(
-        `INSERT INTO identities (wallet_address, public_key, role, user_id, is_active)
-         VALUES ($1, $2, $3, $4, TRUE)`,
+        `INSERT INTO identities (wallet_address, public_key, role, user_id, issued_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
         [walletAddress, publicKey, role === 'system_admin' ? 'system_admin' : role, user.id],
     );
     return { user_id: user.id };

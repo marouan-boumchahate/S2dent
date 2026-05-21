@@ -13,6 +13,27 @@ import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner } from '../../../utils/crypto.js'
 
 
+// Constants
+const ON_SUCCESS = {
+    subject: 'Identity Issuance Confirmed',
+    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
+}
+const ON_FAILURE = {
+    subject: 'Identity Issuance Pending Resolution',
+    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
+}
+
+const REVOKE_ON_SUCCESS = {
+    subject: 'Identity Revocation Confirmed',
+    message: 'Your academy identity has been revoked from the system and is no longer active. If this action was unexpected, please reach out to support immediately.'
+}
+const REVOKE_ON_FAILURE = {
+    subject: 'Identity Revocation Pending Resolution',
+    message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
+}
+
+
+
 // Helpers
 // -------
 const fetchFromCache = async (email, otp) => {
@@ -125,6 +146,22 @@ const ensureWalletAddressUnique = async (wallet) =>
         throw err
     }
 }
+const insertIdentityRecord = async ({ academyId, issueTxHash }) => {
+    await db.query(
+        `INSERT INTO identities
+        (academy_id, role, issue_identity_tx_hash)
+        VALUES ($1, $2, $3)`,
+        [academyId, "academy", issueTxHash]
+    )
+}
+const updateIdentityRecord = async (revokeTxHash, walletAddress) => {
+    await db.query(
+        `UPDATE identities
+            SET revoke_identity_tx_hash = $1, updated_at = NOW()
+            WHERE wallet_address = $2`,
+        [revokeTxHash, walletAddress]
+    )
+}
 
 const saveCertificate = async (walletAddress, certPem, chainPem, fingerprintHex) => {
     await db.query(
@@ -158,17 +195,7 @@ const getCertificate = async (
 }
 
 
-// Issuance
-// --------
-const ON_SUCCESS = {
-    subject: 'Identity Issuance Confirmed',
-    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
-}
-const ON_FAILURE = {
-    subject: 'Identity Issuance Pending Resolution',
-    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
-}
-
+// Services
 export const issueAcademyIdentity = async ({ otp, email, signature }) => {   
     const { id, message, role } = await fetchFromCache(email, otp)
 
@@ -213,21 +240,24 @@ export const issueAcademyIdentity = async ({ otp, email, signature }) => {
     })
     
     await saveCertificate(checksumAddr, certificatePem, chainPem, fingerprint)
-    
+    await insertIdentityRecord({
+        academyId: id,
+        issueTxHash: tx.hash
+    })
+
     // Saving Transaction Off-Chain
     const payload = {
-        action: 'issue',
+        action: 'identity_issue',
         
-        entity_id: id,
         wallet_address: checksumAddr,
         public_key: signerPublicKey,
-        role: 'academy',
         
         email: academy.email,
         onSuccess: ON_SUCCESS,
         onFailure: ON_FAILURE
     }
     await saveTransaction(tx.hash, payload)
+
     
     listenOnTransaction(tx)
     
@@ -244,28 +274,17 @@ export const issueAcademyIdentity = async ({ otp, email, signature }) => {
         }
     }
 }
-
-// Revocation
-// ----------
-const REVOKE_ON_SUCCESS = {
-    subject: 'Identity Revocation Confirmed',
-    message: 'Your academy identity has been revoked from the system and is no longer active. If this action was unexpected, please reach out to support immediately.'
-}
-const REVOKE_ON_FAILURE = {
-    subject: 'Identity Revocation Pending Resolution',
-    message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
-}
-
 export const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
     const checksumAddr = ethers.getAddress(wallet_address)
 
     const academy = await getAcademyByWallet(checksumAddr)
 
     const tx = await revokeAcademy({ academyAddress: academy.wallet_address, reason })
+    await updateIdentityRecord(tx.hash, checksumAddr)
 
     // Saving Transaction Off-Chain
     const payload = {
-        action: 'revoke',
+        action: 'identity_revoke',
 
         wallet_address: checksumAddr,
         reason,

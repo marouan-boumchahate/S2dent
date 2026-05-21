@@ -108,15 +108,16 @@ const seedIdentity = async (walletAddress, role = 'professor', opts = {}) => {
     const { academy_id, user_id } = await ensureNonceFkOwner(role);
     const publicKey = '0x04' + crypto.randomBytes(64).toString('hex');
     await db.query(
-        `INSERT INTO identities (wallet_address, public_key, role, nonce, nonce_expires_at, is_active, academy_id, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO identities (wallet_address, public_key, role, nonce, nonce_expires_at, issued_at, revoked_at, academy_id, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
             walletAddress,
             publicKey,
             role,
             opts.nonce ?? null,
             opts.nonce_expires_at ?? null,
-            opts.is_active ?? true,
+            opts.issued_at ?? new Date(),
+            opts.revoked_at ?? null,
             academy_id,
             user_id,
         ],
