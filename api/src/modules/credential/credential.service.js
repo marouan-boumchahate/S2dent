@@ -118,7 +118,7 @@ const canIssueTargetCredentialType = (issuerRole, credentialType) => {
 }
 const getStudentAndAcademyData = async (student_address) => {
     const { rows: [identity] } = await db.query(
-        `SELECT s.academy_id, u.full_name AS student_name, a.name AS academy_name, ai.wallet_address AS academy_wallet_address
+        `SELECT s.academy_id, s.advisor_id, u.full_name AS student_name, a.name AS academy_name, ai.wallet_address AS academy_wallet_address
          FROM identities i
          JOIN students s ON i.user_id = s.user_id
          JOIN users u ON s.user_id = u.id
@@ -140,6 +140,7 @@ const getStudentAndAcademyData = async (student_address) => {
         academyId: identity.academy_id,
         academyAddress: identity.academy_wallet_address,
         academyName: identity.academy_name,
+        advisorId: identity.advisor_id,
         studentAddress: student_address,
         studentName: identity.student_name
     };
@@ -519,6 +520,23 @@ const getAllCredentials = async (wallet_address, role) => {
 
     return credentials;
 }
+const isStudentAdvisor = async (issuerAddress, advisorId) => {
+    const { rows: [professor] } = await db.query(
+        `SELECT p.id
+            FROM identities i
+            JOIN professors p ON i.user_id = p.user_id
+            WHERE LOWER(i.wallet_address) = LOWER($1)
+            AND i.role = 'professor'`,
+        [issuerAddress]
+    );
+
+    if (!professor || !advisorId || professor.id !== advisorId) {
+        const err = new Error('Professor is not the student advisor');
+        err.statusCode = 403;
+        err.code = 'NOT_STUDENT_ADVISOR';
+        throw err;
+    }
+}
 
 
 // Services
@@ -538,12 +556,14 @@ const createCredentialService = async (issuer_address, role, data) => {
         academyId,
         academyAddress,
         academyName,
+        advisorId,
         studentAddress,
         studentName
     } = await getStudentAndAcademyData(checksumStudentAddr);
 
     const checksumIssuerAddr = ethers.getAddress(issuer_address);
     if(checksumIssuerAddr !== academyAddress) await validateProfessorExistence(checksumIssuerAddr, academyId);
+    if (role === 'professor') await isStudentAdvisor(checksumIssuerAddr, advisorId);
 
     const credentialCode = await generateCredentialCode();
     await ensureUniqueCredentialCode(credentialCode);
