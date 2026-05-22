@@ -1,10 +1,10 @@
-﻿import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:flutter/material.dart';
 
 class CredentialIcon extends StatelessWidget {
   const CredentialIcon({super.key, required this.type});
 
-  final CredentialType type;
+  final CredentialItemType type;
 
   @override
   Widget build(BuildContext context) {
@@ -24,19 +24,19 @@ class CredentialIcon extends StatelessWidget {
 
   (IconData, Color) _iconAndColor(BuildContext context) {
     switch (type) {
-      case CredentialType.degree:
+      case CredentialItemType.degree:
         return (Icons.school_outlined, Colors.indigo);
-      case CredentialType.certificate:
+      case CredentialItemType.certificate:
         return (Icons.workspace_premium_outlined, Colors.amber.shade700);
-      case CredentialType.transcript:
+      case CredentialItemType.transcript:
         return (Icons.description_outlined, Colors.teal);
-      case CredentialType.enrollment:
+      case CredentialItemType.enrollment:
         return (Icons.how_to_reg_outlined, Colors.blue);
-      case CredentialType.achievement:
+      case CredentialItemType.achievement:
         return (Icons.emoji_events_outlined, Colors.orange);
-      case CredentialType.attendance:
+      case CredentialItemType.attendance:
         return (Icons.checklist_outlined, Colors.green);
-      case CredentialType.unknown:
+      case CredentialItemType.unknown:
         return (Icons.help_outline, Colors.grey);
     }
   }

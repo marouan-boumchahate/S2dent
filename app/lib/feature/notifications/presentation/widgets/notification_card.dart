@@ -6,11 +6,9 @@ class NotificationCard extends StatelessWidget {
   const NotificationCard({
     super.key,
     required this.notification,
-    required this.onTap,
   });
 
   final AppNotification notification;
-  final VoidCallback onTap;
 
   IconData get _icon {
     switch (notification.type) {
@@ -59,10 +57,7 @@ class NotificationCard extends StatelessWidget {
           color: Colors.blueGrey.withAlpha(160),
         ),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
+      child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,7 +105,6 @@ class NotificationCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

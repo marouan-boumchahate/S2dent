@@ -97,11 +97,6 @@ class NotificationsBottomSheet extends ConsumerWidget {
                         itemCount: notifications.length,
                         itemBuilder: (ctx, index) => NotificationCard(
                           notification: notifications[index],
-                          onTap: () {
-                            notificationNotifier.markAsRead(
-                              notifications[index].id,
-                            );
-                          },
                         ),
                       ),
               ),

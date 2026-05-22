@@ -1,32 +1,4 @@
-enum CredentialType {
-  degree,
-  certificate,
-  transcript,
-  enrollment,
-  achievement,
-  attendance,
-  unknown,
-}
-
-enum CredentialStatus {
-  valid,
-  revoked,
-  expired,
-  unknown,
-}
-
-CredentialType credentialTypeFromJson(Object? value) {
-  if (value is CredentialType) return value;
-  return CredentialType.values.firstWhere(
-    (element) => element.name == value,
-    orElse: () => CredentialType.unknown,
-  );
-}
-
-CredentialStatus credentialStatusFromBool(bool? isRevoked) {
-  if (isRevoked == null) return CredentialStatus.unknown;
-  return isRevoked ? CredentialStatus.revoked : CredentialStatus.valid;
-}
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 
 class Credential {
   const Credential({
@@ -39,7 +11,7 @@ class Credential {
     required this.studentAddress,
     required this.studentName,
     required this.issuedAt,
-    required this.status,
+    required this.isRevoked,
     required this.issueTxHash,
     this.revokeTxHash,
     this.revocationReason,
@@ -53,13 +25,13 @@ class Credential {
   final String id;
   final String title;
   final String code;
-  final CredentialType type;
+  final CredentialItemType type;
   final String issuerAddress;
   final String academyAddress;
   final String studentAddress;
   final String studentName;
   final DateTime issuedAt;
-  final CredentialStatus status;
+  final bool isRevoked;
   final String issueTxHash;
   final String? revokeTxHash;
   final String? revocationReason;
@@ -79,9 +51,9 @@ class Credential {
       id: meta["id"] ?? "",
       title: meta["title"] ?? "",
       code: meta["code"] ?? "",
-      type: credentialTypeFromJson(meta["type"]),
+      type: credentialItemTypeFromJson(meta["type"]),
       issuedAt: DateTime.parse(meta["issued_at"]),
-      status: credentialStatusFromBool(meta["is_revoked"]),
+      isRevoked: meta["is_revoked"] ?? false,
       description: meta["description"],
       studentAddress: student["address"] ?? "",
       studentName: student["name"] ?? "",
@@ -105,7 +77,7 @@ class Credential {
         "code": code,
         "type": type.name,
         "issued_at": issuedAt.toIso8601String(),
-        "is_revoked": status == CredentialStatus.revoked,
+        "is_revoked": isRevoked,
         "description": description,
       },
       "student": {

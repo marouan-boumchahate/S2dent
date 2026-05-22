@@ -1,6 +1,7 @@
-﻿import 'package:app/feature/profile/domain/models/address.dart';
+import 'package:app/feature/profile/domain/models/address.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
+import 'package:flutter/rendering.dart';
 
 class AddressDataSource {
   AddressDataSource();
@@ -20,6 +21,7 @@ class AddressDataSource {
 
   Future<Student> getAddressInfo() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Get address info API has been called");
     return Student(
       address: Address.fromJson(_addressJson),
       identity: null,
@@ -31,6 +33,7 @@ class AddressDataSource {
 
   Future<Student> updateAddressInfo(ProfileUpdateData data) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Update address info API has been called");
     final address = Address.fromJson(_addressJson).copyWith(
       addressLine1: data.addressLine1,
       addressLine2: data.addressLine2,

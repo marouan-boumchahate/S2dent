@@ -1,3 +1,5 @@
+import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:app/feature/notifications/data/datasources/notification_datasource.dart';
 import 'package:app/feature/notifications/data/repos_impl/notification_repo_impl.dart';
 import 'package:app/feature/notifications/domain/models/notification.dart';
@@ -7,8 +9,11 @@ import 'package:flutter_riverpod/legacy.dart';
 
 class NotificationController
     extends StateNotifier<AsyncValue<List<AppNotification>>> {
-  NotificationController(this.notificationRepo)
-      : super(const AsyncValue.loading()) {
+  NotificationController(
+    this.notificationRepo, {
+    this.onCredentialChanged,
+    this.onCredentialDetailChanged,
+  }) : super(const AsyncValue.loading()) {
     loadNotifications();
     // _subscribeToSocket();
   }
@@ -17,10 +22,16 @@ class NotificationController
   //   notificationRepo.notificationStream.listen((notification) {
   //     final current = state.asData?.value ?? [];
   //     state = AsyncValue.data([notification, ...current]);
+  //     if (notification.credentialId != null) {
+  //       onCredentialChanged?.call();
+  //       onCredentialDetailChanged?.call(notification.credentialId!);
+  //     }
   //   });
   // }
 
   final NotificationRepo notificationRepo;
+  final VoidCallback? onCredentialChanged;
+  final void Function(String id)? onCredentialDetailChanged;
 
   Future<void> loadNotifications() async {
     state = const AsyncValue.loading();
@@ -30,15 +41,6 @@ class NotificationController
     } catch (e, trace) {
       state = AsyncValue.error(e, trace);
     }
-  }
-
-  Future<void> markAsRead(String id) async {
-    final notifications = state.asData?.value;
-    if (notifications == null) return;
-    state = AsyncValue.data(
-      notifications.where((n) => n.id != id).toList(),
-    );
-    await notificationRepo.markAsRead(id);
   }
 
   Future<void> markAllAsRead() async {
@@ -57,7 +59,13 @@ final notificationRepoProvider = Provider<NotificationRepo>(
 
 final notificationControllerProvider = StateNotifierProvider<
     NotificationController, AsyncValue<List<AppNotification>>>(
-  (ref) => NotificationController(ref.watch(notificationRepoProvider)),
+  (ref) => NotificationController(
+    ref.watch(notificationRepoProvider),
+    onCredentialChanged: () =>
+        ref.read(credentialControllerProvider.notifier).loadCredentials(),
+    onCredentialDetailChanged: (id) =>
+        ref.invalidate(credentialDetailProvider(id)),
+  ),
 );
 
 final unreadCountProvider = Provider<int>(

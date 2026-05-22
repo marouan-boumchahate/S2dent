@@ -1,6 +1,6 @@
 ﻿import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
 import 'package:app/feature/home/domain/home_data.dart';
@@ -56,19 +56,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void onTapSeeAllCredentials(HomeData data) {
-    showModalBottomSheet(
-      useSafeArea: true,
-      isScrollControlled: true,
-      isDismissible: true,
-      showDragHandle: true,
-      context: context,
-      builder: (ctx) => CredentialsBottomSheet(
-        credentials: data.credentialsList ?? [],
-      ),
-    );
-  }
-
   void onTapShowNotifications() {
     showModalBottomSheet(
       useSafeArea: true,
@@ -107,7 +94,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       error: (error, stackTrace) => Center(
         child: Text(error.toString()),
       ),
-      loading: () => Center(
+      loading: () => const Center(
         child: LoadingState(),
       ),
     );
@@ -199,17 +186,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Column(
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Text("Recent Activites", style: context.texts.titleLarge),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: CustomTextButton(
-                label: "See all",
-                color: context.colors.primary,
-                onTap: () => onTapSeeAllCredentials(data),
-              ),
-            )
           ],
         ),
         const SizedBox(height: 8),
@@ -221,13 +200,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onTap: () => showDialog(
                   context: context,
                   builder: (ctx) => CredentialDetailsDialog(
-                      credential: data.recentCredentials?[index]),
+                    id: data.recentCredentials?[index].id ?? "",
+                    isRevoked: data.recentCredentials?[index].isRevoked ?? false,
+                  ),
                 ),
                 title: data.recentCredentials?[index].title ?? "",
                 subTitle: data.recentCredentials?[index].type.name ?? "",
                 icon: CredentialIcon(
                     type: data.recentCredentials?[index].type ??
-                        CredentialType.unknown),
+                        CredentialItemType.unknown),
               );
             },
           ),

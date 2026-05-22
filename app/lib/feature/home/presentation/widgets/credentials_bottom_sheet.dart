@@ -1,7 +1,7 @@
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/utils/dimensions.dart';
 import 'package:app/core/widgets/ui/custom_overscroll_glow.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_card.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +12,7 @@ class CredentialsBottomSheet extends StatelessWidget {
     required this.credentials,
   });
 
-  final List<Credential> credentials;
+  final List<CredentialItem> credentials;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +58,9 @@ class CredentialsBottomSheet extends StatelessWidget {
                           onTap: () => showDialog(
                             context: ctx,
                             builder: (ctx2) => CredentialDetailsDialog(
-                                credential: credentials[index]),
+                              id: credentials[index].id,
+                              isRevoked: credentials[index].isRevoked,
+                            ),
                           ),
                         ),
                       ),

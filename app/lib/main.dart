@@ -36,7 +36,7 @@ class MyApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       home: session.when(
         data: (hasSession) =>
-            hasSession ? const ShellPage() : const RoleSelectionPage(),
+            hasSession ? const ShellPage() : const ShellPage(),
         loading: () => const Scaffold(body: LoadingState()),
         error: (error, stackTrace) => const Scaffold(
           body: Center(

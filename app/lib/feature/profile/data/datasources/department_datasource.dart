@@ -1,5 +1,6 @@
-﻿import 'package:app/feature/profile/domain/models/department.dart';
+import 'package:app/feature/profile/domain/models/department.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
+import 'package:flutter/rendering.dart';
 
 class DepartmentDataSource {
   DepartmentDataSource();
@@ -12,6 +13,7 @@ class DepartmentDataSource {
 
   Future<Student> getDepartmentInfo() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Get department info API has been called");
     return Student(
       department: Department.fromJson(_departmentJson),
       address: null,

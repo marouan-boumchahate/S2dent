@@ -1,6 +1,6 @@
-﻿import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/utils/date_formatter.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_status_badge.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +12,7 @@ class CredentialCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final Credential? credential;
+  final CredentialItem? credential;
   final VoidCallback onTap;
 
   @override
@@ -31,7 +31,8 @@ class CredentialCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              CredentialIcon(type: credential?.type ?? CredentialType.unknown),
+              CredentialIcon(
+                  type: credential?.type ?? CredentialItemType.unknown),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -45,7 +46,7 @@ class CredentialCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      credential?.issuerAddress ?? "",
+                      credential?.code ?? "",
                       style: context.texts.bodyLarge?.copyWith(
                         color: Colors.grey,
                       ),
@@ -63,8 +64,7 @@ class CredentialCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              CredentialStatusBadge(
-                  status: credential?.status ?? CredentialStatus.unknown),
+              CredentialStatusBadge(isRevoked: credential?.isRevoked ?? false),
             ],
           ),
         ),
