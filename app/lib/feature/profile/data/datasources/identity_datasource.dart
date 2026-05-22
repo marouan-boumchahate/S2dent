@@ -1,5 +1,6 @@
-﻿import 'package:app/feature/profile/domain/models/identity.dart';
+import 'package:app/feature/profile/domain/models/identity.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
+import 'package:flutter/rendering.dart';
 
 class IdentityDataSource {
   IdentityDataSource();
@@ -15,6 +16,7 @@ class IdentityDataSource {
 
   Future<Student> getIdentityInfo() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Get identity info API has been called");
     return Student(
       identity: Identity.fromJson(_identityJson),
       address: null,

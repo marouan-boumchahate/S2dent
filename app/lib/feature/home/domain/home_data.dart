@@ -1,4 +1,4 @@
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 
 class HomeData {
   const HomeData({
@@ -16,6 +16,6 @@ class HomeData {
   final int? credentialsCount;
   final double? cgpa;
   final String? enrollmentStatus;
-  final List<Credential>? recentCredentials;
-  final List<Credential>? credentialsList;
+  final List<CredentialItem>? recentCredentials;
+  final List<CredentialItem>? credentialsList;
 }

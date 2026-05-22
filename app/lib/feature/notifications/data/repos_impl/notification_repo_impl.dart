@@ -17,11 +17,6 @@ class NotificationRepoImpl implements NotificationRepo {
     await dataSource.markAllAsRead();
   }
 
-  @override
-  Future<void> markAsRead(String notificationId) async {
-    await dataSource.markAsRead(notificationId);
-  }
-
   // @override
   // Stream<AppNotification> get notificationStream => dataSource.notificationStream;
 }

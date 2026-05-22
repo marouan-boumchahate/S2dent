@@ -1,7 +1,7 @@
-﻿import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_card.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
@@ -28,12 +28,12 @@ class CredentialPage extends ConsumerStatefulWidget {
 
 class _CredentialPageState extends ConsumerState<CredentialPage> {
   final TextEditingController _searchController = TextEditingController();
-  CredentialStatus? _selectedStatus;
+  bool? _filterRevoked;
   SortBy _sortBy = SortBy.date;
   SortOrder _sortOrder = SortOrder.descending;
 
   bool get _hasActiveFilters =>
-      _selectedStatus != null ||
+      _filterRevoked != null ||
       _sortBy != SortBy.date ||
       _sortOrder != SortOrder.descending;
 
@@ -49,14 +49,14 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     super.dispose();
   }
 
-  List<Credential> _applyFilters(List<Credential> originalList) {
+  List<CredentialItem> _applyFilters(List<CredentialItem> originalList) {
     var result = originalList.where((credential) {
       final nameMatch = _searchController.text.isEmpty ||
           credential.title
               .toLowerCase()
               .contains(_searchController.text.toLowerCase());
       final statusMatch =
-          _selectedStatus == null || credential.status == _selectedStatus;
+          _filterRevoked == null || credential.isRevoked == _filterRevoked;
       return nameMatch && statusMatch;
     }).toList();
 
@@ -77,12 +77,12 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => FilterBottomSheet(
-        selectedStatus: _selectedStatus,
+        filterRevoked: _filterRevoked,
         sortBy: _sortBy,
         sortOrder: _sortOrder,
-        onStatusChanged: (status) {
+        onFilterRevokedChanged: (value) {
           setState(() {
-            _selectedStatus = status;
+            _filterRevoked = value;
           });
         },
         onSortByChanged: (sortBy) {
@@ -97,7 +97,7 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
         },
         onClear: () {
           setState(() {
-            _selectedStatus = null;
+            _filterRevoked = null;
             _sortBy = SortBy.date;
             _sortOrder = SortOrder.descending;
           });
@@ -106,10 +106,13 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     );
   }
 
-  void showCredentialDetails(Credential credential) {
+  void _showCredentialDetails(CredentialItem item) {
     showDialog(
       context: context,
-      builder: (ctx) => CredentialDetailsDialog(credential: credential),
+      builder: (ctx) => CredentialDetailsDialog(
+        id: item.id,
+        isRevoked: item.isRevoked,
+      ),
     );
   }
 
@@ -132,7 +135,7 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     );
   }
 
-  Widget _body(List<Credential> data) {
+  Widget _body(List<CredentialItem> data) {
     final filtered = _applyFilters(data);
     return RefreshIndicator(
       onRefresh: () =>
@@ -150,7 +153,7 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
             filtered.length,
             (index) => CredentialCard(
               credential: filtered[index],
-              onTap: () => showCredentialDetails(filtered[index]),
+              onTap: () => _showCredentialDetails(filtered[index]),
             ),
           ),
         ],

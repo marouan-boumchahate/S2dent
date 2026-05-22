@@ -1,12 +1,13 @@
 import 'package:app/feature/auth/domain/models/auth_token.dart';
 import 'package:dio/dio.dart';
-
+import 'package:flutter/rendering.dart';
 class AuthDatasource {
   const AuthDatasource(this._dio);
 
   final Dio _dio;
 
   Future<String> getNonce(String walletAddress) async {
+    debugPrint("Auth - Get nonce API has been called");
     final response = await _dio.get(
       '/nonce',
       queryParameters: {'address': walletAddress},
@@ -18,6 +19,7 @@ class AuthDatasource {
     String walletAddress,
     String signature,
   ) async {
+    debugPrint("Auth - Verify signature API has been called");
     final response = await _dio.post(
       '/verify',
       data: {'address': walletAddress, 'signature': signature},
@@ -31,6 +33,7 @@ class AuthDatasource {
   }
 
   Future<AuthToken> refreshAccessToken(String refreshToken) async {
+    debugPrint("Auth - Refresh access token API has been called");
     final response = await _dio.post(
       '/refresh',
       data: {'refreshToken': refreshToken},
@@ -44,6 +47,7 @@ class AuthDatasource {
   }
 
   Future<void> logout(String refreshToken) async {
+    debugPrint("Auth - Logout API has been called");
     await _dio.post(
       '/logout',
       data: {'refreshToken': refreshToken},

@@ -1,14 +1,13 @@
-﻿import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class CredentialStatusBadge extends StatelessWidget {
   const CredentialStatusBadge({
     super.key,
-    required this.status,
+    required this.isRevoked,
   });
 
-  final CredentialStatus status;
+  final bool isRevoked;
 
   @override
   Widget build(BuildContext context) {
@@ -32,15 +31,9 @@ class CredentialStatusBadge extends StatelessWidget {
   }
 
   (String, Color, Color) _appearance() {
-    switch (status) {
-      case CredentialStatus.valid:
-        return ('Valid', Colors.green, Colors.green.shade700);
-      case CredentialStatus.revoked:
-        return ('Revoked', Colors.red, Colors.red.shade700);
-      case CredentialStatus.expired:
-        return ('Expired', Colors.grey, Colors.grey.shade700);
-      case CredentialStatus.unknown:
-        return ('Unknown', Colors.grey, Colors.grey.shade700);
+    if (isRevoked) {
+      return ('Revoked', Colors.red, Colors.red.shade700);
     }
+    return ('Valid', Colors.green, Colors.green.shade700);
   }
 }

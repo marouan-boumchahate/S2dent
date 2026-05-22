@@ -1,6 +1,7 @@
-﻿import 'package:app/feature/profile/domain/models/profile_update_data.dart';
+import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/models/user.dart';
+import 'package:flutter/rendering.dart';
 
 class UserDataSource {
   UserDataSource();
@@ -20,6 +21,7 @@ class UserDataSource {
 
   Future<Student> getUserInfo() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Get user info API has been called");
     return Student(
       user: User.fromJson(_userJson),
       address: null,
@@ -31,6 +33,7 @@ class UserDataSource {
 
   Future<Student> updateUserInfo(ProfileUpdateData data) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint("Profile - Update user info API has been called");
     final user = User.fromJson(_userJson).copyWith(
       phone: data.phone,
       email: data.email,

@@ -1,24 +1,23 @@
-﻿import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/credentials/domain/models/credential.dart';
+import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/credentials/presentation/pages/credential.dart';
 import 'package:flutter/material.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   const FilterBottomSheet({
     super.key,
-    required this.selectedStatus,
+    required this.filterRevoked,
     required this.sortBy,
     required this.sortOrder,
-    required this.onStatusChanged,
+    required this.onFilterRevokedChanged,
     required this.onSortByChanged,
     required this.onSortOrderChanged,
     required this.onClear,
   });
 
-  final CredentialStatus? selectedStatus;
+  final bool? filterRevoked;
   final SortBy sortBy;
   final SortOrder sortOrder;
-  final ValueChanged<CredentialStatus?> onStatusChanged;
+  final ValueChanged<bool?> onFilterRevokedChanged;
   final ValueChanged<SortBy> onSortByChanged;
   final ValueChanged<SortOrder> onSortOrderChanged;
   final VoidCallback onClear;
@@ -28,21 +27,21 @@ class FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
-  late CredentialStatus? _selectedStatus;
+  late bool? _filterRevoked;
   late SortBy _sortBy;
   late SortOrder _sortOrder;
 
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.selectedStatus;
+    _filterRevoked = widget.filterRevoked;
     _sortBy = widget.sortBy;
     _sortOrder = widget.sortOrder;
   }
 
-  void _onStatusChanged(CredentialStatus? status) {
-    setState(() => _selectedStatus = status);
-    widget.onStatusChanged(status);
+  void _onFilterRevokedChanged(bool? value) {
+    setState(() => _filterRevoked = value);
+    widget.onFilterRevokedChanged(value);
   }
 
   void _onSortByChanged(SortBy sortBy) {
@@ -70,7 +69,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               TextButton(
                 onPressed: () {
                   setState(() {
-                    _selectedStatus = null;
+                    _filterRevoked = null;
                     _sortBy = SortBy.date;
                     _sortOrder = SortOrder.descending;
                   });
@@ -90,22 +89,21 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             children: [
               FilterChip(
                 label: const Text("All"),
-                selected: _selectedStatus == null,
-                onSelected: (value) => _onStatusChanged(null),
+                selected: _filterRevoked == null,
+                onSelected: (value) => _onFilterRevokedChanged(null),
               ),
-              ...CredentialStatus.values
-                  .where((s) => s != CredentialStatus.unknown)
-                  .map(
-                    (status) => FilterChip(
-                      label: Text(
-                        status.name[0].toUpperCase() + status.name.substring(1),
-                      ),
-                      selected: _selectedStatus == status,
-                      onSelected: (value) => _onStatusChanged(
-                        _selectedStatus == status ? null : status,
-                      ),
-                    ),
-                  ),
+              FilterChip(
+                label: const Text("Valid"),
+                selected: _filterRevoked == false,
+                onSelected: (value) =>
+                    _onFilterRevokedChanged(_filterRevoked == false ? null : false),
+              ),
+              FilterChip(
+                label: const Text("Revoked"),
+                selected: _filterRevoked == true,
+                onSelected: (value) =>
+                    _onFilterRevokedChanged(_filterRevoked == true ? null : true),
+              ),
             ],
           ),
           const SizedBox(height: 16),
