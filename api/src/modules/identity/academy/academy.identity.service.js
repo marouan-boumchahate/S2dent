@@ -27,23 +27,23 @@ const toIdentityDto = (value) => {
 
 
 // Constants
-const ON_SUCCESS = {
-    subject: 'Identity Issuance Confirmed',
-    message: 'Congratulations! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on S2dent!'
-}
-const ON_FAILURE = {
-    subject: 'Identity Issuance Pending Resolution',
-    message: 'We encountered a temporary issue with your identity issuance transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
-}
+const ON_ISSUE_SUCCESS = (academyName) => ({
+    subject: `Identity Issuance Confirmed – Welcome to S2dent, ${academyName}`,
+    message: `Dear ${academyName} Team,\n\nWe are pleased to inform you that ${academyName} has been officially issued a verified identity on the S2dent network. Your institution is now fully recognized and active on-chain.\n\nYou may begin onboarding your students and faculty immediately.\n\nShould you have any questions, our support team is available at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
+})
+const ON_ISSUE_FAILURE = (academyName) => ({
+    subject: `Action Required: Identity Issuance Pending – ${academyName}`,
+    message: `Dear ${academyName} Team,\n\nWe encountered an issue while processing the identity issuance transaction for ${academyName}. Your identity has not yet been confirmed on the network.\n\nOur engineering team has been notified and is actively investigating. No action is required from your side at this time. We will follow up as soon as the matter is resolved.\n\nIf you have urgent concerns, please contact us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
+})
 
-const REVOKE_ON_SUCCESS = {
-    subject: 'Identity Revocation Confirmed',
-    message: 'Your academy identity has been revoked from the system and is no longer active. If this action was unexpected, please reach out to support immediately.'
-}
-const REVOKE_ON_FAILURE = {
-    subject: 'Identity Revocation Pending Resolution',
-    message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
-}
+const ON_REVOKE_SUCCESS = (academyName) => ({
+    subject: `Identity Revocation Notice – ${academyName}`,
+    message: `Dear ${academyName} Team,\n\nThis is to confirm that the verified identity associated with ${academyName} has been permanently revoked from the S2dent network. Your institution is no longer recognized as an active entity on-chain.\n\nIf this action was authorized, no further steps are required.\n\nIf you believe this was done in error or without your consent, please contact us immediately at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
+})
+const ON_REVOKE_FAILURE = (academyName) => ({
+    subject: `Action Required: Identity Revocation Pending – ${academyName}`,
+    message: `Dear ${academyName} Team,\n\nWe encountered an issue while processing the identity revocation request for ${academyName}. The revocation has not yet been finalized on the network.\n\nOur engineering team is investigating and will work to resolve this promptly. We will notify you once the transaction is confirmed.\n\nFor immediate assistance, reach us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
+})
 
 
 // Helpers
@@ -294,8 +294,8 @@ const issueAcademyIdentity = async ({ otp, email, signature }) => {
         public_key: signerPublicKey,
         
         email: academy.email,
-        onSuccess: ON_SUCCESS,
-        onFailure: ON_FAILURE
+        onSuccess: ON_ISSUE_SUCCESS(academy.name),
+        onFailure: ON_ISSUE_FAILURE(academy.name)
     }
     await saveTransaction(tx.hash, payload)
 
@@ -331,8 +331,8 @@ const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
         reason,
 
         email: academy.email,
-        onSuccess: REVOKE_ON_SUCCESS,
-        onFailure: REVOKE_ON_FAILURE
+        onSuccess: REVOKE_ON_SUCCESS(academy.name),
+        onFailure: REVOKE_ON_FAILURE(academy.name)
     }
     await saveTransaction(tx.hash, payload)
 

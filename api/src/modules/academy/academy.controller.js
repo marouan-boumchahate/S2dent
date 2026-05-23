@@ -50,6 +50,12 @@ const updateAcademyController = async (req, res) => {
 
     return ok(res, result, 'Academy updated successfully');
 };
+const getMyAcademyController = async (req, res) => {
+    const { rid: academy_id } = req.user
+    const result = await fetchAcademyByIdService(academy_id);
+
+    return ok(res, result, 'Academy retrieved successfully');
+}
 
 
 export {
@@ -57,4 +63,5 @@ export {
     getAllAcademiesController,
     getAcademyByIdController,
     updateAcademyController,
+    getMyAcademyController
 };
