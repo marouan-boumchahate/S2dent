@@ -25,21 +25,21 @@ const toIdentityDto = (value) => {
 
 // Constants
 const ISSUE_ON_SUCCESS = (title, name, academyName) => ({
-    subject: 'Identity Issuance Confirmed',
-    message: `Congratulations ${title} ${name}! Your identity issuance has been successfully confirmed on the system. Your academy identity is now fully active and ready to use. We\'re excited to have you on ${academyName}!`
+    subject: `Identity Issuance Confirmed – Welcome to S2dent, ${title} ${name}`,
+    message: `Dear ${title} ${name},\n\nWe are pleased to inform you that your verified identity has been successfully issued on the S2dent network under ${academyName}. Your professor identity is now fully active and recognized on-chain.\n\nYou may now access all platform features associated with your role.\n\nShould you have any questions, please do not hesitate to reach out to us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
 })
 const ISSUE_ON_FAILURE = (title, name) => ({
-    subject: 'Identity Issuance Pending Resolution',
-    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity issuance. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
+    subject: `Action Required: Identity Issuance Pending – ${title} ${name}`,
+    message: `Dear ${title} ${name},\n\nWe encountered an issue while processing your identity issuance transaction. Your identity has not yet been confirmed on the network.\n\nOur engineering team has been notified and is actively investigating. No action is required from your side at this time. We will follow up as soon as the matter is resolved.\n\nFor urgent concerns, please contact us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
 })
 
 const REVOKE_ON_SUCCESS = (title, name, academyName) => ({
-    subject: 'Identity Revocation Confirmed',
-    message: `Hello ${title} ${name}, your identity at ${academyName} has been revoked. Your professor identity is no longer active. If this action was unexpected, please reach out to your academy.`
+    subject: `Identity Revocation Notice – ${title} ${name}`,
+    message: `Dear ${title} ${name},\n\nThis is to confirm that your verified identity under ${academyName} has been permanently revoked from the S2dent network. Your professor identity is no longer active or recognized on-chain.\n\nIf this action was authorized, no further steps are required.\n\nIf you believe this was done in error, please contact ${academyName} directly for clarification.\n\nRegards,\nThe S2dent Team`
 })
-const REVOKE_ON_FAILURE = (title, name) => ({
-    subject: 'Identity Revocation Pending Resolution',
-    message: `Hello, ${title} ${name}\nWe encountered a temporary issue with your identity revocation. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.`
+const REVOKE_ON_FAILURE = (title, name, academyName) => ({
+    subject: `Action Required: Identity Revocation Pending – ${title} ${name}`,
+    message: `Dear ${title} ${name},\n\nWe encountered an issue while processing your identity revocation transaction under ${academyName}. The revocation has not yet been finalized on the network.\n\nOur engineering team is investigating and will work to resolve this promptly. We will notify you once the transaction is confirmed.\n\nIf you have immediate concerns, please reach out to ${academyName} directly.\n\nRegards,\nThe S2dent Team`
 })
 
 
@@ -264,7 +264,7 @@ const issueProfessorIdentityService = async ({ otp, email, signature }) => {
         
         email: professor.email,
         onSuccess: ISSUE_ON_SUCCESS(professor.title, professor.full_name, professor.academy_name),
-        onFailure: ISSUE_ON_FAILURE(professor.title, professor.full_name)
+        onFailure: ISSUE_ON_FAILURE(professor.title, professor.full_name, professor.academy_name)
     }
     await saveTransaction(tx.hash, payload)
 
@@ -301,7 +301,7 @@ const revokeProfessorIdentityService = async ({ academy_address, professor_addre
 
         email: professor.email,
         onSuccess: REVOKE_ON_SUCCESS(professor.title, professor.full_name, professor.academy_name),
-        onFailure: REVOKE_ON_FAILURE(professor.title, professor.full_name)
+        onFailure: REVOKE_ON_FAILURE(professor.title, professor.full_name, professor.academy_name)
     }
     await saveTransaction(tx.hash, payload)
 
