@@ -1,13 +1,26 @@
 import db from '../../../config/db.js'
 import {
     issueProfessorIdentity,
-    revokeProfessorIdentity
+    revokeProfessorIdentity,
+    getProfessorIdentity
 } from '../../../blockchain/identity/professor.identity.blockchain.js'
 import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { ethers } from 'ethers'
 import { getCache, delCache } from '../../../cache/cache.client.js'
 import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner } from '../../../utils/crypto.js'
+
+
+// DTOs
+const toSnakeCaseKey = (key) => key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)
+const toIdentityDto = (value) => {
+    if (Array.isArray(value)) return value.map(toIdentityDto)
+    if (!value || typeof value !== 'object' || value instanceof Date) return value
+
+    return Object.fromEntries(
+        Object.entries(value).map(([key, nestedValue]) => [toSnakeCaseKey(key), toIdentityDto(nestedValue)])
+    )
+}
 
 
 // Constants
@@ -145,6 +158,16 @@ const getProfessorRevokePayload = async (academyWallet, professorWallet) => {
 
     return professor;
 }
+const validateWalletAddress = (walletAddress) => {
+    try {
+        return ethers.getAddress(walletAddress)
+    } catch {
+        const err = new Error('Invalid wallet address')
+        err.statusCode = 400
+        err.code = 'INVALID_ADDRESS'
+        throw err
+    }
+}
 const ensureWalletAddressUnique = async (wallet) => {
     const { rows } = await db.query(
         `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
@@ -183,10 +206,29 @@ const updateIdentityRecord = async (revokeTxHash, walletAddress) => {
         [revokeTxHash, walletAddress]
     )
 }
+const getProfessorWalletByUserId = async (userId) => {
+    const { rows: [identity] } = await db.query(
+        `SELECT wallet_address
+         FROM identities
+         WHERE user_id = $1
+           AND role = 'professor'
+         LIMIT 1`,
+        [userId]
+    )
+
+    if (!identity?.wallet_address) {
+        const err = new Error('Professor identity not found')
+        err.statusCode = 404
+        err.code = 'PROFESSOR_IDENTITY_NOT_FOUND'
+        throw err
+    }
+
+    return identity.wallet_address
+}
 
 
 // Services
-export const issueProfessorIdentityService = async ({ otp, email, signature }) => {
+const issueProfessorIdentityService = async ({ otp, email, signature }) => {
     email = email.toLowerCase().trim()
 
     const { id, message, role } = await fetchFromCache(email, otp)
@@ -236,7 +278,7 @@ export const issueProfessorIdentityService = async ({ otp, email, signature }) =
         }
     }
 }
-export const revokeProfessorIdentityService = async ({ academy_address, professor_address, reason }) => {
+const revokeProfessorIdentityService = async ({ academy_address, professor_address, reason }) => {
     const professorWallet = ethers.getAddress(professor_address)
     const academyWallet = ethers.getAddress(academy_address)
 
@@ -272,4 +314,32 @@ export const revokeProfessorIdentityService = async ({ academy_address, professo
             status: 'pending',
         }
     }
+}
+const fetchProfessorIdentityByWalletService = async (walletAddress) => {
+    const checksumAddr = validateWalletAddress(walletAddress)
+    const identity = await getProfessorIdentity(checksumAddr)
+
+    if (!identity) {
+        const err = new Error('Professor identity not found')
+        err.statusCode = 404
+        err.code = 'PROFESSOR_IDENTITY_NOT_FOUND'
+        throw err
+    }
+
+    return {
+        wallet_address: checksumAddr,
+        ...toIdentityDto(identity),
+    }
+}
+const fetchProfessorIdentityByUserIdService = async (userId) => {
+    const walletAddress = await getProfessorWalletByUserId(userId)
+    return fetchProfessorIdentityByWalletService(walletAddress)
+}
+
+
+export { 
+    issueProfessorIdentityService, 
+    revokeProfessorIdentityService, 
+    fetchProfessorIdentityByWalletService,
+    fetchProfessorIdentityByUserIdService 
 }

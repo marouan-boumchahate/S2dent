@@ -152,6 +152,36 @@ const isAddressExists = async (id) => {
 
   return row.id;
 }
+const getAddressById = async (id, role) => {
+  let clause;
+  switch(role) {
+    case 'address':
+      clause = "WHERE id = $1"
+      break
+    case 'academy':
+      clause = "WHERE academy_id = $1"
+      break
+    case 'user':
+      clause = "WHERE user_id = $1"
+      break
+    default:
+      const err = new Error('Address not found');
+      err.statusCode = 404;
+      err.code = 'ADDRESS_NOT_FOUND';
+      throw err;
+  }
+
+  const { rows: [address] } = await db.query(`SELECT * FROM addresses ${clause} LIMIT 1`, [id])
+
+  if(!address){
+    const err = new Error('Address not found');
+    err.statusCode = 404;
+    err.code = 'ADDRESS_NOT_FOUND';
+    throw err;
+  }
+
+  return address
+}
 
 
 // Services
@@ -177,6 +207,19 @@ const updateAddressService = async (payload) => {
     address: toAddressDto(address)
   };
 };
+const fetchAddressByIdService = async (payload, role) => {
+  const { uid, pid, aid } = payload;
+  const id = aid ?? pid ?? uid;
+  
+  const param_type = (!role)
+    ? 'address'
+    : (role == 'academy')
+      ? 'academy'
+      : 'user';
+
+  const address = await getAddressById(id, param_type)
+  return { address: toAddressDto(address) }
+}
 
 
-export { createAddressService, updateAddressService };
+export { createAddressService, updateAddressService, fetchAddressByIdService };

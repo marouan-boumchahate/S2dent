@@ -13,6 +13,19 @@ import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner } from '../../../utils/crypto.js'
 
 
+// DTOs
+const toSnakeCaseKey = (key) => key.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)
+const toIdentityDto = (value) => {
+    if (Array.isArray(value)) return value.map(toIdentityDto)
+    if (!value || typeof value !== 'object' || value instanceof Date) return value
+
+    return Object.fromEntries(
+        Object.entries(value)
+              .map(([key, nestedValue]) => [toSnakeCaseKey(key), toIdentityDto(nestedValue)])
+    )
+}
+
+
 // Constants
 const ON_SUCCESS = {
     subject: 'Identity Issuance Confirmed',
@@ -31,7 +44,6 @@ const REVOKE_ON_FAILURE = {
     subject: 'Identity Revocation Pending Resolution',
     message: 'We encountered a temporary issue with your identity revocation transaction. Our team is reviewing this, and we\'re confident we\'ll have it resolved shortly. Please reach out to support if you need any assistance.'
 }
-
 
 
 // Helpers
@@ -193,10 +205,39 @@ const getCertificate = async (
     
     return certificate
 }
+const validateWalletAddress = (walletAddress) => {
+    try {
+        return ethers.getAddress(walletAddress)
+    } catch {
+        const err = new Error('Invalid wallet address')
+        err.statusCode = 400
+        err.code = 'INVALID_ADDRESS'
+        throw err
+    }
+}
+const getAcademyWalletByUserId = async (academyId) => {
+    const { rows: [identity] } = await db.query(
+        `SELECT wallet_address
+         FROM identities
+         WHERE academy_id = $1
+           AND role = 'academy'
+         LIMIT 1`,
+        [academyId]
+    )
+
+    if (!identity?.wallet_address) {
+        const err = new Error('Academy identity not found')
+        err.statusCode = 404
+        err.code = 'ACADEMY_IDENTITY_NOT_FOUND'
+        throw err
+    }
+
+    return identity.wallet_address
+}
 
 
 // Services
-export const issueAcademyIdentity = async ({ otp, email, signature }) => {   
+const issueAcademyIdentity = async ({ otp, email, signature }) => {   
     const { id, message, role } = await fetchFromCache(email, otp)
 
     const academy = await getAcademyById(id, role)
@@ -274,7 +315,7 @@ export const issueAcademyIdentity = async ({ otp, email, signature }) => {
         }
     }
 }
-export const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
+const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
     const checksumAddr = ethers.getAddress(wallet_address)
 
     const academy = await getAcademyByWallet(checksumAddr)
@@ -304,4 +345,32 @@ export const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
             status: 'pending',
         }
     }
+}
+const fetchAcademyIdentityByWalletService = async (walletAddress) => {
+    const checksumAddr = validateWalletAddress(walletAddress)
+    const identity = await getAcademyIdentity(checksumAddr)
+
+    if (!identity) {
+        const err = new Error('Academy identity not found')
+        err.statusCode = 404
+        err.code = 'ACADEMY_IDENTITY_NOT_FOUND'
+        throw err
+    }
+
+    return {
+        wallet_address: checksumAddr,
+        ...toIdentityDto(identity),
+    }
+}
+const fetchAcademyIdentityByIdService = async (academyId) => {
+    const walletAddress = await getAcademyWalletByUserId(academyId)
+    return fetchAcademyIdentityByWalletService(walletAddress)
+}
+
+
+export { 
+    issueAcademyIdentity, 
+    revokeAcademyIdentity, 
+    fetchAcademyIdentityByWalletService, 
+    fetchAcademyIdentityByIdService 
 }

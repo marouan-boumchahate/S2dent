@@ -8,6 +8,7 @@ const toStudentDto = (student) => ({
   academy_id: student.academy_id,
   department_id: student.department_id,
   advisor_id: student.advisor_id,
+  advisor_name: student.advisor_name,
   student_number: student.student_number,
   current_level: new Date().getFullYear() - new Date(student.enrollment_date).getFullYear() + 1,
   enrollment_status: student.enrollment_status,
@@ -15,6 +16,17 @@ const toStudentDto = (student) => ({
   enrollment_date: student.enrollment_date,
   expected_graduation_date: student.expected_graduation_date,
   actual_graduation_date: student.actual_graduation_date,
+});
+const StudentSummaryDto = (student) => ({
+  id: student.id,
+  wallet_address: student.wallet_address,
+  name: student.full_name,
+  serial_number: student.student_number,
+  department: student.department_name,
+  last_transaction_status: student.last_transaction_status,
+  issued_at: student.issued_at,
+  is_revoked: student.revoked_at !== null,
+  email: student.email,
 });
 
 
@@ -128,6 +140,65 @@ const ensureStudentExists = async (student_id) => {
   return row;
 }
 
+const getStudentsFromDB = async (academy_id = null) => {
+  const { rows } = await db.query(
+    `SELECT
+        s.id,
+        u.full_name,
+        u.email,
+        s.student_number,
+        d.name AS department_name,
+        i.wallet_address,
+        i.revoked_at,
+        i.issued_at,
+        pt.status AS last_transaction_status
+      FROM students s
+      JOIN users u ON u.id = s.user_id
+      JOIN departments d ON d.id = s.department_id
+      JOIN identities i ON i.user_id = u.id AND i.role = 'student'
+      JOIN pending_transactions pt
+        ON pt.tx_hash = COALESCE(i.revoke_identity_tx_hash, i.issue_identity_tx_hash)
+      WHERE s.academy_id = $1
+      ORDER BY u.full_name ASC`,
+    [academy_id]
+  );
+
+  return rows;
+};
+const getStudentFromDB = async (student_id) => {
+  const { rows: [student] } = await db.query(`
+    SELECT
+      s.id,
+      s.user_id,
+      s.academy_id,
+      s.department_id,
+      s.advisor_id,
+      u.full_name as advisor_name,
+      s.student_number,
+      s.cgpa,
+      s.enrollment_status,
+      s.enrollment_date,
+      s.expected_graduation_date,
+      s.actual_graduation_date
+    FROM students AS s
+    JOIN identities i ON s.user_id = i.user_id AND i.role = 'student'
+    JOIN professors p ON s.advisor_id = p.id
+    JOIN users u ON p.user_id = u.id
+    WHERE s.id = $1
+      AND i.issued_at IS NOT NULL
+    LIMIT 1
+  `, [student_id]);
+
+  if (!student) {
+    const err = new Error('No active student account found for the provided ID');
+    err.statusCode = 404;
+    err.code = 'STUDENT_NOT_FOUND';
+    throw err;
+  }
+
+  return student;
+};
+
 const insertStudentToDB = async ({
   user_id,
   academy_id,
@@ -227,3 +298,13 @@ export const updateStudentService = async (payload) => {
 
   return { student: toStudentDto(student) };
 };
+const fetchAllStudentsService = async (academy_id) => {
+  const students = await getStudentsFromDB(academy_id);
+  return { students: students.map((student) => StudentSummaryDto(student)) };
+};
+const fetchStudentService = async (student_id) => {
+  const student = await getStudentFromDB(student_id);
+  return { student: toStudentDto(student) };
+};
+
+export { fetchAllStudentsService, fetchStudentService };

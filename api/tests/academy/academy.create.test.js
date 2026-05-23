@@ -100,9 +100,9 @@ describe('POST /api/academies', () => {
         assert.equal(academy.tax_id, body.tax_id);
         assert.equal(academy.billing_email, null);
 
-        // checking academy_number shape
-        assert.ok(academy.academy_number);
-        assert.match(academy.academy_number, /^ACD_\d{6}\d+$/);
+        // checking serial_number shape
+        assert.ok(academy.serial_number);
+        assert.match(academy.serial_number, /^ACD_\d{6}\d+$/);
     });
 
     it('includes optional fields when provided', async () => {

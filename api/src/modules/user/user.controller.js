@@ -1,5 +1,5 @@
 import { created, ok } from '../../utils/response.js';
-import { createUserService, updateUserService } from './user.service.js';
+import { createUserService, fetchUserService, updateUserService } from './user.service.js';
 
 const createUserController = async (req, res) => {
   const {
@@ -44,4 +44,23 @@ const updateUserController = async (req, res) => {
   return ok(res, result, 'User updated successfully');
 };
 
-export { createUserController, updateUserController };
+const getUserByIdController = async (req, res) => {
+  const { id } = req.params;
+  const result = await fetchUserService(id);
+
+  return ok(res, result, 'User retrieved successfully');
+};
+
+const getMyProfileController = async (req, res) => {
+  const { uid } = req.user;
+  const result = await fetchUserService(uid);
+
+  return ok(res, result, 'User profile retrieved successfully');
+};
+
+export {
+  createUserController,
+  updateUserController,
+  getUserByIdController,
+  getMyProfileController,
+};

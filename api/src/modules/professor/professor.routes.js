@@ -1,12 +1,42 @@
 import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
-import { createProfessorSchema, updateProfessorSchema, updateProfessorByAdminSchema } from './professor.validator.js';
-import { createProfessorController, updateProfessorController, updateProfessorByAdminController } from './professor.controller.js';
 import authenticate from '../../middlewares/auth.middleware.js';
 import requireRole from '../../middlewares/role.middleware.js';
+import { 
+  createProfessorSchema, 
+  updateProfessorSchema, 
+  updateProfessorByAdminSchema 
+} from './professor.validator.js';
+import { 
+  createProfessorController, 
+  updateProfessorController, 
+  updateProfessorByAdminController, 
+  getProfessorByIdController,
+  getMyProfileController,
+  getAllProfessorsController
+} from './professor.controller.js';
  
 const router = Router();
 
+
+router.get(
+  '/',
+  authenticate,
+  requireRole('academy'),
+  getAllProfessorsController,
+);
+router.get(
+  '/me',
+  authenticate,
+  requireRole('professor'),
+  getMyProfileController,
+);
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('academy'),
+  getProfessorByIdController,
+);
 router.post(
   '/',
   authenticate,
@@ -14,7 +44,6 @@ router.post(
   validate(createProfessorSchema),
   createProfessorController,
 );
-
 router.put(
   '/:id',
   authenticate,
@@ -22,7 +51,6 @@ router.put(
   validate(updateProfessorByAdminSchema),
   updateProfessorByAdminController,
 );
-
 router.put(
   '/',
   authenticate,
@@ -31,4 +59,5 @@ router.put(
   updateProfessorController,
 )
  
+
 export default router;

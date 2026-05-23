@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
 import { createAddressSchema, updateAddressSchema } from './address.validator.js';
-import { createAddressController, updateAddressController } from './address.controller.js';
+import { 
+  createAddressController, 
+  updateAddressController, 
+  getUserAddressController, 
+  getAddressController
+} from './address.controller.js';
 import authenticate from '../../middlewares/auth.middleware.js';
 import requireRole from '../../middlewares/role.middleware.js';
 
@@ -14,7 +19,6 @@ router.post(
   validate(createAddressSchema),
   createAddressController,
 );
-
 router.put(
   '/',
   authenticate,
@@ -22,5 +26,17 @@ router.put(
   validate(updateAddressSchema),
   updateAddressController,
 );
+router.get(
+  '/',
+  authenticate,
+  requireRole('academy', 'professor', 'student'),
+  getUserAddressController
+);
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('academy'),
+  getAddressController
+)
 
 export default router;

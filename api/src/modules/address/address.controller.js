@@ -1,4 +1,4 @@
-import { createAddressService, updateAddressService } from './address.service.js';
+import { createAddressService, updateAddressService, fetchAddressByIdService } from './address.service.js';
 import { created, ok } from '../../utils/response.js';
 
 
@@ -44,6 +44,24 @@ const updateAddressController = async (req, res) => {
 
   return ok(res, result, 'Address updated successfully');
 };
+const getUserAddressController = async (req, res) => {
+  const { uid, pid, role } = req.user
+  
+  const result = await fetchAddressByIdService({
+    uid, pid
+  }, role)
+
+  return ok(res, result, 'Address fetched successfully')
+};
+const getAddressController = async (req, res) => {
+  const result = await fetchAddressByIdService({aid: req.params.id})
+  return ok(res, result, 'Address fetched successfully')
+};
 
 
-export { createAddressController, updateAddressController };
+export { 
+  createAddressController, 
+  updateAddressController, 
+  getUserAddressController, 
+  getAddressController
+};

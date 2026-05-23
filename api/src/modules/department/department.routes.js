@@ -19,14 +19,12 @@ router.get(
   requireRole('academy'),
   listDepartmentsController,
 );
-
 router.get(
   '/me',
   authenticate,
   requireRole('professor', 'student'),
   getUserDepartmentController,
 );
-
 router.post(
   '/',
   authenticate,
@@ -34,7 +32,6 @@ router.post(
   validate(createDepartmentSchema),
   createDepartmentController,
 );
-
 router.put(
   '/:id',
   authenticate,
@@ -42,7 +39,6 @@ router.put(
   validate(updateDepartmentSchema),
   updateDepartmentController,
 );
-
 router.delete(
   '/:id',
   authenticate,

@@ -48,6 +48,17 @@ const toUnixSeconds = (value) => {
 
     return Math.floor(new Date(value).getTime() / 1000)
 }
+const uint8ToString = (v, target) => {
+    if (v === null || v === undefined) return null
+    const num = Number(v)
+    for (const [key, val] of Object.entries(
+        target === 'employment' 
+            ? EMPLOYMENT_TYPE_TO_UINT8 
+            : PROFESSOR_RANK_TO_UINT8)) {
+        if (val === num) return key
+    }
+    return 'other'
+}
 
 
 // Services
@@ -135,12 +146,12 @@ const getProfessorIdentity = async (professorAddress) => {
 
         return {
             identity: {
-                employeeIdHash: identity.employeeIdHash,
-                nationalIdHash: identity.nationalIdHash,
+                employeeIdHash: identity.employeeIdHash.toString(),
+                nationalIdHash: identity.nationalIdHash.toString(),
                 publicKey: identity.publicKey.toString(),
-                fullName: identity.fullName,
-                rank: Number(identity.rank),
-                employmentType: Number(identity.employmentType),
+                fullName: identity.fullName.toString(),
+                rank: uint8ToString(identity.rank, 'rank'),
+                employmentType: uint8ToString(identity.employmentType, 'employment'),
                 hireDate: new Date(Number(identity.hireDate) * 1000),
             },
             status: {

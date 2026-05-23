@@ -53,6 +53,39 @@ const ensureUserExists = async (user_id) => {
   }
 };
 
+const getUserFromDB = async (user_id) => {
+  const { rows: [user] } = await db.query(
+    `SELECT
+        u.id,
+        u.first_name,
+        u.middle_name,
+        u.last_name,
+        u.full_name,
+        u.date_of_birth,
+        u.gender,
+        u.nationality,
+        u.national_id,
+        u.email,
+        u.phone,
+        u.photo_url
+      FROM users AS u
+      JOIN identities i ON u.id = i.user_id
+      WHERE u.id = $1
+        AND i.issued_at IS NOT NULL
+      LIMIT 1`,
+    [user_id],
+  );
+
+  if (!user) {
+    const err = new Error('No active user account found for the provided ID');
+    err.statusCode = 404;
+    err.code = 'USER_NOT_FOUND';
+    throw err;
+  }
+
+  return user;
+};
+
 const insertUserToDB = async ({
   first_name,
   middle_name,
@@ -112,7 +145,11 @@ const insertUserToDB = async ({
 
   return { rows: [user] };
 }
-const updateUserInDB = async ({ user_id, phone, photo_url }) => {
+const updateUserInDB = async ({
+  user_id,
+  phone,
+  photo_url,
+}) => {
   const { rows: [user] } = await db.query(
     `UPDATE users
         SET phone = COALESCE($1, phone),
@@ -165,6 +202,11 @@ export const updateUserService = async (payload) => {
   await ensureUserExists(user_id);
 
   const { rows: [user] } = await updateUserInDB({ ...payload });
+
+  return { user: toUserDto(user) };
+};
+export const fetchUserService = async (user_id) => {
+  const user = await getUserFromDB(user_id);
 
   return { user: toUserDto(user) };
 };

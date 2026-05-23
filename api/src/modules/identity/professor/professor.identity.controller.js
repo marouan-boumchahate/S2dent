@@ -1,4 +1,9 @@
-import { issueProfessorIdentityService, revokeProfessorIdentityService } from './professor.identity.service.js'
+import { 
+    issueProfessorIdentityService, 
+    revokeProfessorIdentityService, 
+    fetchProfessorIdentityByWalletService,
+    fetchProfessorIdentityByUserIdService 
+} from './professor.identity.service.js'
 import { ok } from '../../../utils/response.js'
 
 
@@ -25,6 +30,23 @@ const revokeIdentity = async (req, res) => {
 
     return ok(res, result, 'Professor identity revocation request submitted successfully')
 }
+const getMyIdentity = async (req, res) => {
+    const result = await fetchProfessorIdentityByWalletService(req.user.sub)
+
+    return ok(res, result, 'Professor identity retrieved successfully')
+}
+const getIdentityByAddress = async (req, res) => {
+    const { address } = req.params
+    const result = await fetchProfessorIdentityByWalletService(address)
+
+    return ok(res, result, 'Professor identity retrieved successfully')
+}
+const getIdentityById = async (req, res) => {
+    const { id } = req.params
+    const result = await fetchProfessorIdentityByUserIdService(id)
+
+    return ok(res, result, 'Professor identity retrieved successfully')
+}
 
 
-export { issueIdentity, revokeIdentity }
+export { issueIdentity, revokeIdentity, getMyIdentity, getIdentityByAddress, getIdentityById }

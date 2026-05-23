@@ -38,4 +38,17 @@ const createAcademySchema = Joi.object({
   billing_email: Joi.string().email().lowercase().trim().optional(),
 });
 
-export { createAcademySchema };
+const updateAcademySchema = Joi.object({
+  description: Joi.string().trim().max(5000).optional(),
+  website: Joi.string().uri().trim().optional()
+    .messages({
+      'string.uri': 'website must be a valid URL (e.g. https://university.edu)',
+    }),
+  logo_url: Joi.string().uri().trim().optional()
+    .messages({
+      'string.uri': 'logo_url must be a valid URL',
+    }),
+  phone: Joi.string().trim().max(32).optional(),
+});
+
+export { createAcademySchema, updateAcademySchema };
