@@ -1,5 +1,10 @@
-import { createProfessorService, updateProfessorService } from './professor.service.js';
 import { created, ok } from '../../utils/response.js';
+import { 
+    createProfessorService, 
+    updateProfessorService, 
+    fetchProfessorService,
+    fetchAllProfessorsService
+} from './professor.service.js';
 
 const createProfessorController = async (req, res) => {
     const payload = {
@@ -45,5 +50,30 @@ const updateProfessorByAdminController = async (req, res) => {
     
     return ok(res, result, 'Professor updated successfully');
 };
+const getAllProfessorsController = async (req, res) => {
+    const { rid: academy_id } = req.user;
 
-export { createProfessorController, updateProfessorController, updateProfessorByAdminController };
+    const result = await fetchAllProfessorsService(academy_id);
+    return ok(res, result, 'All professors retrieved successfully');
+};
+const getProfessorByIdController = async (req, res) => {
+    const { id } = req.params;
+    const result = await fetchProfessorService(id);
+
+    return ok(res, result, 'Professor retrieved successfully');
+};
+const getMyProfileController = async (req, res) => {
+    const { rid } = req.user;
+    const result = await fetchProfessorService(rid);
+
+    return ok(res, result, 'Professor profile retrieved successfully');
+};
+
+export { 
+    createProfessorController, 
+    updateProfessorController, 
+    updateProfessorByAdminController, 
+    getAllProfessorsController,
+    getProfessorByIdController, 
+    getMyProfileController 
+};

@@ -118,6 +118,7 @@ const main = async () => {
 
   const ctx = { academyId: academy.id, departmentId, academyToken: academy.tokens.accessToken };
   const professor = await seedProfessor(ctx);
+  //console.log('\n\n\nProfessor ID:', professor.id); // Debug log
   const student = await seedStudent({ ...ctx, advisorId: professor.id });
 
   printTokens('academy', academy.tokens);

@@ -1,11 +1,10 @@
 import db from '../../config/db.js';
-import { ethers } from 'ethers';
 
 
 // DTOs
 const academyDto = (academy) => ({
   id: academy.id,
-  academy_number: academy.academy_number,
+  serial_number: academy.academy_number,
   email: academy.email,
   name: academy.name,
   short_name: academy.short_name,
@@ -18,6 +17,18 @@ const academyDto = (academy) => ({
   registration_number: academy.registration_number,
   tax_id: academy.tax_id,
   billing_email: academy.billing_email,
+});
+const academySummaryDto = (academy) => ({
+  id: academy.id,
+  serial_number: academy.academy_number,
+  wallet_address: academy.wallet_address,
+  name: academy.name,
+  short_name: academy.short_name,
+  type: academy.type,
+  email: academy.email,
+  issued_at: academy.issued_at,
+  is_revoked: academy.revoke_at !== null,
+  last_transaction_status: academy.status,
 });
 
 
@@ -135,6 +146,40 @@ const insertAcademyToDB = async ({
 
   return { rows: [academy] };
 };
+const updateAcademyInDB = async ({
+  academy_id,
+  description,
+  logo_url,
+  phone,
+  website,
+}) => {
+  const result = await db.query(
+    `UPDATE academies
+      SET description = COALESCE($2, description),
+          logo_url = COALESCE($3, logo_url),
+          phone = COALESCE($4, phone),
+          website = COALESCE($5, website)
+      WHERE id = $1
+      RETURNING
+        id,
+        email,
+        academy_number,
+        name,
+        short_name,
+        type,
+        description,
+        website,
+        logo_url,
+        phone,
+        legal_name,
+        registration_number,
+        tax_id,
+        billing_email`,
+    [academy_id, description ?? null, logo_url ?? null, phone ?? null, website ?? null],
+  );
+
+  return result;
+};
 const generateRandomAcademyNumber = async () => {
   const result = await db.query(`SELECT nextval('academy_seq')`);
   const seq = result.rows[0].nextval;
@@ -145,6 +190,91 @@ const generateRandomAcademyNumber = async () => {
   const academy_number = `ACD_${date}${seq}`;
 
   return academy_number;
+}
+const getAcademyById = async (academyId) => {
+  const { rows: [academy] } = await db.query(
+    `SELECT
+        a.id,
+        a.academy_number,
+        a.email,
+        a.name,
+        a.short_name,
+        a.type,
+        a.description,
+        a.website,
+        a.logo_url,
+        a.phone,
+        a.legal_name,
+        a.registration_number,
+        a.tax_id,
+        a.billing_email
+      FROM academies AS a
+      JOIN identities AS i
+        ON i.academy_id = a.id
+        AND i.role = 'academy'
+        AND i.issued_at IS NOT NULL
+      WHERE a.id = $1
+      LIMIT 1`,
+    [academyId],
+  );
+
+  if (!academy) {
+    const err = new Error('Academy not found');
+    err.statusCode = 404;
+    err.code = 'ACADEMY_NOT_FOUND';
+    throw err;
+  }
+
+  return academy;
+};
+const getAcademies = async () => {
+  const { rows } = await db.query(
+    `SELECT
+        a.id,
+        a.academy_number,
+        a.email,
+        a.name,
+        a.short_name,
+        a.type,
+        i.wallet_address,
+        i.issued_at,
+        i.revoked_at,
+        pt.status
+      FROM academies a
+      JOIN identities i 
+        ON i.academy_id = a.id AND i.role = 'academy'
+      JOIN pending_transactions pt 
+        ON pt.tx_hash = COALESCE(i.revoke_identity_tx_hash, i.issue_identity_tx_hash)
+      ORDER BY a.name DESC`,
+  );
+
+  return rows;
+}
+const ensureAcademyExists = async (academyId) => {
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+
+  if (!uuidRegex.test(academyId)) {
+    const err = new Error('Academy not found or does not have an active identity');
+    err.statusCode = 404;
+    err.code = 'ACADEMY_NOT_FOUND';
+    throw err;
+  }
+
+  const { rows } = await db.query(
+    `SELECT 1 
+     FROM academies a
+     JOIN identities i 
+      ON i.academy_id = a.id AND i.role = 'academy' AND i.revoked_at IS NULL AND i.issued_at IS NOT NULL
+     WHERE a.id = $1 LIMIT 1`,
+    [academyId],
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Academy not found or does not have an active identity');
+    err.statusCode = 404;
+    err.code = 'ACADEMY_NOT_FOUND';
+    throw err;
+  }
 }
 
 
@@ -172,5 +302,36 @@ const createAcademyService = async (payload) => {
 
   return { academy: academyDto(academy) };
 };
+const updateAcademyService = async ({
+  academy_id,
+  description,
+  logo_url,
+  phone,
+  website,
+}) => {
+  await ensureAcademyExists(academy_id);
+  const { rows: [academy] } = await updateAcademyInDB({
+    academy_id,
+    description,
+    logo_url,
+    phone,
+    website,
+  });
 
-export { createAcademyService };
+  return { academy: academyDto(academy) };
+};
+const fetchAllAcademiesService = async () => {
+  const academies = await getAcademies();
+  return { academies: academies.map(academySummaryDto) };
+};
+const fetchAcademyByIdService = async (academyId) => {
+  const academy = await getAcademyById(academyId);
+  return { academy: academyDto(academy) };
+}
+
+export {
+  createAcademyService,
+  fetchAllAcademiesService,
+  fetchAcademyByIdService,
+  updateAcademyService,
+};

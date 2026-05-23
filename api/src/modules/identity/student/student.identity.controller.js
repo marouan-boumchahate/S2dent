@@ -1,7 +1,12 @@
-import { issueStudentIdentityService, revokeStudentIdentityService } from './student.identity.service.js'
+import { 
+    issueStudentIdentityService, 
+    revokeStudentIdentityService, 
+    fetchStudentIdentityByWalletService,
+    fetchStudentIdentityByUserIdService 
+} from './student.identity.service.js'
 import { ok } from '../../../utils/response.js'
 
-export const issueIdentity = async (req, res) => {
+const issueIdentity = async (req, res) => {
     const { otp, email, signature } = req.body
 
     const result = await issueStudentIdentityService({ 
@@ -12,7 +17,7 @@ export const issueIdentity = async (req, res) => {
 
     return ok(res, result, 'Student identity issuance request submitted successfully')
 }
-export const revokeIdentity = async (req, res) => {
+const revokeIdentity = async (req, res) => {
     const { student_address, revocation_reason } = req.body
     const { sub: academy_address } = req.user
 
@@ -20,3 +25,22 @@ export const revokeIdentity = async (req, res) => {
 
     return ok(res, result, 'Student identity revocation request submitted successfully')
 }
+const getMyIdentity = async (req, res) => {
+    const result = await fetchStudentIdentityByWalletService(req.user.sub)
+
+    return ok(res, result, 'Student identity retrieved successfully')
+}
+const getIdentityByAddress = async (req, res) => {
+    const { address } = req.params
+    const result = await fetchStudentIdentityByWalletService(address)
+
+    return ok(res, result, 'Student identity retrieved successfully')
+}
+const getIdentityById = async (req, res) => {
+    const { id } = req.params
+    const result = await fetchStudentIdentityByUserIdService(id)
+
+    return ok(res, result, 'Student identity retrieved successfully')
+}
+
+export { issueIdentity, revokeIdentity, getMyIdentity, getIdentityByAddress, getIdentityById }

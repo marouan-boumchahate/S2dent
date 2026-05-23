@@ -33,6 +33,14 @@ const toUnixSeconds = (value) => {
 
     return Math.floor(new Date(value).getTime() / 1000)
 }
+const uint8ToAcademyType = (v) => {
+    if (v === null || v === undefined) return null
+    const num = Number(v)
+    for (const [key, val] of Object.entries(ACADEMY_TYPE_TO_UINT8)) {
+        if (val === num) return key
+    }
+    return 'other'
+}
 const getGasLimit = async (contract, methodName, params) => {
     const gasEstimate = 
         await contract[methodName].estimateGas(...params)
@@ -151,7 +159,7 @@ const getAcademyIdentity = async (academyAddress) => {
                 publicKey: identity.publicKey.toString(),
                 name: identity.name.toString(),
                 shortName: identity.shortName.toString(),
-                academyType: Number(identity.academyType),
+                academyType: uint8ToAcademyType(identity.academyType),
             },
             proofs: {
                 legalName: proofs.legalName.toString(),
@@ -172,6 +180,7 @@ const getAcademyIdentity = async (academyAddress) => {
                 isRevoked: !status.isNotRevoked,
                 revokedAt: status.revokedAt === 0n ? null : new Date(Number(status.revokedAt) * 1000),
                 revoker: status.revokedAt === 0n ? null : status.revoker.toString(),
+                revokeReason: status.revokedAt === 0n ? null : status.revokeReason.toString(),
             },
         }
     } catch (err) {
@@ -185,4 +194,4 @@ const getAcademyIdentity = async (academyAddress) => {
     }
 }
 
-export { issueAcademyIdentity, revokeAcademyIdentity, getAcademyIdentity }
+export { issueAcademyIdentity, revokeAcademyIdentity, getAcademyIdentity, uint8ToAcademyType }

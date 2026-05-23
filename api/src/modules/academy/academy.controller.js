@@ -1,5 +1,11 @@
-import { createAcademyService } from './academy.service.js';
-import { created } from '../../utils/response.js';
+import {
+    createAcademyService,
+    fetchAllAcademiesService,
+    fetchAcademyByIdService,
+    updateAcademyService,
+} from './academy.service.js';
+import { created, ok } from '../../utils/response.js';
+
 
 const createAcademyController = async (req, res) => {
     const payload = {
@@ -21,5 +27,34 @@ const createAcademyController = async (req, res) => {
 
     return created(res, result, 'Academy registered successfully');
 };
+const getAllAcademiesController = async (req, res) => {
+    const result = await fetchAllAcademiesService();
+    return ok(res, result, 'Academies retrieved successfully');
+};
+const getAcademyByIdController = async (req, res) => {
+    const { id } = req.params;
+    const result = await fetchAcademyByIdService(id);
 
-export { createAcademyController };
+    return ok(res, result, 'Academy retrieved successfully');
+};
+const updateAcademyController = async (req, res) => {
+    const { id } = req.params;
+    const payload = {
+        description: req.body.description,
+        logo_url: req.body.logo_url,
+        phone: req.body.phone,
+        website: req.body.website,
+    };
+
+    const result = await updateAcademyService({ ...payload, academy_id: id });
+
+    return ok(res, result, 'Academy updated successfully');
+};
+
+
+export {
+    createAcademyController,
+    getAllAcademiesController,
+    getAcademyByIdController,
+    updateAcademyController,
+};

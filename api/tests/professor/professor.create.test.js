@@ -230,9 +230,9 @@ describe('POST /api/professors', () => {
         assert.equal(professor.employment_type, body.employment_type);
         assert.equal(formatLocalDateOnly(professor.hire_date), body.hire_date);
 
-        // checking employee_number shape
-        assert.ok(professor.employee_number);
-        assert.match(professor.employee_number, /^EMP_\d{6}\d+$/);
+        // checking serial_number shape
+        assert.ok(professor.serial_number);
+        assert.match(professor.serial_number, /^EMP_\d{6}\d+$/);
     });
 
     it('returns 404 USER_NOT_FOUND when user_id does not exist', async () => {
