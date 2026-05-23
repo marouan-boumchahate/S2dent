@@ -248,7 +248,7 @@ export default function DepartmentsPage() {
           {/* table */}
           <div className="bg-card border border-borderLine rounded-2xl flex-1 overflow-hidden">
             <div className="px-6 py-4 border-b border-borderLine">
-              <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Departments</p>
+              <p className="text-textMuted text-sm font-bold uppercase tracking-widest">All Departments</p>
             </div>
 
             {departments.length === 0 ? (

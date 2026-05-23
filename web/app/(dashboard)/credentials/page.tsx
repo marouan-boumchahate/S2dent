@@ -61,7 +61,6 @@ export default function CredentialsPage() {
     setCredentials([...store.credentials]);
   }, []);
 
-  // stats
   const total    = credentials.length;
   const verified = credentials.filter(c => c.status === 'Verified').length;
   const pending  = credentials.filter(c => c.status === 'Pending').length;
@@ -70,7 +69,6 @@ export default function CredentialsPage() {
   return (
     <div className="flex flex-col h-full">
 
-      {/* header */}
       <PageHeader title="Credentials" onAddNew={() => router.push('/createCredential')} />
 
       <div className="p-6 space-y-6">
@@ -86,7 +84,7 @@ export default function CredentialsPage() {
         {/* table */}
         <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
           <div className="px-6 py-4 border-b border-borderLine">
-            <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Credentials</p>
+            <p className="text-textMuted text-sm font-bold uppercase tracking-widest">All Credentials</p>
           </div>
 
           {credentials.length === 0 ? (
@@ -116,9 +114,8 @@ export default function CredentialsPage() {
                       <td className="px-6 py-4"><StatusBadge status={cred.status} /></td>
                       <td className="px-6 py-4">
                         <button
-                          disabled
-                          title="Coming soon"
-                          className="text-xs border border-borderLine text-textMuted px-3 py-1 rounded-lg opacity-50 cursor-not-allowed"
+                          onClick={() => router.push(`/credentials/${cred.id}`)}
+                          className="text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition"
                         >
                           View
                         </button>
