@@ -6,7 +6,6 @@ import 'package:app/feature/credentials/presentation/widgets/credential_icon.dar
 import 'package:app/feature/home/domain/home_data.dart';
 import 'package:app/feature/home/presentation/providers/home_provider.dart';
 import 'package:app/feature/home/presentation/widgets/activity_item.dart';
-import 'package:app/feature/home/presentation/widgets/credentials_bottom_sheet.dart';
 import 'package:app/feature/home/presentation/widgets/custom_horizontal_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.dart';
@@ -16,7 +15,6 @@ import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/notifications/presentation/providers/notification_provider.dart';
 import 'package:app/feature/notifications/presentation/widgets/notification_bottom_sheet.dart';
-import 'package:app/feature/profile/presentation/widgets/custom_text_button.dart';
 import 'package:app/feature/settings/presentation/pages/settings.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
@@ -201,7 +199,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   context: context,
                   builder: (ctx) => CredentialDetailsDialog(
                     id: data.recentCredentials?[index].id ?? "",
-                    isRevoked: data.recentCredentials?[index].isRevoked ?? false,
+                    isRevoked:
+                        data.recentCredentials?[index].isRevoked ?? false,
                   ),
                 ),
                 title: data.recentCredentials?[index].title ?? "",

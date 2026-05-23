@@ -270,7 +270,7 @@ class CredentialDatasource {
       debugPrint("Credential brought from cache");
       return _detailCache[id]!;
     }
-    ;
+
     await Future.delayed(const Duration(milliseconds: 300));
     final detail = _detailJson[id];
     if (detail == null) throw Exception("Credential not found");
