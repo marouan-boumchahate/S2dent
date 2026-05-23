@@ -157,7 +157,7 @@ function StatCard({ label, value, sub, subColor }: {
   label: string; value: string | number; sub: string; subColor?: string;
 }) {
   return (
-    <div className="bg-card border border-borderLine rounded-2xl p-5 flex-1">
+    <div className="bg-card border border-borderLine rounded-2xl p-5">
       <p className="text-textMuted text-sm mb-1">{label}</p>
       <p className="text-textLight text-3xl font-bold">{value}</p>
       <p className={`text-xs mt-1 font-medium ${subColor ?? 'text-textMuted'}`}>{sub}</p>
@@ -235,82 +235,86 @@ export default function DepartmentsPage() {
         {/* header */}
         <PageHeader title="Departments" onAddNew={() => setShowAddModal(true)} />
 
-        {/* stat cards */}
-        <div className="flex gap-4 mb-6">
-          <StatCard label="Total departments" value={total} sub="registered" />
-          <StatCard label="Active" value={active} sub="running" subColor="text-mint" />
-          <StatCard label="Inactive" value={inactive} sub="paused" subColor="text-yellow-400" />
-          <StatCard label="Avg. study years" value={avgYears} sub="years" />
-        </div>
+        <div className="p-6 space-y-6">
 
-        {/* table */}
-        <div className="bg-card border border-borderLine rounded-2xl flex-1 overflow-hidden">
-          <div className="px-6 py-4 border-b border-borderLine">
-            <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Departments</p>
+          {/* stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Total departments" value={total} sub="registered" />
+            <StatCard label="Active" value={active} sub="running" subColor="text-mint" />
+            <StatCard label="Inactive" value={inactive} sub="paused" subColor="text-yellow-400" />
+            <StatCard label="Avg. study years" value={avgYears} sub="years" />
           </div>
 
-          {departments.length === 0 ? (
-            <div className="flex items-center justify-center h-48">
-              <p className="text-textMuted text-sm">No departments yet. Click <span className="text-mint font-semibold">+ Add new</span> to create one.</p>
+          {/* table */}
+          <div className="bg-card border border-borderLine rounded-2xl flex-1 overflow-hidden">
+            <div className="px-6 py-4 border-b border-borderLine">
+              <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Departments</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-borderLine">
-                    {['Code', 'Name', 'Faculty', 'Total Years', 'Professors', 'Students', 'Status', ''].map(h => (
-                      <th key={h} className="text-left text-textMuted text-xs font-bold uppercase tracking-wider px-6 py-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {departments.map(dept => (
-                    <tr
-                      key={dept.id}
-                      className="border-b border-borderLine hover:bg-surface/50 transition"
-                    >
-                      <td className="px-6 py-4 text-textMuted text-sm font-mono">{dept.code}</td>
-                      <td className="px-6 py-4">
-                        <p className="text-textLight text-sm font-semibold">{dept.name}</p>
-                        {dept.description && (
-                          <p className="text-textMuted text-xs mt-0.5 max-w-xs truncate">{dept.description}</p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-textLight text-sm">{dept.faculty}</td>
-                      <td className="px-6 py-4 text-textLight text-sm">{dept.totalYears} yrs</td>
-                      <td className="px-6 py-4 text-textLight text-sm font-medium">{profCount(dept)}</td>
-                      <td className="px-6 py-4 text-textLight text-sm font-medium">{stuCount(dept)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border
-                          ${dept.status === 'Active'
-                            ? 'bg-mint/10 text-mint border-mint/30'
-                            : 'bg-yellow-500/10 text-yellow-400 border-yellow-400/30'
-                          }`}>
-                          {dept.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditTarget(dept)}
-                            className="px-3 py-1 text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint rounded-lg transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(dept)}
-                            className="px-3 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+
+            {departments.length === 0 ? (
+              <div className="flex items-center justify-center min-h-48 py-12">
+                <p className="text-textMuted px-4">No departments yet. Click <span className="text-mint font-bold">+ Add new</span> to create one.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-borderLine">
+                      {['Code', 'Name', 'Faculty', 'Total Years', 'Professors', 'Students', 'Status', ''].map(h => (
+                        <th key={h} className="text-left text-textMuted text-xs font-bold uppercase tracking-wider px-6 py-3">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {departments.map(dept => (
+                      <tr
+                        key={dept.id}
+                        className="border-b border-borderLine hover:bg-surface/50 transition"
+                      >
+                        <td className="px-6 py-4 text-textMuted text-sm font-mono">{dept.code}</td>
+                        <td className="px-6 py-4">
+                          <p className="text-textLight text-sm font-semibold">{dept.name}</p>
+                          {dept.description && (
+                            <p className="text-textMuted text-xs mt-0.5 max-w-xs truncate">{dept.description}</p>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-textLight text-sm">{dept.faculty}</td>
+                        <td className="px-6 py-4 text-textLight text-sm">{dept.totalYears} yrs</td>
+                        <td className="px-6 py-4 text-textLight text-sm font-medium">{profCount(dept)}</td>
+                        <td className="px-6 py-4 text-textLight text-sm font-medium">{stuCount(dept)}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border
+                            ${dept.status === 'Active'
+                              ? 'bg-mint/10 text-mint border-mint/30'
+                              : 'bg-yellow-500/10 text-yellow-400 border-yellow-400/30'
+                            }`}>
+                            {dept.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditTarget(dept)}
+                              className="px-3 py-1 text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint rounded-lg transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(dept)}
+                              className="px-3 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </>
