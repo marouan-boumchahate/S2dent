@@ -57,17 +57,21 @@ export type Department = {
   createdAt: string;
 };
 
-
 export type Credential = {
   id: string;
   title: string;
-  issuedTo: string; // student id
+  issuedTo: string;       // student wallet address
+  studentName: string;    // student display name
   type: 'Enrollment' | 'Attendance' | 'Degree' | 'Certificate' | 'Achievement' | 'Transcript';
   code: string;
+  locale: string;
+  description: string;
   date: string;
   status: 'Verified' | 'Pending' | 'Failed' | 'Revoked';
+  payload: Record<string, string>; // dynamic fields per type
   createdAt: string;
 };
+
 export const store = {
   students: [] as Student[],
   professors: [] as Professor[],
@@ -132,6 +136,14 @@ export const store = {
     };
     this.credentials.unshift(newCredential);
     return newCredential;
+  },
+
+  updateCredential(id: string, updates: Partial<Omit<Credential, 'id' | 'createdAt'>>) {
+    const idx = this.credentials.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      this.credentials[idx] = { ...this.credentials[idx], ...updates };
+    }
+    return this.credentials[idx];
   },
 
   removeCredential(id: string) {
