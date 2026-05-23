@@ -4,6 +4,7 @@ import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/feature/profile/domain/models/academic.dart';
 import 'package:app/feature/profile/domain/models/department.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
+import 'package:app/feature/profile/domain/models/university.dart';
 import 'package:flutter/material.dart';
 
 class AcademicSection extends StatelessWidget {
@@ -17,6 +18,7 @@ class AcademicSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final Department? department = student.department;
     final Academic? academic = student.academic;
+    final University? university = student.university;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: InfoSection(
@@ -24,8 +26,7 @@ class AcademicSection extends StatelessWidget {
         widgets: [
           InfoTile(
             label: "University",
-            //TODO: fetch the name
-            trailing: Text("Fenerbahce"),
+            trailing: Text(university?.name ?? ""),
             icon: Icons.apartment,
           ),
           InfoTile(

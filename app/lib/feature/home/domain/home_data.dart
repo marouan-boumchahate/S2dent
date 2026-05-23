@@ -9,6 +9,7 @@ class HomeData {
     this.enrollmentStatus,
     this.recentCredentials,
     this.credentialsList,
+    this.universityLogo,
   });
 
   final String? firstName;
@@ -16,6 +17,7 @@ class HomeData {
   final int? credentialsCount;
   final double? cgpa;
   final String? enrollmentStatus;
+  final String? universityLogo;
   final List<CredentialItem>? recentCredentials;
   final List<CredentialItem>? credentialsList;
 }

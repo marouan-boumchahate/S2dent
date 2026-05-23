@@ -20,6 +20,7 @@ class DepartmentDataSource {
       identity: null,
       user: null,
       academic: null,
+      university: null,
     );
   }
 }

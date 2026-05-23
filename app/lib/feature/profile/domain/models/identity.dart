@@ -25,9 +25,6 @@ class Identity {
     );
   }
 
-  factory Identity.fromJason(Map<String, dynamic> json) =>
-      Identity.fromJson(json);
-
   Map<String, dynamic> toJson() {
     return {
       "wallet_address": walletAddress,

@@ -1,6 +1,7 @@
 ﻿import 'package:app/feature/profile/domain/models/address.dart';
 import 'package:app/feature/profile/domain/models/identity.dart';
 import 'package:app/feature/profile/domain/models/department.dart';
+import 'package:app/feature/profile/domain/models/university.dart';
 import 'package:app/feature/profile/domain/models/user.dart';
 import 'package:app/feature/profile/domain/models/academic.dart';
 
@@ -11,6 +12,7 @@ class Student {
     required this.department,
     required this.user,
     required this.academic,
+    this.university,
   });
 
   final Address? address;
@@ -18,6 +20,7 @@ class Student {
   final Department? department;
   final User? user;
   final Academic? academic;
+  final University? university;
 
   Student copyWith({
     Address? address,
@@ -25,6 +28,7 @@ class Student {
     Department? department,
     User? user,
     Academic? academic,
+    University? university,
   }) {
     return Student(
       address: address ?? this.address,
@@ -32,6 +36,7 @@ class Student {
       department: department ?? this.department,
       user: user ?? this.user,
       academic: academic ?? this.academic,
+      university: university ?? this.university,
     );
   }
 
@@ -52,6 +57,9 @@ class Student {
       academic: json["academic"] == null
           ? null
           : Academic.fromJson(json["academic"] as Map<String, dynamic>),
+      university: json['university'] == null
+          ? null
+          : University.fromJson(json['university'] as Map<String, dynamic>),
     );
   }
 
@@ -62,6 +70,7 @@ class Student {
       "address": address?.toJson(),
       "department": department?.toJson(),
       "academic": academic?.toJson(),
+      "university": university?.toJson(),
     };
   }
 }

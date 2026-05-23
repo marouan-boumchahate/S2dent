@@ -23,6 +23,7 @@ class IdentityDataSource {
       department: null,
       user: null,
       academic: null,
+      university: null,
     );
   }
 }

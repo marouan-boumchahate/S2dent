@@ -20,6 +20,7 @@ final homeDataProvider = Provider<AsyncValue<HomeData>>(
             recentCredentials: credentialData.take(3).toList(),
             walletAddress: profileData.identity?.walletAddress ?? "",
             credentialsList: credentialData,
+            universityLogo: profileData.university?.logoUrl,
           ),
         ),
         error: (error, stackTrace) => AsyncError(error, stackTrace),

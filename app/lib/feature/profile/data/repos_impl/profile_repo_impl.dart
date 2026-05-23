@@ -2,6 +2,7 @@
 import 'package:app/feature/profile/data/datasources/address_datasource.dart';
 import 'package:app/feature/profile/data/datasources/department_datasource.dart';
 import 'package:app/feature/profile/data/datasources/identity_datasource.dart';
+import 'package:app/feature/profile/data/datasources/university_datasource.dart';
 import 'package:app/feature/profile/data/datasources/user_datasource.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
@@ -14,6 +15,7 @@ class ProfileRepoImpl implements ProfileRepository {
     required this.departmentDataSource,
     required this.academicDataSource,
     required this.identityDataSource,
+    required this.universityDataSource,
   });
 
   final UserDataSource userDataSource;
@@ -21,6 +23,7 @@ class ProfileRepoImpl implements ProfileRepository {
   final DepartmentDataSource departmentDataSource;
   final AcademicDataSource academicDataSource;
   final IdentityDataSource identityDataSource;
+  final UniversityDataSource universityDataSource;
 
   @override
   Future<Student> getStudentProfile() async {
@@ -30,6 +33,7 @@ class ProfileRepoImpl implements ProfileRepository {
       getDepartmentInfo(),
       getAcademicInfo(),
       getIdentityInfo(),
+      getUniversityInfo(),
     ]);
 
     return _mergeStudents(data);
@@ -61,6 +65,11 @@ class ProfileRepoImpl implements ProfileRepository {
   }
 
   @override
+  Future<Student> getUniversityInfo() {
+    return universityDataSource.getUniversityInfo();
+  }
+
+  @override
   Future<Student> updateStudentProfile(ProfileUpdateData data) async {
     final updateFutures = <Future<Student>>[];
 
@@ -78,6 +87,7 @@ class ProfileRepoImpl implements ProfileRepository {
         department: null,
         user: null,
         academic: null,
+        university: null,
       );
     }
 
@@ -102,6 +112,7 @@ class ProfileRepoImpl implements ProfileRepository {
         department: item.department ?? student.department,
         user: item.user ?? student.user,
         academic: item.academic ?? student.academic,
+        university: item.university ?? student.university,
       );
     }
 

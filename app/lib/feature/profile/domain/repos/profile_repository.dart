@@ -8,5 +8,6 @@ abstract class ProfileRepository {
   Future<Student> getDepartmentInfo();
   Future<Student> getAcademicInfo();
   Future<Student> getIdentityInfo();
+  Future<Student> getUniversityInfo();
   Future<Student> updateStudentProfile(ProfileUpdateData data);
 }

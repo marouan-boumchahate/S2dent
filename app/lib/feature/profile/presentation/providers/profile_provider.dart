@@ -2,6 +2,7 @@
 import 'package:app/feature/profile/data/datasources/address_datasource.dart';
 import 'package:app/feature/profile/data/datasources/department_datasource.dart';
 import 'package:app/feature/profile/data/datasources/identity_datasource.dart';
+import 'package:app/feature/profile/data/datasources/university_datasource.dart';
 import 'package:app/feature/profile/data/datasources/user_datasource.dart';
 import 'package:app/feature/profile/data/repos_impl/profile_repo_impl.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
@@ -37,17 +38,23 @@ class ProfileController extends StateNotifier<AsyncValue<Student>> {
     return _loadSection(repository.getIdentityInfo);
   }
 
+  Future<Student?> loadUniversityInfo() async {
+    return _loadSection(repository.getUniversityInfo);
+  }
+
   Future<void> loadFullProfile() async {
     state = const AsyncValue.loading();
 
     try {
       //results is now a list of Student
+      // "all wait operations happen in parallel"
       final results = await Future.wait([
         repository.getUserInfo(),
         repository.getAddressInfo(),
         repository.getDepartmentInfo(),
         repository.getAcademicInfo(),
         repository.getIdentityInfo(),
+        repository.getUniversityInfo(),
       ]);
 
       Student merged = const Student(
@@ -56,6 +63,7 @@ class ProfileController extends StateNotifier<AsyncValue<Student>> {
         department: null,
         user: null,
         academic: null,
+        university: null,
       );
       //merge the list elements into 1 Student
       for (final student in results) {
@@ -113,6 +121,7 @@ class ProfileController extends StateNotifier<AsyncValue<Student>> {
       department: student.department ?? previousStudent.department,
       user: student.user ?? previousStudent.user,
       academic: student.academic ?? previousStudent.academic,
+      university: student.university ?? previousStudent.university,
     );
   }
 }
@@ -137,6 +146,10 @@ final identityDataSourceProvider = Provider<IdentityDataSource>(
   (ref) => IdentityDataSource(),
 );
 
+final universityDataSourceProvider = Provider<UniversityDataSource>(
+  (ref) => UniversityDataSource(),
+);
+
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepoImpl(
     userDataSource: ref.watch(userDataSourceProvider),
@@ -144,6 +157,7 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
     departmentDataSource: ref.watch(departmentDataSourceProvider),
     academicDataSource: ref.watch(academicDataSourceProvider),
     identityDataSource: ref.watch(identityDataSourceProvider),
+    universityDataSource: ref.watch(universityDataSourceProvider),
   ),
 );
 
