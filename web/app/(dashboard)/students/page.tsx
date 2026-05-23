@@ -35,14 +35,14 @@ export default function StudentsPage() {
         </div>
 
         {/* table */}
-        <div className="bg-card rounded-2xl border border-borderLine overflow-hidden">
+        <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
           <div className="px-6 py-4 border-b border-borderLine">
             <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">All Students</h3>
           </div>
 
           {students.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-textMuted">No students yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
+            <div className="flex items-center justify-center min-h-48 py-12">
+              <p className="text-textMuted px-4">No students yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

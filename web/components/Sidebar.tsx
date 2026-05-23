@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 const ADMIN_GROUPS = [
   { label: 'Students', href: '/students', icon: '/student_1.png' },
   { label: 'Professors', href: '/professors', icon: '/professor.png' },
-  { label: 'Certificates', href: '/certificates', icon: '/certificate.png' },
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
   { label: 'Departments', href: '/departments', icon: '/corporation.png' },
   { label: 'Settings', href: '/settings', icon: '/setting_1.png' },
@@ -14,7 +13,6 @@ const ADMIN_GROUPS = [
 
 const PROFESSOR_GROUPS = [
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
-  { label: 'Certificates', href: '/certificates', icon: '/certificate.png' },
   { label: 'Settings', href: '/settings', icon: '/setting.png' },
 ];
 

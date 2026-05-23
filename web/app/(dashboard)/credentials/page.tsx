@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import { store, Credential } from '@/lib/store';
 
@@ -44,7 +45,7 @@ function StatCard({ label, value, sub, subColor }: {
   label: string; value: string | number; sub: string; subColor?: string;
 }) {
   return (
-    <div className="bg-card border border-borderLine rounded-2xl p-5 flex-1">
+    <div className="bg-card border border-borderLine rounded-2xl p-5">
       <p className="text-textMuted text-sm mb-1">{label}</p>
       <p className="text-textLight text-3xl font-bold">{value}</p>
       <p className={`text-xs mt-1 font-medium ${subColor ?? 'text-textMuted'}`}>{sub}</p>
@@ -53,6 +54,7 @@ function StatCard({ label, value, sub, subColor }: {
 }
 
 export default function CredentialsPage() {
+  const router = useRouter();
   const [credentials, setCredentials] = useState<Credential[]>([]);
 
   useEffect(() => {
@@ -69,62 +71,66 @@ export default function CredentialsPage() {
     <div className="flex flex-col h-full">
 
       {/* header */}
-      <PageHeader title="Credentials" onAddNew={() => {}} />
+      <PageHeader title="Credentials" onAddNew={() => router.push('/createCredential')} />
 
-      {/* stat cards */}
-      <div className="flex gap-4 mb-6">
-        <StatCard label="Total credentials" value={total}    sub="on blockchain" />
-        <StatCard label="Verified"          value={verified} sub="valid"         subColor="text-mint" />
-        <StatCard label="Pending"           value={pending}  sub="awaiting tx"   subColor="text-yellow-400" />
-        <StatCard label="Revoked"           value={revoked}  sub="flagged"       subColor="text-red-400" />
-      </div>
+      <div className="p-6 space-y-6">
 
-      {/* table */}
-      <div className="bg-card border border-borderLine rounded-2xl flex-1 overflow-hidden">
-        <div className="px-6 py-4 border-b border-borderLine">
-          <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Credentials</p>
+        {/* stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total credentials" value={total}    sub="on blockchain" />
+          <StatCard label="Verified"          value={verified} sub="valid"         subColor="text-mint" />
+          <StatCard label="Pending"           value={pending}  sub="awaiting tx"   subColor="text-yellow-400" />
+          <StatCard label="Revoked"           value={revoked}  sub="flagged"       subColor="text-red-400" />
         </div>
 
-        {credentials.length === 0 ? (
-          <div className="flex items-center justify-center h-48">
-            <p className="text-textMuted text-sm">No credentials yet.</p>
+        {/* table */}
+        <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
+          <div className="px-6 py-4 border-b border-borderLine">
+            <p className="text-textMuted text-xs font-bold uppercase tracking-widest">All Credentials</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-borderLine">
-                  {['Title', 'Issued to', 'Type', 'Code', 'Date', 'Status', ''].map(h => (
-                    <th key={h} className="text-left text-textMuted text-xs font-bold uppercase tracking-wider px-6 py-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {credentials.map(cred => (
-                  <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
-                    <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
-                    <td className="px-6 py-4 text-textLight text-sm">{getStudentName(cred.issuedTo)}</td>
-                    <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
-                    <td className="px-6 py-4 text-textMuted text-sm font-mono">{cred.code || '—'}</td>
-                    <td className="px-6 py-4 text-textMuted text-sm">
-                      {cred.date ? new Date(cred.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                    </td>
-                    <td className="px-6 py-4"><StatusBadge status={cred.status} /></td>
-                    <td className="px-6 py-4">
-                      <button
-                        disabled
-                        title="Coming soon"
-                        className="text-xs border border-borderLine text-textMuted px-3 py-1 rounded-lg opacity-50 cursor-not-allowed"
-                      >
-                        View
-                      </button>
-                    </td>
+
+          {credentials.length === 0 ? (
+            <div className="flex items-center justify-center min-h-48 py-12">
+              <p className="text-textMuted px-4">No credentials yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-borderLine">
+                    {['Title', 'Issued to', 'Type', 'Code', 'Date', 'Status', ''].map(h => (
+                      <th key={h} className="text-left text-textMuted text-xs font-bold uppercase tracking-wider px-6 py-3">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {credentials.map(cred => (
+                    <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
+                      <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
+                      <td className="px-6 py-4 text-textLight text-sm">{getStudentName(cred.issuedTo)}</td>
+                      <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
+                      <td className="px-6 py-4 text-textMuted text-sm font-mono">{cred.code || '—'}</td>
+                      <td className="px-6 py-4 text-textMuted text-sm">
+                        {cred.date ? new Date(cred.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      </td>
+                      <td className="px-6 py-4"><StatusBadge status={cred.status} /></td>
+                      <td className="px-6 py-4">
+                        <button
+                          disabled
+                          title="Coming soon"
+                          className="text-xs border border-borderLine text-textMuted px-3 py-1 rounded-lg opacity-50 cursor-not-allowed"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
