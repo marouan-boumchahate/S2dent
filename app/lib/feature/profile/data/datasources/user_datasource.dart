@@ -28,6 +28,7 @@ class UserDataSource {
       identity: null,
       department: null,
       academic: null,
+      university: null,
     );
   }
 
@@ -47,6 +48,7 @@ class UserDataSource {
       identity: null,
       department: null,
       academic: null,
+      university: null,
     );
   }
 }

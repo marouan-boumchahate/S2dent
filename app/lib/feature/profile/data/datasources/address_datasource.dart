@@ -28,6 +28,7 @@ class AddressDataSource {
       department: null,
       user: null,
       academic: null,
+      university: null,
     );
   }
 
@@ -52,6 +53,7 @@ class AddressDataSource {
       department: null,
       user: null,
       academic: null,
+      university: null,
     );
   }
 }

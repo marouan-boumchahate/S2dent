@@ -104,16 +104,33 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                "Welcome back,",
-                style: context.texts.bodyLarge,
+              CircleAvatar(
+                radius: 26,
+                child: data.universityLogo != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Image.network(
+                          data.universityLogo!,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : const Icon(Icons.school_outlined),
               ),
-              Text(
-                data.firstName ?? "",
-                style: context.texts.displaySmall,
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Welcome back,",
+                    style: context.texts.bodyLarge,
+                  ),
+                  Text(
+                    data.firstName ?? "",
+                    style: context.texts.displaySmall,
+                  ),
+                ],
               ),
             ],
           ),

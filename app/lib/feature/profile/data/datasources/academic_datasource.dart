@@ -24,6 +24,7 @@ class AcademicDataSource {
       identity: null,
       department: null,
       user: null,
+      university: null,
     );
   }
 }
