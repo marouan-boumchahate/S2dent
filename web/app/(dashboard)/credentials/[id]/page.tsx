@@ -246,7 +246,7 @@ export default function CredentialDetailPage() {
               )}
             </div>
           </div>
-
+          
           {/* RIGHT */}
           <div className="flex-1 space-y-6 overflow-y-auto">
 
