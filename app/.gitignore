@@ -1,7 +1,6 @@
-# Claude
-CLAUDE.md
-TODO.md
-.claude/
+# Markdown
+*.md
+!README.md
 
 # Miscellaneous
 *.class
