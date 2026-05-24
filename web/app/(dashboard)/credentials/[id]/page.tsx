@@ -223,17 +223,20 @@ export default function CredentialDetailPage() {
                 <InfoRow label="Description" value={credential.description || '—'} />
                 <InfoRow
                   label="Issued date"
+
                   value={credential.date
                     ? new Date(credential.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : '—'}
                 />
+                {isRevoked && (
+                  <InfoRow label="Revoked at" value={new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+                )}
               </div>
 
               {!isRevoked && (
                 <button
-                  disabled
-                  title="Coming soon"
-                  className="mt-6 w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 opacity-50 cursor-not-allowed font-semibold text-sm"
+                  onClick={() => setShowRevokeModal(true)}
+                  className="mt-6 w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -243,7 +246,7 @@ export default function CredentialDetailPage() {
               )}
             </div>
           </div>
-
+          
           {/* RIGHT */}
           <div className="flex-1 space-y-6 overflow-y-auto">
 
