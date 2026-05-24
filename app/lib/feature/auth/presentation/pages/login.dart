@@ -1,7 +1,7 @@
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/navigation/shell_page.dart';
-import 'package:app/core/providers/appkit_provider.dart';
+import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';
@@ -39,6 +39,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           description: 'Student Identity Wallet',
           url: 'https://s2dent.app',
           icons: ['https://s2dent.app/icon.png'],
+          redirect: Redirect(
+            native: 's2dent://',
+          ),
         ),
         includedWalletIds: const {
           //metamask wallet id only
@@ -111,12 +114,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       children: [
         PrimaryButton(
           onTap: isDisabled ? null : onTapSignIn,
-          label: !isModalReady
-              ? "Initializing..."
-              : isLoading
-                  ? "Connecting..."
-                  : "SIGN IN WITH A WALLET",
+          label: "SIGN IN WITH A WALLET",
           isEnable: !isDisabled,
+          isLoading: !isModalReady,
         ),
         _dividerSection(context),
         SecondaryButton(onTap: onTapVerify, label: "Verify Identity"),

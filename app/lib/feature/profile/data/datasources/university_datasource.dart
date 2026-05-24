@@ -10,7 +10,8 @@ class UniversityDataSource {
     "code": "FBU",
     "email": "info@fbu.edu.tr",
     "website_url": "https://www.fbu.edu.tr",
-    "logo_url": "https://www.fbu.edu.tr/media/Logo/tr_white_1722936995.png",
+    "logo_url":
+        "https://upload.wikimedia.org/wikipedia/tr/7/72/Fenerbah%C3%A7e_%C3%9Cniversitesi_FB%C3%9C.png",
     "phone_number": "",
   };
 

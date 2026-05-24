@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/core/network/api_client.dart';
-import 'package:app/core/providers/appkit_provider.dart';
+import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:app/feature/auth/data/repos_impl/auth_repo_impl.dart';
@@ -16,11 +16,13 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
     required this.authRepo,
     required this.tokenStorage,
     required this.appKitModal,
+    required this.onLogout,
   }) : super(const AsyncValue.data(null));
 
   final AuthRepo authRepo;
   final TokenStorageService tokenStorage;
   final ReownAppKitModal? appKitModal;
+  final void Function() onLogout;
 
   Future<void> signIn() async {
     final modal = appKitModal;
@@ -88,9 +90,11 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
       if (refreshToken != null) {
         await authRepo.logout(refreshToken);
       }
+      await appKitModal?.disconnect();
     } finally {
       await tokenStorage.clearTokens();
       state = const AsyncValue.data(null);
+      onLogout();
     }
   }
 }
@@ -114,5 +118,6 @@ final authControllerProvider =
     authRepo: ref.watch(authRepositoryProvider),
     tokenStorage: ref.watch(tokenStorageServiceProvider),
     appKitModal: ref.watch(appKitModalProvider),
+    onLogout: () => ref.read(appKitModalProvider.notifier).state = null,
   ),
 );

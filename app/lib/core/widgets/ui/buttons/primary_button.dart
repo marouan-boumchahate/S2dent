@@ -7,10 +7,12 @@ class PrimaryButton extends StatelessWidget {
     required this.onTap,
     required this.label,
     this.isEnable = true,
+    this.isLoading = false,
   });
   final Function()? onTap;
   final String label;
   final bool isEnable;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +29,22 @@ class PrimaryButton extends StatelessWidget {
           ),
           padding: EdgeInsets.symmetric(vertical: 16),
           width: double.infinity,
-          child: Text(
-            label,
-            style: context.texts.titleLarge!.copyWith(
-              color: context.colors.onPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          child: isLoading
+              ? const Center(
+                  child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              : Text(
+                  label,
+                  style: context.texts.titleLarge!.copyWith(
+                    color: context.colors.onPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
         ),
       ),
     );
