@@ -1,5 +1,4 @@
-﻿import 'package:app/core/theme/app_color.dart';
-import 'package:app/core/widgets/layouts/main_layout.dart';
+﻿import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
@@ -109,7 +108,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: AppColors.textHint,
+                backgroundColor: Colors.transparent,
                 child: data.universityLogo != null
                     ? Padding(
                         padding: const EdgeInsets.all(6),
