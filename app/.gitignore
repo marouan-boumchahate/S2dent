@@ -1,6 +1,7 @@
 # Claude
 CLAUDE.md
 TODO.md
+.claude/
 
 # Miscellaneous
 *.class
@@ -48,5 +49,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-#Claude
-.claude/
+
+#
+WALLET_SIGNING_ISSUES.md
