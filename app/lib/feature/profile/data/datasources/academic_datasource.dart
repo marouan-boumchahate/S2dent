@@ -8,6 +8,7 @@ class AcademicDataSource {
   final Map<String, dynamic> _academicJson = {
     "student_number": "220304110",
     "current_level": "Year 4",
+    "advisor": "Osman Selvi",
     "enrollment_status": "active",
     "enrollment_date": "2022-09-19T00:00:00.000Z",
     "expected_graduation_date": "2026-06-30T00:00:00.000Z",
