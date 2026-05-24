@@ -40,6 +40,10 @@ class AcademicSection extends StatelessWidget {
             icon: Icons.crop_landscape_outlined,
           ),
           InfoTile(
+              label: "Advisor",
+              trailing: Text(academic?.advisor ?? ""),
+              icon: Icons.supervised_user_circle_outlined),
+          InfoTile(
             label: "Expected Graduation",
             trailing: Text(
               dateFormatter(academic?.expectedGraduationDate),
