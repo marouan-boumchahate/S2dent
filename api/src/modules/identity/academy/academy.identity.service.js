@@ -47,7 +47,16 @@ const ON_REVOKE_FAILURE = (academyName) => ({
 
 
 // Helpers
-// -------
+const buildNotification = ({ emailSuccess, emailFailure, emitSuccess, emitFailure, successReceiver, failureReceiver }) => ({
+    email: {
+        success: emailSuccess,
+        failure: emailFailure
+    },
+    emit: {
+        success: emitSuccess ? { message: emitSuccess, receiver: successReceiver } : null,
+        failure: emitFailure ? { message: emitFailure, receiver: failureReceiver } : null
+    }
+})
 const fetchFromCache = async (email, otp) => {
     const cacheKey = otpKey(email, otp)
     const cachedData = await getCache(cacheKey)
@@ -287,6 +296,18 @@ const issueAcademyIdentity = async ({ otp, email, signature }) => {
     })
 
     // Saving Transaction Off-Chain
+    const emailSuccess = ON_ISSUE_SUCCESS(academy.name)
+    const emailFailure = ON_ISSUE_FAILURE(academy.name)
+
+    const notification = buildNotification({
+        emailSuccess,
+        emailFailure,
+        emitSuccess: null,
+        emitFailure: null,
+        successReceiver: null,
+        failureReceiver: null
+    })
+
     const payload = {
         action: 'identity_issue',
         
@@ -294,8 +315,7 @@ const issueAcademyIdentity = async ({ otp, email, signature }) => {
         public_key: signerPublicKey,
         
         email: academy.email,
-        onSuccess: ON_ISSUE_SUCCESS(academy.name),
-        onFailure: ON_ISSUE_FAILURE(academy.name)
+        notification
     }
     await saveTransaction(tx.hash, payload)
 
@@ -324,6 +344,18 @@ const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
     await updateIdentityRecord(tx.hash, checksumAddr)
 
     // Saving Transaction Off-Chain
+    const emailSuccess = REVOKE_ON_SUCCESS(academy.name)
+    const emailFailure = REVOKE_ON_FAILURE(academy.name)
+
+    const notification = buildNotification({
+        emailSuccess,
+        emailFailure,
+        emitSuccess: null,
+        emitFailure: null,
+        successReceiver: null,
+        failureReceiver: null
+    })
+    
     const payload = {
         action: 'identity_revoke',
 
@@ -331,8 +363,7 @@ const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
         reason,
 
         email: academy.email,
-        onSuccess: REVOKE_ON_SUCCESS(academy.name),
-        onFailure: REVOKE_ON_FAILURE(academy.name)
+        notification
     }
     await saveTransaction(tx.hash, payload)
 

@@ -124,34 +124,74 @@ export const listenOnTransaction = (tx) => {
     tx.wait(1) // Wait for a block confirmation
         .then(async (receipt) => {
             const { payload } = await setTransactionStatus(tx.hash, 'verified')
+            const notification = payload.notification ?? {
+                email: {
+                    success: payload.onSuccess,
+                    failure: payload.onFailure
+                },
+                emit: {
+                    success: payload.onSuccessEmit,
+                    failure: payload.onFailureEmit
+                }
+            }
 
             //console.log('Logs of the transaction receipt:', receipt.logs)
             await performAction(payload, tx.hash, receipt)
 
-            emitToUser(payload.wallet_address, 'identity:verified', {
-                tx_hash: tx.hash,
-                status: 'verified'
-            })
-            await notifyUser({
-                email: payload.email,
-                subject: payload.onSuccess.subject,
-                message: payload.onSuccess.message
-            })
+            if (notification.emit?.success?.message) {
+                const { emit: { success: { receiver, message } } } = notification
+
+                emitToUser(receiver, 'notification', {
+                    tx_hash: tx.hash,
+                    status: 'verified',
+                    message,
+                    created_at: new Date().toISOString()
+                })
+            }
+            if (notification.email?.success) {
+                const { email: { success: { subject, message } } } = notification
+                
+                await notifyUser({
+                    email: payload.email,
+                    subject,
+                    message
+                })
+            }
         })
         .catch(async (err) => {
             const { payload } = await setTransactionStatus(tx.hash, 'failed')
+            const notification = payload.notification ?? {
+                email: {
+                    success: payload.onSuccess,
+                    failure: payload.onFailure
+                },
+                emit: {
+                    success: payload.onSuccessEmit,
+                    failure: payload.onFailureEmit
+                }
+            }
 
-            console.error('Error processing transaction:', err)
+            //console.error('Error processing transaction:', err)
 
-            emitToUser(payload.wallet_address, 'identity:failed', {
-                tx_hash: tx.hash,
-                status: 'failed',
-                reason: err.message
-            })
-            await notifyUser({
-                email: payload.email,
-                subject: payload.onFailure.subject,
-                message: payload.onFailure.message
-            })
+            if (notification.emit?.failure?.message) {
+                const { emit: { failure: { receiver, message } } } = notification
+
+                emitToUser(receiver, 'notification', {
+                    tx_hash: tx.hash,
+                    status: 'failed',
+                    message,
+                    created_at: new Date().toISOString(),
+                    reason: err.message
+                })
+            }
+            if (notification.email?.failure) {
+                const { email: { failure: { subject, message } } } = notification
+
+                await notifyUser({
+                    email: payload.email,
+                    subject,
+                    message
+                })
+            }
         })
 }
