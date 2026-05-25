@@ -81,26 +81,32 @@ const studentCredentialDTO = (credential) => ({
 // constants
 const blockchainConfig = env.blockchain;
 
-const ISSUE_ON_SUCCESS = {
+const ISSUE_ON_SUCCESS_EMAIL = {
     subject: 'Credential Issuance Confirmed',
     message: 'Your credential issuance has been confirmed on-chain and is now active in S2dent.'
 };
-const ISSUE_ON_FAILURE = {
-    subject: 'Credential Issuance Pending Resolution',
-    message: 'We encountered a temporary issue while confirming your credential issuance transaction. Our team is reviewing it and will resolve it shortly.'
-};
-
-const REVOKE_ON_SUCCESS = {
+const REVOKE_ON_SUCCESS_EMAIL = {
     subject: 'Credential Revocation Confirmed',
     message: 'Your credential has been successfully revoked on-chain and is no longer active in S2dent.'
 };
-const REVOKE_ON_FAILURE = {
-    subject: 'Credential Revocation Pending Resolution',
-    message: 'We encountered a temporary issue while processing your credential revocation transaction. Our team is reviewing it and will resolve it shortly.'
-};
+
+const ISSUE_ON_SUCCESS_EMIT = (code) => `Credential ${code} has been successfully issued on-chain for you.`;
+const ISSUE_ON_FAILURE_EMIT = (code, studentName) => `Failed to issue credential ${code} on-chain for ${studentName}.`;
+const REVOKE_ON_SUCCESS_EMIT = (code) => `Your credential with the code ${code} has been revoked on-chain.`;
+const REVOKE_ON_FAILURE_EMIT = (code, studentName) => `Failed to revoke credential ${code} on-chain for ${studentName}.`;
 
 
 // Helpers
+const buildNotification = ({ emailSuccess, emailFailure, emitSuccess, emitFailure, successReceiver, failureReceiver }) => ({
+    email: {
+        success: emailSuccess,
+        failure: emailFailure
+    },
+    emit: {
+        success: emitSuccess ? { message: emitSuccess, receiver: successReceiver } : null,
+        failure: emitFailure ? { message: emitFailure, receiver: failureReceiver } : null
+    }
+});
 const canIssueTargetCredentialType = (issuerRole, credentialType) => {
     if(issuerRole === 'professor' && credentialType !== 'attendance') {
         const err = new Error('Professors can only issue attendance credentials');
@@ -630,13 +636,20 @@ const issueCredentialService = async (issuer_address, credential_id, signature) 
 
     await updateCredential(credential.id, { signature, encryptedPayload, issue_tx_hash: tx.hash });
 
+    const notification = buildNotification({
+        emailSuccess: null,
+        emailFailure: null,
+        emitSuccess: ISSUE_ON_SUCCESS_EMIT(credential.code),
+        emitFailure: ISSUE_ON_FAILURE_EMIT(credential.code, credential.student_name),
+        successReceiver: credential.student_wallet_address,
+        failureReceiver: credential.issuer_wallet_address
+    });
     const pendingPayload = {
         action: 'credential_issue',
         credential_code: credential.code,
         wallet_address: credential.student_wallet_address,
         email: credential.student_email,
-        onSuccess: ISSUE_ON_SUCCESS,
-        onFailure: ISSUE_ON_FAILURE
+        notification
     };
 
     await saveTransaction(tx.hash, pendingPayload);
@@ -680,14 +693,21 @@ const revokeCredentialService = async (revoker_address, credential_id, reason) =
 
     await updateCredential(credential_id, { revoke_tx_hash: tx.hash });
 
+    const notification = buildNotification({
+        emailSuccess: null,
+        emailFailure: null,
+        emitSuccess: REVOKE_ON_SUCCESS_EMIT(credentialCode),
+        emitFailure: REVOKE_ON_FAILURE_EMIT(credentialCode, studentEmail),
+        successReceiver: studentAddress,
+        failureReceiver: academyAddress
+    });
     const pendingPayload = {
         action: 'credential_revoke',
         credential_code: credentialCode,
         revocation_reason: reason,
         wallet_address: studentAddress,
         email: studentEmail,
-        onSuccess: REVOKE_ON_SUCCESS,
-        onFailure: REVOKE_ON_FAILURE
+        notification
     };
 
     await saveTransaction(tx.hash, pendingPayload);

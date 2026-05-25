@@ -24,27 +24,33 @@ const toIdentityDto = (value) => {
 
 
 // Constants
-const ISSUE_ON_SUCCESS = (title, name, academyName) => ({
+const ISSUE_ON_SUCCESS_EMAIL = (title, name, academyName) => ({
     subject: `Identity Issuance Confirmed – Welcome to S2dent, ${title} ${name}`,
     message: `Dear ${title} ${name},\n\nWe are pleased to inform you that your verified identity has been successfully issued on the S2dent network under ${academyName}. Your student identity is now fully active and recognized on-chain.\n\nYou may now access all platform features associated with your enrollment.\n\nShould you have any questions, please do not hesitate to reach out to us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
 })
-const ISSUE_ON_FAILURE = (title, name) => ({
-    subject: `Action Required: Identity Issuance Pending – ${title} ${name}`,
-    message: `Dear ${title} ${name},\n\nWe encountered an issue while processing your identity issuance transaction. Your identity has not yet been confirmed on the network.\n\nOur engineering team has been notified and is actively investigating. No action is required from your side at this time. We will follow up as soon as the matter is resolved.\n\nFor urgent concerns, please contact us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
-})
-
-const REVOKE_ON_SUCCESS = (title, name, academyName) => ({
+const REVOKE_ON_SUCCESS_EMAIL = (title, name, academyName) => ({
     subject: `Identity Revocation Notice – ${title} ${name}`,
     message: `Dear ${title} ${name},\n\nThis is to confirm that your verified identity under ${academyName} has been permanently revoked from the S2dent network. Your student identity is no longer active or recognized on-chain.\n\nIf this action was authorized, no further steps are required.\n\nIf you believe this was done in error, please contact ${academyName} directly for clarification.\n\nRegards,\nThe S2dent Team`
 })
-const REVOKE_ON_FAILURE = (title, name, academyName) => ({
-    subject: `Action Required: Identity Revocation Pending – ${title} ${name}`,
-    message: `Dear ${title} ${name},\n\nWe encountered an issue while processing your identity revocation transaction under ${academyName}. The revocation has not yet been finalized on the network.\n\nOur engineering team is investigating and will work to resolve this promptly. We will notify you once the transaction is confirmed.\n\nIf you have immediate concerns, please reach out to ${academyName} directly.\n\nRegards,\nThe S2dent Team`
-})
+
+const ISSUE_ON_SUCCESS_EMIT = (title, name) => `Identity for ${title} ${name} successfully issued on-chain`
+const ISSUE_ON_FAILURE_EMIT = (title, name) => `Identity for ${title} ${name} issuance needs attention`
+const REVOKE_ON_SUCCESS_EMIT = (title, name) => `${title} ${name}'s identity successfully revoked on-chain`
+const REVOKE_ON_FAILURE_EMIT = (title, name) => `${title} ${name}'s identity revocation needs attention`
+
 
 
 // Helpers
-// -------
+const buildNotification = ({ emailSuccess, emailFailure, emitSuccess, emitFailure, successReceiver, failureReceiver }) => ({
+    email: {
+        success: emailSuccess,
+        failure: emailFailure
+    },
+    emit: {
+        success: emitSuccess ? { message: emitSuccess, receiver: successReceiver } : null,
+        failure: emitFailure ? { message: emitFailure, receiver: failureReceiver } : null
+    }
+})
 const formatDateOnly = (value) => {
     if (!value) return ''
     if (typeof value === 'string') return value.slice(0, 10)
@@ -170,7 +176,6 @@ const validateWalletAddress = (walletAddress) => {
     }
 }
 
-
 const ensureWalletAddressUnique = async (wallet) => {
     const { rows } = await db.query(
         `SELECT 1 FROM identities WHERE wallet_address = $1 LIMIT 1`,
@@ -259,6 +264,20 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
     await insertIdentityRecord({ userId: student.user_id, issueTxHash: tx.hash })
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
+    const emailSuccess = ISSUE_ON_SUCCESS_EMAIL(title, student.full_name, student.academy_name)
+    const emailFailure = null //ISSUE_ON_FAILURE_EMAIL(title, student.full_name, student.academy_name)
+    const emitSuccess = ISSUE_ON_SUCCESS_EMIT(title, student.full_name)
+    const emitFailure = ISSUE_ON_FAILURE_EMIT(title, student.full_name)
+
+    const notification = buildNotification({
+        emailSuccess,
+        emailFailure,
+        emitSuccess,
+        emitFailure,
+        successReceiver: student.academy_wallet_address,
+        failureReceiver: student.academy_wallet_address
+    })
+
     const payload = {
         action: 'identity_issue',
         entity_id: student.user_id,
@@ -268,8 +287,7 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
         public_key: signerPublicKey,
         
         email: student.email,
-        onSuccess: ISSUE_ON_SUCCESS(title, student.full_name, student.academy_name),
-        onFailure: ISSUE_ON_FAILURE(title, student.full_name, student.academy_name)
+        notification
     }
     await saveTransaction(tx.hash, payload)
 
@@ -297,6 +315,20 @@ const revokeStudentIdentityService = async ({ academy_address, student_address, 
     await updateIdentityRecord(tx.hash, studentWallet)
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
+    const emailSuccess = REVOKE_ON_SUCCESS_EMAIL(title, student.full_name, student.academy_name)
+    const emailFailure = null //REVOKE_ON_FAILURE_EMAIL(title, student.full_name, student.academy_name)
+    const emitSuccess = REVOKE_ON_SUCCESS_EMIT(title, student.full_name)
+    const emitFailure = REVOKE_ON_FAILURE_EMIT(title, student.full_name)
+
+    const notification = buildNotification({
+        emailSuccess,
+        emailFailure,
+        emitSuccess,
+        emitFailure,
+        successReceiver: student.academy_wallet_address,
+        failureReceiver: student.academy_wallet_address
+    })
+
     const payload = {
         action: 'identity_revoke',
 
@@ -306,8 +338,7 @@ const revokeStudentIdentityService = async ({ academy_address, student_address, 
         reason,
 
         email: student.email,
-        onSuccess: REVOKE_ON_SUCCESS(title, student.full_name, student.academy_name),
-        onFailure: REVOKE_ON_FAILURE(title, student.full_name, student.academy_name)
+        notification
     }
     await saveTransaction(tx.hash, payload)
 
