@@ -463,8 +463,8 @@ describe('POST /api/identity/students/issue', function () {
         assert.equal(pending.payload.entity_id, user.id);
         assert.equal(pending.payload.role, 'student');
         assert.equal(pending.payload.email, STUDENT_EMAIL);
-        assert.equal(pending.payload.onSuccess.subject, 'Identity Issuance Confirmed');
-        assert.equal(pending.payload.onFailure.subject, 'Identity Issuance Pending Resolution');
+        assert.match(pending.payload.notification.email.success.subject, /^Identity Issuance Confirmed/);
+        assert.match(pending.payload.notification.emit.failure.message, /issuance needs attention$/);
     });
 
     it('fires listenOnTransaction in the background after submission', async () => {
