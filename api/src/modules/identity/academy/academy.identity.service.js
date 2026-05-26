@@ -344,8 +344,8 @@ const revokeAcademyIdentity = async ({ wallet_address, reason }) => {
     await updateIdentityRecord(tx.hash, checksumAddr)
 
     // Saving Transaction Off-Chain
-    const emailSuccess = REVOKE_ON_SUCCESS(academy.name)
-    const emailFailure = REVOKE_ON_FAILURE(academy.name)
+    const emailSuccess = ON_REVOKE_SUCCESS(academy.name)
+    const emailFailure = ON_REVOKE_FAILURE(academy.name)
 
     const notification = buildNotification({
         emailSuccess,

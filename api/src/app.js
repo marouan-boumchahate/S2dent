@@ -1,5 +1,6 @@
 import express from 'express'
 import { errorMiddleware } from './middlewares/error.middleware.js'
+import { globalLimiter } from './middlewares/rateLimit.middleware.js'
 
 import authRouter from './modules/auth/auth.routes.js'
 
@@ -20,10 +21,12 @@ import helperRouter from './modules/helper/helper.routes.js'
 
 
 const app = express()
+
+
 app.set('trust proxy', true); // fetching client IP from req.ip instead of the proxy's IP
-
-
 app.use(express.json())
+app.use('/api', globalLimiter)
+
 
 app.use('/api/auth', authRouter)
 

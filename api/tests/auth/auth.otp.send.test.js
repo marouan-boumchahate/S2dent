@@ -16,12 +16,30 @@ const makeCacheStubs = (overrides = {}) => ({
     ...overrides,
 });
 
-const makeEmailStubs = (overrides = {}) => ({
-    sendEmail: sinon.stub().resolves(),
-    ...overrides,
-});
+const makeEmailStubs = (overrides = {}) => {
+    const email = {
+        sendEmail: sinon.stub().resolves(),
+        ...overrides,
+    };
 
-const makeApp = async ({ cache = makeCacheStubs(), email = makeEmailStubs() } = {}) => {
+    email.sendOtpEmail = sinon.stub().callsFake((to, otp) => email.sendEmail({
+        to,
+        subject: 'Your OTP Code',
+        message: `Your OTP code is: ${otp}`,
+        text: `Your OTP code is: ${otp}`,
+    }));
+    email.sendWelcomeEmail = sinon.stub().callsFake((to, name) => email.sendEmail({
+        to,
+        subject: 'Welcome to S2dent',
+        message: `Hello ${name}, welcome to S2dent.`,
+        text: `Hello ${name}, welcome to S2dent.`,
+    }));
+
+    return email;
+};
+
+const makeApp = async ({ cache = makeCacheStubs(), email: emailOverrides = {} } = {}) => {
+    const email = makeEmailStubs(emailOverrides);
     const { default: app } = await esmock.strict(
         '../../src/app.js',
         import.meta.url,

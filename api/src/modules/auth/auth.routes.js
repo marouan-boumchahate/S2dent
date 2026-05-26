@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
+import { authLimiter } from '../../middlewares/rateLimit.middleware.js';
 import { 
     generateNonceSchema, 
     verifySignatureSchema, 
@@ -24,6 +25,7 @@ router.get(
 
 router.post(
     '/verify',
+    authLimiter,
     validate(verifySignatureSchema),
     verifySignatureController
 )
@@ -42,6 +44,7 @@ router.delete(
 
 router.post(
     '/otp/send',
+    authLimiter,
     validate(sendOtpSchema),
     sendOtpController
 )
