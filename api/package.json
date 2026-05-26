@@ -19,6 +19,7 @@
     "loader": "esmock"
   },
   "dependencies": {
+    "cloudinary": "^2.10.0",
     "dotenv": "^17.3.1",
     "eciesjs": "^0.5.0",
     "ethers": "^6.16.0",
@@ -26,6 +27,7 @@
     "ioredis": "^5.10.1",
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
     "node-forge": "^1.4.0",
     "nodemailer": "^8.0.8",
     "pg": "^8.20.0",

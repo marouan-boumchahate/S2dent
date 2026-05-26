@@ -32,4 +32,9 @@ export const env = {
     platformPrivateKey: process.env.BLOCKCHAIN_PLATFORM_PRIVATE_KEY,
     deployedContractAddress: process.env.BLOCKCHAIN_DEPLOYED_CONTRACT_ADDRESS,
   },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
 }
