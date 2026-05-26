@@ -18,10 +18,12 @@ contract S2dent {
 
     // Constants
     uint256 internal constant PUBLIC_KEY_LENGTH = 65;
+    uint256 internal constant SIGNATURE_LENGTH = 65;
 
     // Errors
     error InvalidAddress(string reason);
     error InvalidPublicKey(string reason);
+    error InvalidSignature(string reason);
     error InvalidString(string reason);
     error InvalidNumber(string reason);
 
@@ -35,6 +37,12 @@ contract S2dent {
     function _validatePublicKeySet(bytes memory _publicKey) internal pure {
         if (_publicKey.length != PUBLIC_KEY_LENGTH) {
             revert InvalidPublicKey("Public key must be 65 bytes.");
+        }
+    }
+
+    function _validateSignatureSet(bytes memory _signature) internal pure {
+        if (_signature.length != SIGNATURE_LENGTH) {
+            revert InvalidSignature("Signature must be 65 bytes.");
         }
     }
 

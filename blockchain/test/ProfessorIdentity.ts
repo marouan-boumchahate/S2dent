@@ -14,8 +14,11 @@ describe("ProfessorIdentity", () => {
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
     const PROFESSOR_PK = "0x04" + "b1".repeat(64);
+    const PROFESSOR_SIG = "0x" + "11".repeat(65);
     const PROFESSOR2_PK = "0x04" + "b2".repeat(64);
+    const PROFESSOR2_SIG = "0x" + "22".repeat(65);
     const SHORT_PK = "0x04"; // Invalid public-key length
+    const SHORT_SIG = "0x11"; // Invalid signature length
 
     function academyIssueArgs() {
         return {
@@ -31,6 +34,7 @@ describe("ProfessorIdentity", () => {
     function professorIssueArgs(overrides: any = {}) {
         const base = {
             publicKey: PROFESSOR_PK,
+            signature: PROFESSOR_SIG,
             employeeId: "EMP_20240315001",
             nationalId: "TR-12345678901",
             fullName: "Ada Lovelace",
@@ -127,6 +131,7 @@ describe("ProfessorIdentity", () => {
                 ethers.keccak256(ethers.toUtf8Bytes(args.nationalId)),
             );
             expect(record.identity.publicKey).to.equal(PROFESSOR_PK);
+            expect(record.identity.signature).to.equal(PROFESSOR_SIG);
             expect(record.identity.fullName).to.equal(args.fullName);
             expect(record.identity.rank).to.equal(BigInt(args.rank));
             expect(record.identity.employmentType).to.equal(BigInt(args.employmentType));
@@ -192,7 +197,7 @@ describe("ProfessorIdentity", () => {
                 professorIssueArgs(),
             );
 
-            const args2 = professorIssueArgs({ publicKey: PROFESSOR2_PK, nationalId: "TR-999" });
+            const args2 = professorIssueArgs({ publicKey: PROFESSOR2_PK, signature: PROFESSOR2_SIG, nationalId: "TR-999" });
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
@@ -214,7 +219,7 @@ describe("ProfessorIdentity", () => {
                 professorIssueArgs(),
             );
 
-            const args2 = professorIssueArgs({ publicKey: PROFESSOR2_PK, employeeId: "EMP_20240315002" });
+            const args2 = professorIssueArgs({ publicKey: PROFESSOR2_PK, signature: PROFESSOR2_SIG, employeeId: "EMP_20240315002" });
 
             await expect(
                 instance.connect(owner).issueProfessorIdentity(
@@ -255,6 +260,20 @@ describe("ProfessorIdentity", () => {
             )
                 .to.be.revertedWithCustomError(instance, "InvalidPublicKey")
                 .withArgs("Public key must be 65 bytes.");
+        });
+
+        it("reverts on invalid signature length", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, professor } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            const args = professorIssueArgs({ signature: SHORT_SIG });
+
+            await expect(
+                instance.connect(owner).issueProfessorIdentity(professor.address, academy.address, args),
+            )
+                .to.be.revertedWithCustomError(instance, "InvalidSignature")
+                .withArgs("Signature must be 65 bytes.");
         });
 
         it("reverts when employeeId is too short", async () => {

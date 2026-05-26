@@ -306,7 +306,7 @@ const makeApp = async (
 
 const endpoint = '/api/identity/students/revoke';
 
-describe('POST /api/identity/students/revoke', function () {
+describe('DELETE /api/identity/students/revoke', function () {
     this.timeout(10000);
     beforeEach(async () => { await cleanupDB(); });
     afterEach(async () => { await cleanupDB(); });
@@ -323,7 +323,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -354,7 +354,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET_UPPER });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET_UPPER, revocation_reason: 'Identity requested by academy' });
 
@@ -373,7 +373,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -405,7 +405,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -424,7 +424,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
         assert.equal(res.status, 404);
@@ -450,7 +450,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -477,7 +477,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken({ sub: ACADEMY_WALLET });
 
         await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -492,7 +492,7 @@ describe('POST /api/identity/students/revoke', function () {
         const app = await makeApp({ revokeStudentIdentity: async () => FAKE_TX });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .send({});
 
         assert.equal(res.status, 401);
@@ -503,7 +503,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken();
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({});
 
@@ -518,7 +518,7 @@ describe('POST /api/identity/students/revoke', function () {
         const studentToken = issueAccessToken({ role: 'student' });
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${studentToken}`)
             .send({ student_address: STUDENT_WALLET, revocation_reason: 'Identity requested by academy' });
 
@@ -531,7 +531,7 @@ describe('POST /api/identity/students/revoke', function () {
         const academyToken = issueAccessToken();
 
         const res = await request(app)
-            .post(endpoint)
+            .delete(endpoint)
             .set('Authorization', `Bearer ${academyToken}`)
             .send({ student_address: 'not-a-wallet', revocation_reason: 'Identity requested by academy' });
 

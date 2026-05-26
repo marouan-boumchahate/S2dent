@@ -19,13 +19,11 @@ const professorDto = (p) => ({
 });
 const ProfessorSummaryDto = (p) => ({
   id: p.id,
-  walletAddress: p.wallet_address,
   wallet_address: p.wallet_address,
   name: p.full_name,
   department: p.department_name,
   last_transaction_status: p.last_transaction_status,
   issued_at: p.issued_at,
-  isRevoked: p.revoked_at !== null,
   is_revoked: p.revoked_at !== null,
   email: p.email
 });

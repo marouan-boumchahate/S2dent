@@ -42,6 +42,7 @@ const issueStudentIdentity = async (payload) => {
             studentAddress,
             academyAddress,
             publicKey,
+            signature,
             
             studentId,
             nationalId,
@@ -55,6 +56,7 @@ const issueStudentIdentity = async (payload) => {
 
         const args = {
             publicKey,
+            signature,
             studentId,
             nationalId,
             fullName,
@@ -128,6 +130,7 @@ const getStudentIdentity = async (studentAddress) => {
                 studentIdHash: identity.studentIdHash,
                 nationalIdHash: identity.nationalIdHash,
                 publicKey: identity.publicKey.toString(),
+                signature: identity.signature.toString(),
                 fullName: identity.fullName,
                 nationality: identity.nationality,
                 academyName: identity.academyName,

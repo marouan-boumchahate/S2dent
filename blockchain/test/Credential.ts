@@ -44,9 +44,13 @@ describe("Credential", () => {
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
     const PROFESSOR_PK = "0x04" + "b1".repeat(64);
+    const PROFESSOR_SIG = "0x" + "41".repeat(65);
     const OTHER_PROFESSOR_PK = "0x04" + "b2".repeat(64);
+    const OTHER_PROFESSOR_SIG = "0x" + "42".repeat(65);
     const STUDENT_PK = "0x04" + "c1".repeat(64);
+    const STUDENT_SIG = "0x" + "51".repeat(65);
     const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
+    const SECOND_STUDENT_SIG = "0x" + "52".repeat(65);
 
 
     function defaultIssueArgs(overrides: Partial<{
@@ -138,6 +142,7 @@ describe("Credential", () => {
             academy.address,
             {
                 publicKey: PROFESSOR_PK,
+                signature: PROFESSOR_SIG,
                 employeeId: PROFESSOR_EMPLOYEE_ID,
                 nationalId: PROFESSOR_NATIONAL_ID,
                 fullName: PROFESSOR_NAME,
@@ -153,6 +158,7 @@ describe("Credential", () => {
             academy.address,
             {
                 publicKey: STUDENT_PK,
+                signature: STUDENT_SIG,
                 studentId: STUDENT_ID,
                 fullName: STUDENT_NAME,
                 nationality: STUDENT_NATIONALITY,
@@ -355,6 +361,7 @@ describe("Credential", () => {
                 academy.address,
                 {
                     publicKey: SECOND_STUDENT_PK,
+                    signature: SECOND_STUDENT_SIG,
                     studentId: "STD-CRED-002",
                     fullName: "Second Student",
                     nationality: "Turkish",
@@ -448,6 +455,7 @@ describe("Credential", () => {
                 secondAcademy.address,
                 {
                     publicKey: OTHER_PROFESSOR_PK,
+                    signature: OTHER_PROFESSOR_SIG,
                     employeeId: "EMP_OTHER_001",
                     nationalId: "TR-OTHER-PROF-01",
                     fullName: "Grace Hopper",
@@ -547,6 +555,7 @@ describe("Credential", () => {
                 secondAcademy.address,
                 {
                     publicKey: SECOND_STUDENT_PK,
+                    signature: SECOND_STUDENT_SIG,
                     studentId: "STD-CRED-OTHER",
                     fullName: "Outsider Student",
                     nationality: "Turkish",
@@ -967,6 +976,7 @@ describe("Credential", () => {
                 academy.address,
                 {
                     publicKey: SECOND_STUDENT_PK,
+                    signature: SECOND_STUDENT_SIG,
                     studentId: "STD-CRED-NONE",
                     fullName: "No Cred Student",
                     nationality: "Turkish",

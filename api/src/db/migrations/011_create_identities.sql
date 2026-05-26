@@ -9,12 +9,25 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE identity_status AS ENUM (
+        'pending',
+        'issued',
+        'revoked',
+        'rejected'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+
 CREATE TABLE IF NOT EXISTS identities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     user_id UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
     academy_id UUID NULL REFERENCES academies(id) ON DELETE RESTRICT,
 
+    signature TEXT,
     wallet_address VARCHAR(42) UNIQUE,
     public_key VARCHAR(132) UNIQUE,
     role user_role NOT NULL,
@@ -29,7 +42,7 @@ CREATE TABLE IF NOT EXISTS identities (
     revoked_at TIMESTAMP,
     revocation_reason TEXT,
     
-    --is_active BOOLEAN DEFAULT TRUE,
+    status identity_status NOT NULL DEFAULT 'pending',
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),

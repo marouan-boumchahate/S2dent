@@ -68,9 +68,9 @@ describe('GET /api/professors', () => {
     const summariesByName = Object.fromEntries(professors.map((summary) => [summary.name, summary]));
     assertSummaryShape(summariesByName['Active Professor Fetch']);
     assertSummaryShape(summariesByName['Revoked Professor Fetch']);
-    assert.equal(summariesByName['Active Professor Fetch'].walletAddress, active.walletAddress);
-    assert.equal(summariesByName['Revoked Professor Fetch'].walletAddress, revoked.walletAddress);
-    assert.equal(summariesByName['Revoked Professor Fetch'].isRevoked, true);
+    assert.equal(summariesByName['Active Professor Fetch'].wallet_address, active.walletAddress);
+    assert.equal(summariesByName['Revoked Professor Fetch'].wallet_address, revoked.walletAddress);
+    assert.equal(summariesByName['Revoked Professor Fetch'].is_revoked, true);
   });
 
   it('returns 401 when the request has no token', async () => {

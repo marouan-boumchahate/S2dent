@@ -12,6 +12,7 @@ contract StudentIdentity is ProfessorIdentity {
     // Structs
     struct StudentIssueArgs {
         bytes publicKey;
+        bytes signature;
         string studentId;
         string fullName;
         string nationalId;
@@ -27,6 +28,7 @@ contract StudentIdentity is ProfessorIdentity {
         bytes32 studentIdHash;
         bytes32 nationalIdHash;
         bytes publicKey;
+        bytes signature;
         string fullName;
 
         string nationality;
@@ -78,6 +80,7 @@ contract StudentIdentity is ProfessorIdentity {
     // Validations
     function _validateStudentInfos(StudentIssueArgs calldata i, uint256 _currentTime) internal pure {
         _validatePublicKeySet(i.publicKey);
+        _validateSignatureSet(i.signature);
 
         _validateStringIsNotShort(i.studentId, MIN_STUDENT_ID_LENGTH, "Invalid student: studentId is too short.");
         _validateStringIsNotLong(i.studentId, MAX_STUDENT_ID_LENGTH, "Invalid student: studentId is too long.");
@@ -139,6 +142,7 @@ contract StudentIdentity is ProfessorIdentity {
                 studentIdHash: studentIdHash,
                 nationalIdHash: nationalIdHash,
                 publicKey: args.publicKey,
+                signature: args.signature,
                 fullName: args.fullName,
                 nationality: args.nationality,
                 academyName: academyName,

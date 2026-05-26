@@ -70,6 +70,7 @@ const issueProfessorIdentity = async (payload) => {
             professorAddress,
             academyAddress,
             publicKey,
+            signature,
             
             employeeId,
             nationalId,
@@ -82,6 +83,7 @@ const issueProfessorIdentity = async (payload) => {
 
         const args = {
             publicKey,
+            signature,
             employeeId,
             nationalId,
             fullName,
@@ -149,6 +151,7 @@ const getProfessorIdentity = async (professorAddress) => {
                 employeeIdHash: identity.employeeIdHash.toString(),
                 nationalIdHash: identity.nationalIdHash.toString(),
                 publicKey: identity.publicKey.toString(),
+                signature: identity.signature.toString(),
                 fullName: identity.fullName.toString(),
                 rank: uint8ToString(identity.rank, 'rank'),
                 employmentType: uint8ToString(identity.employmentType, 'employment'),

@@ -24,6 +24,7 @@ const saveIdentityOffChain = async ({
             SET wallet_address = $2, 
                 public_key = $3,
                 issued_at = NOW(),
+                status = 'issued',
                 updated_at = NOW()
             WHERE issue_identity_tx_hash = $1`,
         [issue_identity_tx_hash, wallet_address, public_key]
@@ -32,7 +33,7 @@ const saveIdentityOffChain = async ({
 const revokeIdentityOffChain = async ({ wallet_address, reason }) => {
     await db.query(
         `UPDATE identities
-            SET revoked_at = NOW(), updated_at = NOW(), revocation_reason = $2
+            SET revoked_at = NOW(), updated_at = NOW(), revocation_reason = $2, status = 'revoked'
             WHERE wallet_address = $1`,
         [wallet_address, reason]
     )
