@@ -8,7 +8,8 @@ import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { ethers } from 'ethers'
 import { getCache, delCache } from '../../../cache/cache.client.js'
 import { otpKey } from '../../../cache/cache.keys.js'
-import { recoverSigner } from '../../../utils/crypto.js'
+import { recoverSigner, hash, recoverSignerFromTypedData } from '../../../utils/crypto.js'
+import { env } from '../../../config/env.js';
 
 
 // DTOs
@@ -24,6 +25,8 @@ const toIdentityDto = (value) => {
 
 
 // Constants
+const blockchainConfig = env.blockchain;
+
 const ISSUE_ON_SUCCESS_EMAIL = (title, name, academyName) => ({
     subject: `Identity Issuance Confirmed – Welcome to S2dent, ${title} ${name}`,
     message: `Dear ${title} ${name},\n\nWe are pleased to inform you that your verified identity has been successfully issued on the S2dent network under ${academyName}. Your professor identity is now fully active and recognized on-chain.\n\nYou may now access all platform features associated with your role.\n\nShould you have any questions, please do not hesitate to reach out to us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
@@ -132,7 +135,7 @@ const getProfessorById = async (professor_id, role) => {
 }
 const getProfessorRevokePayload = async (academyWallet, professorWallet) => {
     const { rows: [professor] } = await db.query(
-        `SELECT u.email, u.full_name,
+        `SELECT u.id AS user_id, u.email, u.full_name,
                 p.employee_number, p.title,
                 ai.wallet_address AS academy_wallet_address,
                 i.wallet_address AS professor_wallet_address,
@@ -196,20 +199,32 @@ const saveTransaction = async (txHash, payloadObj) => {
         [txHash, payload]
     )
 }
-const insertIdentityRecord = async ({ userId, issueTxHash }) => {
-    await db.query(
-        `INSERT INTO identities
-        (user_id, role, issue_identity_tx_hash)
-        VALUES ($1, $2, $3)`,
-        [userId, "professor", issueTxHash]
+const updateIdentityInDb = async ({ 
+    wallet_address, 
+    issueTxHash, 
+    revokeTxHash,
+    signature 
+}) => {
+    await db.query(`UPDATE identities
+        SET issue_identity_tx_hash = COALESCE($1, issue_identity_tx_hash), 
+            revoke_identity_tx_hash = COALESCE($2, revoke_identity_tx_hash), 
+            signature = COALESCE($3, signature),
+            updated_at = NOW() 
+        WHERE wallet_address = $4`,
+        [issueTxHash, revokeTxHash, signature, wallet_address]
     )
 }
-const updateIdentityRecord = async (revokeTxHash, walletAddress) => {
+const InsertIdentityToDb = async ({ 
+    userId, 
+    signature, 
+    signerPublicKey, 
+    signerAddress 
+}) => {
     await db.query(
-        `UPDATE identities
-            SET revoke_identity_tx_hash = $1, updated_at = NOW()
-            WHERE wallet_address = $2`,
-        [revokeTxHash, walletAddress]
+        `INSERT INTO identities
+        (user_id, role, wallet_address, public_key, signature)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [userId, "professor", signerAddress, signerPublicKey, signature]
     )
 }
 const getProfessorWalletByUserId = async (userId) => {
@@ -231,10 +246,126 @@ const getProfessorWalletByUserId = async (userId) => {
 
     return identity.wallet_address
 }
+const getProfessorIdentitySigningData = (professor) => {
+    const chainId = blockchainConfig.chainId || 31337;
+    const verifyingContract = blockchainConfig.deployedContractAddress;
+
+    const {
+        employee_number,
+        full_name,
+        national_id,
+        public_key,
+        professor_wallet_address: wallet_address,
+        academy_wallet_address: issuer,
+        academy_name,
+        hire_date
+    } = professor;
+
+    const signingData = {
+        domain: {
+            name: "S2dent",
+            version: "1",
+            chainId: parseInt(chainId),
+            verifyingContract: verifyingContract,
+        },
+        types: {
+            ProfessorIdentity: [
+                { name: "professorIdHash", type: "bytes32" },
+                { name: "fullName", type: "string" },
+                { name: "nationalIdHash", type: "bytes32" },
+                { name: "publicKey", type: "string" },
+                { name: "walletAddress", type: "address" },
+                { name: "academyWalletAddress", type: "address" },
+                { name: "academyName", type: "string" },
+                { name: "hireDate", type: "string" },
+            ],
+        },
+        message: {
+            professorIdHash: hash(employee_number),
+            fullName: full_name,
+            nationalIdHash: hash(national_id),
+            publicKey: public_key,
+            walletAddress: wallet_address,
+            academyWalletAddress: issuer,
+            academyName: academy_name,
+            hireDate: formatDateOnly(hire_date),
+        },
+    };
+
+    return signingData;
+}
+const getProfessorRecordFromDb = async (walletAddress, academy_id) => {
+    const { rows: [professor] } = await db.query(
+        `SELECT u.id AS user_id, u.full_name, u.national_id, 
+                p.employee_number, p.hire_date, p.rank, p.employment_type,
+                i.public_key,
+                ai.wallet_address AS academy_wallet_address,
+                a.name AS academy_name,
+                addr.id AS address_id,
+                d.is_active AS is_department_active
+         FROM identities i
+         JOIN users u ON u.id = i.user_id
+         JOIN professors p ON u.id = p.user_id AND p.academy_id = $2
+         JOIN academies a ON p.academy_id = a.id
+         JOIN identities ai ON ai.academy_id = a.id AND ai.role = 'academy'
+         LEFT JOIN addresses addr ON addr.user_id = u.id
+         LEFT JOIN departments d ON d.id = p.department_id
+         WHERE i.wallet_address = $1
+            AND i.role = 'professor'
+            AND i.status = 'pending'
+         LIMIT 1`,
+        [walletAddress, academy_id]
+    )
+
+    if (!professor) {
+        const err = new Error('Professor not found for the provided wallet address within the academy')
+        err.statusCode = 404
+        err.code = 'PROFESSOR_NOT_FOUND'
+        throw err
+    }
+
+    if (professor.is_department_active === false) {
+        const err = new Error("Professor's department is not active")
+        err.statusCode = 403
+        err.code = 'DEPARTMENT_INACTIVE'
+        throw err
+    }
+
+    if (!professor.address_id) {
+        const err = new Error('Professor does not have a registered address')
+        err.statusCode = 400
+        err.code = 'ADDRESS_NOT_FOUND'
+        throw err
+    }
+
+    return professor
+}
+const verifySignature = (signingData, signature, expectedAddress) => {
+    const recoveredAddress = recoverSignerFromTypedData(
+        signingData.domain, 
+        signingData.types, 
+        signingData.message, 
+        signature
+    )
+
+    if (ethers.getAddress(recoveredAddress) !== ethers.getAddress(expectedAddress)) {
+        const err = new Error('Invalid signature for the provided data')
+        err.statusCode = 400
+        err.code = 'INVALID_SIGNATURE'
+        throw err
+    }
+}
 
 
 // Services
-const issueProfessorIdentityService = async ({ otp, email, signature }) => {
+const generateIdentitySignatureSchemaService = async ({ wallet_address, academy_id }) => {
+    const professor = await getProfessorRecordFromDb(wallet_address, academy_id)
+    return getProfessorIdentitySigningData({
+        ...professor, 
+        professor_wallet_address: wallet_address 
+    })
+}
+const requestIdentityIssuanceService = async ({ otp, email, signature }) => {
     email = email.toLowerCase().trim()
 
     const { id, message, role } = await fetchFromCache(email, otp)
@@ -245,10 +376,27 @@ const issueProfessorIdentityService = async ({ otp, email, signature }) => {
 
     await ensureWalletAddressUnique(checksumAddr)
 
+    await InsertIdentityToDb({ 
+        userId: professor.user_id, 
+        signature, 
+        signerPublicKey, 
+        signerAddress: checksumAddr
+    })
+
+    return { wallet_address: checksumAddr }
+}
+const issueProfessorIdentityService = async ({ wallet_address, academy_id, signature }) => {
+    const checksumAddr = ethers.getAddress(wallet_address)
+    const professor = await getProfessorRecordFromDb(checksumAddr, academy_id)
+
+    const signingData = getProfessorIdentitySigningData({ ...professor, professor_wallet_address: checksumAddr })
+    verifySignature(signingData, signature, professor.academy_wallet_address)
+
     const tx = await issueProfessorIdentity({
         professorAddress: checksumAddr,
         academyAddress: professor.academy_wallet_address,
-        publicKey: signerPublicKey,
+        publicKey: professor.public_key,
+        signature,
 
         employeeId: professor.employee_number,
         fullName: professor.full_name,
@@ -258,7 +406,7 @@ const issueProfessorIdentityService = async ({ otp, email, signature }) => {
         rank: professor.rank,
         employmentType: professor.employment_type
     })
-    await insertIdentityRecord({ userId: professor.user_id, issueTxHash: tx.hash })
+    await updateIdentityInDb({ wallet_address: checksumAddr, issueTxHash: tx.hash, signature })
 
     const emailSuccess = ISSUE_ON_SUCCESS_EMAIL(professor.title, professor.full_name, professor.academy_name)
     const emailFailure = null
@@ -280,7 +428,8 @@ const issueProfessorIdentityService = async ({ otp, email, signature }) => {
         role: 'professor',
 
         wallet_address: checksumAddr,
-        public_key: signerPublicKey,
+        public_key: professor.public_key,
+        signature,
         
         email: professor.email,
         notification
@@ -308,7 +457,7 @@ const revokeProfessorIdentityService = async ({ academy_address, professor_addre
         academyAddress: professor.academy_wallet_address,
         reason
     })
-    await updateIdentityRecord(tx.hash, professorWallet)
+    await updateIdentityInDb({ wallet_address: professorWallet, revokeTxHash: tx.hash })
 
     const emailSuccess = REVOKE_ON_SUCCESS_EMAIL(professor.title, professor.full_name, professor.academy_name)
     const emailFailure = null //REVOKE_ON_FAILURE_EMAIL(professor.title, professor.full_name, professor.academy_name)
@@ -370,8 +519,10 @@ const fetchProfessorIdentityByUserIdService = async (userId) => {
 
 
 export { 
+    requestIdentityIssuanceService,
+    generateIdentitySignatureSchemaService,
     issueProfessorIdentityService, 
     revokeProfessorIdentityService, 
     fetchProfessorIdentityByWalletService,
-    fetchProfessorIdentityByUserIdService 
+    fetchProfessorIdentityByUserIdService
 }

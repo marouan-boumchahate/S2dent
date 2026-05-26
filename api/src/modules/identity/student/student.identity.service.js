@@ -8,7 +8,8 @@ import { listenOnTransaction } from '../../../blockchain/listener.js'
 import { ethers } from 'ethers'
 import { getCache, delCache } from '../../../cache/cache.client.js'
 import { otpKey } from '../../../cache/cache.keys.js'
-import { recoverSigner } from '../../../utils/crypto.js'
+import { recoverSigner, hash, recoverSignerFromTypedData } from '../../../utils/crypto.js'
+import { env } from '../../../config/env.js'
 
 
 // DTOs
@@ -24,6 +25,8 @@ const toIdentityDto = (value) => {
 
 
 // Constants
+const blockchainConfig = env.blockchain;
+
 const ISSUE_ON_SUCCESS_EMAIL = (title, name, academyName) => ({
     subject: `Identity Issuance Confirmed – Welcome to S2dent, ${title} ${name}`,
     message: `Dear ${title} ${name},\n\nWe are pleased to inform you that your verified identity has been successfully issued on the S2dent network under ${academyName}. Your student identity is now fully active and recognized on-chain.\n\nYou may now access all platform features associated with your enrollment.\n\nShould you have any questions, please do not hesitate to reach out to us at support@s2dent.io.\n\nRegards,\nThe S2dent Team`
@@ -189,6 +192,72 @@ const ensureWalletAddressUnique = async (wallet) => {
         throw err
     }
 }
+const getStudentIdentitySigningData = (student) => {
+    const chainId = blockchainConfig.chainId || 31337;
+    const verifyingContract = blockchainConfig.deployedContractAddress;
+
+    const {
+        student_number,
+        full_name,
+        national_id,
+        public_key,
+        student_wallet_address: wallet_address,
+        academy_wallet_address: issuer,
+        academy_name,
+        enrollment_date,
+        nationality,
+        department_name,
+        country,
+    } = student;
+
+    return {
+        domain: {
+            name: 'S2dent',
+            version: '1',
+            chainId: parseInt(chainId),
+            verifyingContract,
+        },
+        types: {
+            StudentIdentity: [
+                { name: 'studentIdHash', type: 'bytes32' },
+                { name: 'fullName', type: 'string' },
+                { name: 'nationalIdHash', type: 'bytes32' },
+                { name: 'publicKey', type: 'string' },
+                { name: 'walletAddress', type: 'address' },
+                { name: 'academyWalletAddress', type: 'address' },
+                { name: 'academyName', type: 'string' },
+                { name: 'enrollmentDate', type: 'string' },
+                { name: 'department', type: 'string' },
+            ],
+        },
+        message: {
+            studentIdHash: hash(student_number),
+            fullName: full_name,
+            nationalIdHash: hash(national_id),
+            publicKey: public_key,
+            walletAddress: wallet_address,
+            academyWalletAddress: issuer,
+            academyName: academy_name,
+            enrollmentDate: String(enrollment_date),
+            department: department_name,
+        },
+    };
+}
+const verifySignature = (signingData, signature, expectedAddress) => {
+    const recoveredAddress = recoverSignerFromTypedData(
+        signingData.domain,
+        signingData.types,
+        signingData.message,
+        signature,
+    )
+
+    if (ethers.getAddress(recoveredAddress) !== ethers.getAddress(expectedAddress)) {
+        const err = new Error('Invalid signature for the provided data')
+        err.statusCode = 400
+        err.code = 'INVALID_SIGNATURE'
+        throw err
+    }
+}
 const saveTransaction = async (txHash, payloadObj) => {
     const payload = JSON.stringify(payloadObj)
 
@@ -198,21 +267,77 @@ const saveTransaction = async (txHash, payloadObj) => {
         [txHash, payload]
     )
 }
-const insertIdentityRecord = async ({ userId, issueTxHash }) => {
+const insertIdentityToDb = async ({ userId, signature, signerPublicKey, signerAddress }) => {
     await db.query(
         `INSERT INTO identities
-        (user_id, role, issue_identity_tx_hash)
-        VALUES ($1, $2, $3)`,
-        [userId, "student", issueTxHash]
+        (user_id, role, wallet_address, public_key, signature)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [userId, 'student', signerAddress, signerPublicKey, signature]
     )
 }
-const updateIdentityRecord = async (revokeTxHash, walletAddress) => {
+const updateIdentityInDb = async ({ wallet_address, issueTxHash, revokeTxHash, signature }) => {
     await db.query(
         `UPDATE identities
-            SET revoke_identity_tx_hash = $1, updated_at = NOW()
-            WHERE wallet_address = $2`,
-        [revokeTxHash, walletAddress]
+            SET issue_identity_tx_hash = COALESCE($1, issue_identity_tx_hash),
+                revoke_identity_tx_hash = COALESCE($2, revoke_identity_tx_hash),
+                signature = COALESCE($3, signature),
+                updated_at = NOW()
+            WHERE wallet_address = $4`,
+        [issueTxHash, revokeTxHash, signature, wallet_address]
     )
+}
+const getStudentRecordFromDb = async (walletAddress, academy_id) => {
+    const { rows: [student] } = await db.query(
+        `SELECT u.id AS user_id, u.email, u.full_name, u.national_id, u.nationality, u.gender,
+                s.student_number, s.enrollment_date,
+                i.public_key,
+                ai.wallet_address AS academy_wallet_address,
+                a.name AS academy_name,
+                addr.country,
+                d.is_active AS is_department_active, d.name AS department_name
+         FROM identities i
+         JOIN users u ON u.id = i.user_id
+         JOIN students s ON u.id = s.user_id AND s.academy_id = $2
+         JOIN academies a ON s.academy_id = a.id
+         JOIN identities ai ON ai.academy_id = a.id AND ai.role = 'academy'
+         LEFT JOIN addresses addr ON addr.user_id = u.id
+         LEFT JOIN departments d ON d.academy_id = a.id
+         WHERE i.wallet_address = $1
+            AND i.role = 'student'
+            AND i.status = 'pending'
+         LIMIT 1`,
+        [walletAddress, academy_id]
+    )
+
+    if (!student) {
+        const err = new Error('Student not found for the provided wallet address within the academy')
+        err.statusCode = 404
+        err.code = 'STUDENT_NOT_FOUND'
+        throw err
+    }
+
+    if (!student.academy_wallet_address) {
+        const err = new Error('Associated academy does not have a registered identity')
+        err.statusCode = 400
+        err.code = 'ACADEMY_IDENTITY_NOT_FOUND'
+        throw err
+    }
+
+    if (student.is_department_active === false) {
+        const err = new Error("Student's department is not active")
+        err.statusCode = 403
+        err.code = 'DEPARTMENT_INACTIVE'
+        throw err
+    }
+
+    if (!student.country) {
+        const err = new Error('Student does not have a registered address')
+        err.statusCode = 400
+        err.code = 'ADDRESS_NOT_FOUND'
+        throw err
+    }
+
+    return student
 }
 const getStudentWalletByUserId = async (userId) => {
     const { rows: [identity] } = await db.query(
@@ -236,7 +361,7 @@ const getStudentWalletByUserId = async (userId) => {
 
 
 // Services
-const issueStudentIdentityService = async ({ otp, email, signature }) => {
+const requestIdentityIssuanceService = async ({ otp, email, signature }) => {
     email = email.toLowerCase().trim()
 
     const { id, message, role } = await fetchFromCache(email, otp)
@@ -247,10 +372,37 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
 
     await ensureWalletAddressUnique(checksumAddr)
 
+    await insertIdentityToDb({
+        userId: student.user_id,
+        signature,
+        signerPublicKey,
+        signerAddress: checksumAddr,
+    })
+
+    return { wallet_address: checksumAddr }
+}
+const generateIdentitySignatureSchemaService = async ({ wallet_address, academy_id }) => {
+    const student = await getStudentRecordFromDb(wallet_address, academy_id)
+    return getStudentIdentitySigningData({
+        ...student,
+        student_wallet_address: wallet_address,
+    })
+}
+const issueStudentIdentityService = async ({ wallet_address, academy_id, signature }) => {
+    const checksumAddr = ethers.getAddress(wallet_address)
+    const student = await getStudentRecordFromDb(checksumAddr, academy_id)
+
+    const signingData = getStudentIdentitySigningData({
+        ...student,
+        student_wallet_address: checksumAddr,
+    })
+    verifySignature(signingData, signature, student.academy_wallet_address)
+
     const tx = await issueStudentIdentity({
         studentAddress: checksumAddr,
         academyAddress: student.academy_wallet_address,
-        publicKey: signerPublicKey,
+        publicKey: student.public_key,
+        signature,
 
         studentId: student.student_number,
         fullName: student.full_name,
@@ -259,13 +411,13 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
 
         enrollmentDate: formatDateOnly(student.enrollment_date),
         department: student.department_name,
-        country: student.country
+        country: student.country,
     })
-    await insertIdentityRecord({ userId: student.user_id, issueTxHash: tx.hash })
+    await updateIdentityInDb({ wallet_address: checksumAddr, issueTxHash: tx.hash, signature })
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
     const emailSuccess = ISSUE_ON_SUCCESS_EMAIL(title, student.full_name, student.academy_name)
-    const emailFailure = null //ISSUE_ON_FAILURE_EMAIL(title, student.full_name, student.academy_name)
+    const emailFailure = null
     const emitSuccess = ISSUE_ON_SUCCESS_EMIT(title, student.full_name)
     const emitFailure = ISSUE_ON_FAILURE_EMIT(title, student.full_name)
 
@@ -275,7 +427,7 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
         emitSuccess,
         emitFailure,
         successReceiver: student.academy_wallet_address,
-        failureReceiver: student.academy_wallet_address
+        failureReceiver: student.academy_wallet_address,
     })
 
     const payload = {
@@ -284,10 +436,11 @@ const issueStudentIdentityService = async ({ otp, email, signature }) => {
         role: 'student',
 
         wallet_address: checksumAddr,
-        public_key: signerPublicKey,
-        
+        public_key: student.public_key,
+        signature,
+
         email: student.email,
-        notification
+        notification,
     }
     await saveTransaction(tx.hash, payload)
 
@@ -312,7 +465,7 @@ const revokeStudentIdentityService = async ({ academy_address, student_address, 
         academyAddress: student.academy_wallet_address,
         reason
     })
-    await updateIdentityRecord(tx.hash, studentWallet)
+    await updateIdentityInDb({ wallet_address: studentWallet, revokeTxHash: tx.hash })
 
     const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
     const emailSuccess = REVOKE_ON_SUCCESS_EMAIL(title, student.full_name, student.academy_name)
@@ -373,8 +526,11 @@ const fetchStudentIdentityByUserIdService = async (userId) => {
     return fetchStudentIdentityByWalletService(walletAddress)
 }
 
+
 export { 
-    issueStudentIdentityService, 
+    requestIdentityIssuanceService,
+    generateIdentitySignatureSchemaService,
+    issueStudentIdentityService,
     revokeStudentIdentityService, 
     fetchStudentIdentityByWalletService,
     fetchStudentIdentityByUserIdService 

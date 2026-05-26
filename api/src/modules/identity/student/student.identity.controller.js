@@ -1,4 +1,6 @@
 import { 
+    requestIdentityIssuanceService,
+    generateIdentitySignatureSchemaService,
     issueStudentIdentityService, 
     revokeStudentIdentityService, 
     fetchStudentIdentityByWalletService,
@@ -6,16 +8,39 @@ import {
 } from './student.identity.service.js'
 import { ok } from '../../../utils/response.js'
 
-const issueIdentity = async (req, res) => {
+const requestIdentityIssuanceController = async (req, res) => {
     const { otp, email, signature } = req.body
 
-    const result = await issueStudentIdentityService({ 
+    const result = await requestIdentityIssuanceService({ 
         otp,
         signature,
         email
     })
 
     return ok(res, result, 'Student identity issuance request submitted successfully')
+}
+const generateIdentitySignatureSchemaController = async (req, res) => {
+    const { wallet_address } = req.params
+    const { rid: academy_id } = req.user
+
+    const result = await generateIdentitySignatureSchemaService({ 
+        wallet_address,
+        academy_id
+    })
+
+    return ok(res, result, 'Student identity signature schema generated successfully')
+}
+const issueIdentityController = async (req, res) => {
+    const { student_address, signature } = req.body
+    const { rid: academy_id } = req.user
+
+    const result = await issueStudentIdentityService({ 
+        wallet_address: student_address,
+        signature,
+        academy_id
+    })
+
+    return ok(res, result, 'Student identity issued successfully')
 }
 const revokeIdentity = async (req, res) => {
     const { student_address, revocation_reason } = req.body
@@ -43,4 +68,12 @@ const getIdentityById = async (req, res) => {
     return ok(res, result, 'Student identity retrieved successfully')
 }
 
-export { issueIdentity, revokeIdentity, getMyIdentity, getIdentityByAddress, getIdentityById }
+export { 
+    requestIdentityIssuanceController,
+    generateIdentitySignatureSchemaController,
+    issueIdentityController,
+    revokeIdentity, 
+    getMyIdentity, 
+    getIdentityByAddress, 
+    getIdentityById 
+}

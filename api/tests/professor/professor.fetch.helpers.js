@@ -289,7 +289,7 @@ export const assertSummaryShape = (summary) => {
   assert.ok(summary.name);
   assert.ok(summary.email);
   assert.ok(summary.department);
-  assert.ok(summary.walletAddress);
+  assert.ok(summary.wallet_address);
 };
 
 export const assertProfessorShape = (professor) => {

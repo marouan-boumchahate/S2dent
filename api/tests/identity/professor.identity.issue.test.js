@@ -1,21 +1,21 @@
 import esmock from 'esmock';
 import request from 'supertest';
 import { strict as assert } from 'assert';
-import crypto from 'crypto';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
+process.env.BLOCKCHAIN_DEPLOYED_CONTRACT_ADDRESS ??= '0x1000000000000000000000000000000000000001';
 
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
-const WALLET_ADDRESS = ethers.getAddress('0x8fa1b2c3d4e5f67890123456789abcdefabcdef0');
-const WALLET_UPPER = '0x8FA1B2C3D4E5F67890123456789ABCDEFABCDEF0';
 const PROFESSOR_EMAIL = 'prof.smith@fenerbahce.edu.tr';
-const ACADEMY_WALLET = '0x1111111111111111111111111111111111111111';
-const ISSUE_OTP = 'ABC123';
-const ISSUE_MESSAGE = 'professor-identity-otp-challenge';
-const ISSUE_SIGNER = ethers.Wallet.createRandom();
-const ISSUE_SIGNER_ADDRESS = ethers.getAddress(ISSUE_SIGNER.address);
-const ACADEMY_PUBLIC_KEY = ethers.Wallet.createRandom().signingKey.publicKey;
+const PROFESSOR_SIGNER = ethers.Wallet.createRandom();
+const PROFESSOR_WALLET = ethers.getAddress(PROFESSOR_SIGNER.address);
+const PROFESSOR_PUBLIC_KEY = PROFESSOR_SIGNER.signingKey.publicKey;
+const PROFESSOR_WALLET_LOWER = PROFESSOR_WALLET.toLowerCase();
+const ACADEMY_SIGNER = ethers.Wallet.createRandom();
+const ACADEMY_WALLET = ethers.getAddress(ACADEMY_SIGNER.address);
+const ACADEMY_PUBLIC_KEY = ACADEMY_SIGNER.signingKey.publicKey;
 const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
 
 const FAKE_TX = {
@@ -23,16 +23,9 @@ const FAKE_TX = {
     wait: async () => ({ hash: FAKE_TX_HASH }),
 };
 
-const buildCachePayload = ({ id, role = 'professor', message = ISSUE_MESSAGE }) => JSON.stringify({
-    id,
-    role,
-    message,
-});
-
-const buildIssueBody = async (email) => ({
-    email,
-    otp: ISSUE_OTP,
-    signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE),
+const buildIssueBody = (professor_address, signature) => ({
+    professor_address,
+    signature,
 });
 
 
@@ -207,6 +200,14 @@ const seedProfessorUser = async ({
     return { ...user, professor_id: professor?.id ?? null };
 };
 
+const seedPendingIdentity = async ({ user_id, wallet_address, public_key }) => {
+    await db.query(
+        `INSERT INTO identities (user_id, wallet_address, public_key, role, status)
+         VALUES ($1, $2, $3, 'professor', 'pending')`,
+        [user_id, wallet_address, public_key],
+    );
+};
+
 const cleanupDB = async () => {
     await db.query(
         `DELETE FROM identities
@@ -224,14 +225,14 @@ const cleanupDB = async () => {
                 WHERE email LIKE '%@fenerbahce%'
                    OR email LIKE '%@test-identity%'
             )`,
-        [WALLET_ADDRESS, ACADEMY_WALLET, ISSUE_SIGNER_ADDRESS],
+        [PROFESSOR_WALLET, ACADEMY_WALLET, PROFESSOR_WALLET],
     );
 
     await db.query(
         `DELETE FROM identity_certificates
          WHERE wallet_address = $1
             OR wallet_address = $2`,
-        [WALLET_ADDRESS, ISSUE_SIGNER_ADDRESS],
+        [PROFESSOR_WALLET, PROFESSOR_WALLET],
     );
 
     await db.query(
@@ -239,7 +240,7 @@ const cleanupDB = async () => {
          WHERE tx_hash = $1
             OR payload->>'wallet_address' = $2
             OR payload->>'wallet_address' = $3`,
-        [FAKE_TX_HASH, WALLET_ADDRESS, ISSUE_SIGNER_ADDRESS],
+        [FAKE_TX_HASH, PROFESSOR_WALLET, PROFESSOR_WALLET],
     );
 
     await db.query(
@@ -328,6 +329,23 @@ const makeApp = async (
 
 const endpoint = '/api/identity/professors/issue';
 
+const issueAccessToken = (academyId) => signTokens({
+    sub: ACADEMY_WALLET,
+    role: 'academy',
+    rid: academyId,
+}).accessToken;
+
+const buildIssueSignature = async (app, academyId, professorWallet, academySigner = ACADEMY_SIGNER) => {
+    const schemaRes = await request(app)
+        .get(`/api/identity/professors/pending/${professorWallet}/schema`)
+        .set('Authorization', `Bearer ${issueAccessToken(academyId)}`);
+
+    assert.equal(schemaRes.status, 200);
+
+    const { domain, types, message } = schemaRes.body.data;
+    return academySigner.signTypedData(domain, types, message);
+};
+
 
 describe('POST /api/identity/professors/issue', function () {
     this.timeout(10000);
@@ -336,56 +354,53 @@ describe('POST /api/identity/professors/issue', function () {
     afterEach(async () => { await cleanupDB(); });
 
     it('returns 200 with professor_wallet and blockchain_transaction on valid input', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
         });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
+        const body = buildIssueBody(PROFESSOR_WALLET, signature);
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
             .send(body);
 
         assert.equal(res.status, 200);
         assert.equal(res.body.success, true);
-        assert.equal(res.body.message, 'Professor identity issuance request submitted successfully');
+        assert.equal(res.body.message, 'Professor identity issued successfully');
 
         const { professor_wallet, blockchain_transaction } = res.body.data;
 
-        assert.equal(professor_wallet, ISSUE_SIGNER_ADDRESS);
+        assert.equal(professor_wallet, PROFESSOR_WALLET);
         assert.equal(blockchain_transaction.tx_hash, FAKE_TX_HASH);
         assert.equal(blockchain_transaction.status, 'pending');
-        assert.equal(
-            Object.prototype.hasOwnProperty.call(res.body.data, 'certificate_metadata'),
-            false,
-        );
     });
 
-    it('normalizes wallet_address and email to lowercase before processing', async () => {
-        const { academy, department } = await seedAcademy();
+    it('normalizes professor_address before processing', async () => {
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
-
-        const cacheCalls = [];
-        const app = await makeApp({
-            issueProfessorIdentity: async () => FAKE_TX,
-        }, { listenOnTransaction: () => {} }, {
-            getCache: async (key) => {
-                cacheCalls.push(key);
-                return buildCachePayload({ id: user.professor_id });
-            },
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
         });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL.toUpperCase());
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
+
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET_LOWER, signature));
 
         assert.equal(res.status, 200);
-        assert.equal(cacheCalls.length, 1);
-        const expectedKey = `otp:${ethers.keccak256(Buffer.from(`${PROFESSOR_EMAIL.toLowerCase()}:${ISSUE_OTP}`, 'utf8'))}`;
-        assert.equal(cacheCalls[0], expectedKey);
+        assert.equal(res.body.data.professor_wallet, PROFESSOR_WALLET);
     });
 
     it('passes the correct payload to issueProfessorIdentity', async () => {
@@ -403,27 +418,33 @@ describe('POST /api/identity/professors/issue', function () {
         });
 
         const calls = [];
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
+        });
+
         const app = await makeApp({
             issueProfessorIdentity: async (payload) => {
                 calls.push(payload);
                 return FAKE_TX;
             },
-        }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
-        });
+        }, { listenOnTransaction: () => {} });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
 
         await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         assert.equal(calls.length, 1);
 
         const call = calls[0];
-        assert.equal(call.professorAddress, ISSUE_SIGNER_ADDRESS, 'professor address must come from the signer');
+        assert.equal(call.professorAddress, PROFESSOR_WALLET, 'professor address must come from the request');
         assert.equal(call.academyAddress, ACADEMY_WALLET, 'academy address must come from the academy identity');
-        assert.equal(call.publicKey, ISSUE_SIGNER.signingKey.publicKey, 'public key must come from the signer');
+        assert.equal(call.publicKey, PROFESSOR_PUBLIC_KEY, 'public key must come from the identity record');
+        assert.equal(call.signature, signature, 'signature must match the academy signature');
         assert.equal(call.employeeId, 'EMP-001', 'employeeId must match');
         assert.equal(call.fullName, 'John Smith', 'fullName must match');
         assert.equal(call.nationalId, 'NID-12345678', 'nationalId must match');
@@ -433,18 +454,21 @@ describe('POST /api/identity/professors/issue', function () {
     });
 
     it('inserts a pending_transaction row after successful submission', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
         });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
 
         await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         const { rows: [pending] } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -453,46 +477,49 @@ describe('POST /api/identity/professors/issue', function () {
 
         assert.ok(pending, 'pending_transaction row should exist');
         assert.equal(pending.status, 'pending');
-        assert.equal(pending.payload.wallet_address, ISSUE_SIGNER_ADDRESS);
-        assert.equal(pending.payload.public_key, ISSUE_SIGNER.signingKey.publicKey);
+        assert.equal(pending.payload.wallet_address, PROFESSOR_WALLET);
+        assert.equal(pending.payload.public_key, PROFESSOR_PUBLIC_KEY);
         assert.equal(pending.payload.entity_id, user.id);
         assert.equal(pending.payload.role, 'professor');
-        assert.equal(pending.payload.email, PROFESSOR_EMAIL);
+        assert.equal(pending.payload.email, undefined);
+        assert.equal(pending.payload.signature, signature);
         assert.match(pending.payload.notification.email.success.subject, /^Identity Issuance Confirmed/);
         assert.match(pending.payload.notification.emit.failure.message, /issuance needs attention$/);
     });
 
     it('fires listenOnTransaction in the background after submission', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
+        });
 
         const listenerCalls = [];
         const app = await makeApp(
             { issueProfessorIdentity: async () => FAKE_TX },
             { listenOnTransaction: (tx) => listenerCalls.push(tx) },
-            { getCache: async () => buildCachePayload({ id: user.professor_id }) },
         );
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
 
         await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         assert.equal(listenerCalls.length, 1);
         assert.equal(listenerCalls[0].hash, FAKE_TX_HASH);
     });
 
     it('returns 404 PROFESSOR_NOT_FOUND when email does not exist in DB', async () => {
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: NON_EXISTENT_ID }),
-        });
-
-        const body = await buildIssueBody('ghost@test-identity.edu');
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
 
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(NON_EXISTENT_ID)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, '0x' + '1'.repeat(130)));
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
@@ -500,66 +527,74 @@ describe('POST /api/identity/professors/issue', function () {
 
     it('returns 404 PROFESSOR_NOT_FOUND when user exists but has no professor row', async () => {
         await seedProfessorUser({ email: 'orphan@test-identity.edu' });
-        await seedAcademy();
+        await seedAcademy({ wallet_address: ACADEMY_WALLET });
 
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: NON_EXISTENT_ID }),
-        });
-
-        const body = await buildIssueBody('orphan@test-identity.edu');
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
 
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(NON_EXISTENT_ID)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, '0x' + '1'.repeat(130)));
 
         assert.equal(res.status, 404);
         assert.equal(res.body.code, 'PROFESSOR_NOT_FOUND');
     });
 
     it('returns 403 DEPARTMENT_INACTIVE when linked department is inactive', async () => {
-        const { academy, department } = await seedAcademy({ department_is_active: false });
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET, department_is_active: false });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
         });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const signature = '0x' + '1'.repeat(130);
 
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         assert.equal(res.status, 403);
         assert.equal(res.body.code, 'DEPARTMENT_INACTIVE');
     });
 
     it('returns 400 ADDRESS_NOT_FOUND when professor has no address row', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({
             academy_id: academy.id,
             department_id: department.id,
             create_address: false,
             email: 'no-address@test-identity.edu',
         });
-
-        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
         });
 
-        const body = await buildIssueBody('no-address@test-identity.edu');
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const signature = '0x' + '1'.repeat(130);
 
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         assert.equal(res.status, 400);
         assert.equal(res.body.code, 'ADDRESS_NOT_FOUND');
     });
 
     it('returns 502 BLOCKCHAIN_ERROR when the blockchain call fails', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
+        });
 
         const app = await makeApp({
             issueProfessorIdentity: async () => {
@@ -568,23 +603,27 @@ describe('POST /api/identity/professors/issue', function () {
                 err.code = 'BLOCKCHAIN_ERROR';
                 throw err;
             },
-        }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
-        });
+        }, { listenOnTransaction: () => {} });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
 
         const res = await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         assert.equal(res.status, 502);
         assert.equal(res.body.code, 'BLOCKCHAIN_ERROR');
     });
 
     it('does not insert a pending_transaction when blockchain submission fails', async () => {
-        const { academy, department } = await seedAcademy();
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
         const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
+        });
 
         const app = await makeApp({
             issueProfessorIdentity: async () => {
@@ -593,15 +632,14 @@ describe('POST /api/identity/professors/issue', function () {
                 err.code = 'BLOCKCHAIN_ERROR';
                 throw err;
             },
-        }, { listenOnTransaction: () => {} }, {
-            getCache: async () => buildCachePayload({ id: user.professor_id }),
-        });
+        }, { listenOnTransaction: () => {} });
 
-        const body = await buildIssueBody(PROFESSOR_EMAIL);
+        const signature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET);
 
         await request(app)
             .post(endpoint)
-            .send(body);
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, signature));
 
         const { rows } = await db.query(
             `SELECT * FROM pending_transactions WHERE tx_hash = $1`,
@@ -610,42 +648,66 @@ describe('POST /api/identity/professors/issue', function () {
         assert.equal(rows.length, 0);
     });
 
-    it('returns 422 VALIDATION_ERROR when otp is missing', async () => {
+    it('returns 400 INVALID_SIGNATURE when the academy signature is invalid', async () => {
+        const { academy, department } = await seedAcademy({ wallet_address: ACADEMY_WALLET });
+        const user = await seedProfessorUser({ academy_id: academy.id, department_id: department.id });
+        await seedPendingIdentity({
+            user_id: user.id,
+            wallet_address: PROFESSOR_WALLET,
+            public_key: PROFESSOR_PUBLIC_KEY,
+        });
+
+        const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX }, { listenOnTransaction: () => {} });
+        const badSignature = await buildIssueSignature(app, academy.id, PROFESSOR_WALLET, ethers.Wallet.createRandom());
+
+        const res = await request(app)
+            .post(endpoint)
+            .set('Authorization', `Bearer ${issueAccessToken(academy.id)}`)
+            .send(buildIssueBody(PROFESSOR_WALLET, badSignature));
+
+        assert.equal(res.status, 400);
+        assert.equal(res.body.code, 'INVALID_SIGNATURE');
+    });
+
+    it('returns 422 VALIDATION_ERROR when professor_address is missing', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
+            .set('Authorization', `Bearer ${issueAccessToken(NON_EXISTENT_ID)}`)
+            .send({ signature: '0x' + '1'.repeat(130) });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find((e) => e.field === 'otp');
-        assert.ok(field, 'errors should contain an otp entry');
+        const field = res.body.errors.find((e) => e.field === 'professor_address');
+        assert.ok(field, 'errors should contain a professor_address entry');
     });
 
-    it('returns 422 VALIDATION_ERROR when email is missing', async () => {
+    it('returns 422 VALIDATION_ERROR when signature is missing', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ otp: ISSUE_OTP, signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
+            .set('Authorization', `Bearer ${issueAccessToken(NON_EXISTENT_ID)}`)
+            .send({ professor_address: PROFESSOR_WALLET });
 
         assert.equal(res.status, 422);
         assert.equal(res.body.code, 'VALIDATION_ERROR');
-        const field = res.body.errors.find((e) => e.field === 'email');
-        assert.ok(field, 'errors should contain an email entry');
+        const field = res.body.errors.find((e) => e.field === 'signature');
+        assert.ok(field, 'errors should contain a signature entry');
     });
 
-    it('returns 422 VALIDATION_ERROR for an invalid otp format', async () => {
+    it('returns 422 VALIDATION_ERROR for an invalid professor_address format', async () => {
         const app = await makeApp({ issueProfessorIdentity: async () => FAKE_TX });
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, otp: '12', signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
+            .set('Authorization', `Bearer ${issueAccessToken(NON_EXISTENT_ID)}`)
+            .send({ professor_address: 'not-an-address', signature: '0x' + '1'.repeat(130) });
 
         assert.equal(res.status, 422);
-        const field = res.body.errors.find((e) => e.field === 'otp');
-        assert.ok(field, 'errors should contain an otp entry');
+        const field = res.body.errors.find((e) => e.field === 'professor_address');
+        assert.ok(field, 'errors should contain a professor_address entry');
     });
 
     it('returns 422 VALIDATION_ERROR for an invalid signature format', async () => {
@@ -653,7 +715,8 @@ describe('POST /api/identity/professors/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
-            .send({ email: PROFESSOR_EMAIL, otp: ISSUE_OTP, signature: 'not-a-signature' });
+            .set('Authorization', `Bearer ${issueAccessToken('academy-id')}`)
+            .send({ professor_address: PROFESSOR_WALLET, signature: 'not-a-signature' });
 
         assert.equal(res.status, 422);
         const field = res.body.errors.find((e) => e.field === 'signature');

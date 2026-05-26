@@ -26,8 +26,11 @@ describe("StudentIdentity", () => {
     const ACADEMY_PK = "0x04" + "a1".repeat(64);
     const SECOND_ACADEMY_PK = "0x04" + "a2".repeat(64);
     const STUDENT_PK = "0x04" + "c1".repeat(64);
+    const STUDENT_SIG = "0x" + "31".repeat(65);
     const SECOND_STUDENT_PK = "0x04" + "c2".repeat(64);
+    const SECOND_STUDENT_SIG = "0x" + "32".repeat(65);
     const SHORT_PK = "0x04"; // Invalid public-key length
+    const SHORT_SIG = "0x31"; // Invalid signature length
 
 
     async function deployFixture() {
@@ -81,6 +84,7 @@ describe("StudentIdentity", () => {
     function studentIssueArgs(overrides: any = {}) {
         return {
             publicKey: STUDENT_PK,
+            signature: STUDENT_SIG,
             studentId: STUDENT_ID,
             fullName: STUDENT_NAME,
             nationality: STUDENT_NATIONALITY,
@@ -123,6 +127,7 @@ describe("StudentIdentity", () => {
             const record = await instance.students(student.address);
 
             expect(record.identity.publicKey).to.equal(STUDENT_PK);
+            expect(record.identity.signature).to.equal(STUDENT_SIG);
             expect(record.identity.fullName).to.equal(STUDENT_NAME);
             expect(record.identity.nationality).to.equal(STUDENT_NATIONALITY);
             expect(record.identity.academyName).to.equal(ACADEMY_NAME);
@@ -231,6 +236,7 @@ describe("StudentIdentity", () => {
                     academy.address,
                     studentIssueArgs({
                         publicKey: SECOND_STUDENT_PK,
+                        signature: SECOND_STUDENT_SIG,
                         fullName: "Second Student",
                         nationality: "Canadian",
                         department: "Physics",
@@ -251,6 +257,7 @@ describe("StudentIdentity", () => {
                     academy.address,
                     studentIssueArgs({
                         publicKey: SECOND_STUDENT_PK,
+                        signature: SECOND_STUDENT_SIG,
                         studentId: "STD-2067613",
                         fullName: "Second Student",
                         nationality: "Canadian",
@@ -290,6 +297,20 @@ describe("StudentIdentity", () => {
                     studentIssueArgs({ publicKey: SHORT_PK }),
                 )
             ).to.be.revertedWithCustomError(instance, "InvalidPublicKey").withArgs("Public key must be 65 bytes.");
+        });
+
+        it("Should revert on invalid signature length", async () => {
+            const { networkHelpers } = await hre.network.connect();
+            const { instance, owner, academy, student } =
+                await networkHelpers.loadFixture(deployFixture);
+
+            await expect(
+                instance.connect(owner).issueStudentIdentity(
+                    student.address,
+                    academy.address,
+                    studentIssueArgs({ signature: SHORT_SIG }),
+                )
+            ).to.be.revertedWithCustomError(instance, "InvalidSignature").withArgs("Signature must be 65 bytes.");
         });
 
         it("Should revert on empty student ID", async () => {

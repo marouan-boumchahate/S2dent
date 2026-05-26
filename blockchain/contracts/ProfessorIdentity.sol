@@ -27,6 +27,7 @@ contract ProfessorIdentity is AcademyIdentity {
     // Structs
     struct ProfessorIssueArgs {
         bytes publicKey;
+        bytes signature;
         string employeeId;
         string nationalId;
         string fullName;
@@ -40,6 +41,7 @@ contract ProfessorIdentity is AcademyIdentity {
         bytes32 employeeIdHash;
         bytes32 nationalIdHash;
         bytes publicKey;
+        bytes signature;
         string fullName;
         ProfessorRank rank;
         EmploymentType employmentType;
@@ -88,6 +90,7 @@ contract ProfessorIdentity is AcademyIdentity {
     // Validations
     function _validateProfessorInfos(ProfessorIssueArgs calldata i, uint256 currentTime) internal pure {
         _validatePublicKeySet(i.publicKey);
+        _validateSignatureSet(i.signature);
 
         _validateStringIsNotShort(i.employeeId, MIN_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too short.");
         _validateStringIsNotLong(i.employeeId, MAX_EMPLOYEE_ID_LENGTH, "Invalid professor: employeeId is too long.");
@@ -144,6 +147,7 @@ contract ProfessorIdentity is AcademyIdentity {
                 employeeIdHash: employeeIdHash,
                 nationalIdHash: nationalIdHash,
                 publicKey: args.publicKey,
+                signature: args.signature,
                 fullName: args.fullName,
                 rank: ProfessorRank(args.rank),
                 employmentType: EmploymentType(args.employmentType),
