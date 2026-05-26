@@ -10,7 +10,7 @@ import { getStudentIdentity } from '../../blockchain/identity/student.identity.b
 import { getProfessorIdentity } from '../../blockchain/identity/professor.identity.blockchain.js';
 import { recoverSigner, hash } from '../../utils/crypto.js';
 import { signTokens, verifyRefreshToken } from '../../utils/jwt.js';
-import { sendEmail } from '../../utils/email.js';
+import { sendOtpEmail } from '../../utils/email.js';
 
 
 // DTOs
@@ -304,11 +304,7 @@ const sendOtpService = async (email) => {
 
     await setCache(cacheKey, JSON.stringify(payload), OTP_TTL);
 
-    await sendEmail({ 
-        to: email, 
-        subject: 'Your OTP Code', 
-        message: `Your OTP code is: ${otp}` 
-    });
+    await sendOtpEmail(email, otp);
 
     return { message };
 }

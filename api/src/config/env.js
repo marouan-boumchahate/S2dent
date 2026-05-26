@@ -7,6 +7,13 @@ dotenv.config({
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3000,
+  email: {
+    smtpHost: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpUser: process.env.SMTP_USER,
+    smtpPass: process.env.SMTP_PASS,
+    from: process.env.EMAIL_FROM,
+  },
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT,
