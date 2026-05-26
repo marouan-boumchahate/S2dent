@@ -112,12 +112,12 @@ const performAction = async (payload, tx_hash, receipt) => {
     }
 }
 
-const notifyUser = async ({
+const notifyUser = ({
     email,
     subject,
     message
 }) => {
-    await sendEmail({ to: email, subject, message })
+    void sendEmail({ to: email, subject, message })
 }
 
 export const listenOnTransaction = (tx) => {
@@ -150,8 +150,8 @@ export const listenOnTransaction = (tx) => {
             }
             if (notification.email?.success) {
                 const { email: { success: { subject, message } } } = notification
-                
-                await notifyUser({
+
+                notifyUser({
                     email: payload.email,
                     subject,
                     message
@@ -187,7 +187,7 @@ export const listenOnTransaction = (tx) => {
             if (notification.email?.failure) {
                 const { email: { failure: { subject, message } } } = notification
 
-                await notifyUser({
+                notifyUser({
                     email: payload.email,
                     subject,
                     message
