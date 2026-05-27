@@ -1,74 +1,65 @@
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
-import 'package:flutter/material.dart';
 import 'package:app/feature/notifications/data/datasources/notification_datasource.dart';
 import 'package:app/feature/notifications/data/repos_impl/notification_repo_impl.dart';
 import 'package:app/feature/notifications/domain/models/notification.dart';
-import 'package:app/feature/notifications/domain/repos/notification_repo.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
-class NotificationController
-    extends StateNotifier<AsyncValue<List<AppNotification>>> {
-  NotificationController(
-    this.notificationRepo, {
-    this.onCredentialChanged,
-    this.onCredentialDetailChanged,
-  }) : super(const AsyncValue.loading()) {
-    loadNotifications();
-    // _subscribeToSocket();
+class NotificationController extends Notifier<List<AppNotification>> {
+  @override
+  List<AppNotification> build() {
+    final repo = ref.watch(notificationRepoProvider);
+    final subscription = repo.notificationStream.listen(
+      (event) {
+        state = [event, ...state];
+        //fetch the credentials again to update their state after the adjustment
+        // (new credential issuance or revoking etc...)
+        ref.read(credentialControllerProvider.notifier).loadCredentials();
+      },
+    );
+    ref.onDispose(subscription.cancel);
+    // temporary dummy data
+    return [
+      AppNotification(
+        eventId: '1',
+        txHash: '0xabc123',
+        message: 'Your credential has been successfully issued.',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+        status: AppNotificationStatus.verified,
+      ),
+      AppNotification(
+        eventId: '2',
+        txHash: '0xdef456',
+        message: 'Transaction failed. Please try again.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        status: AppNotificationStatus.failed,
+      ),
+    ];
   }
 
-  // void _subscribeToSocket() {
-  //   notificationRepo.notificationStream.listen((notification) {
-  //     final current = state.asData?.value ?? [];
-  //     state = AsyncValue.data([notification, ...current]);
-  //     if (notification.credentialId != null) {
-  //       onCredentialChanged?.call();
-  //       onCredentialDetailChanged?.call(notification.credentialId!);
-  //     }
-  //   });
-  // }
-
-  final NotificationRepo notificationRepo;
-  final VoidCallback? onCredentialChanged;
-  final void Function(String id)? onCredentialDetailChanged;
-
-  Future<void> loadNotifications() async {
-    state = const AsyncValue.loading();
-    try {
-      final notifications = await notificationRepo.getNotification();
-      state = AsyncValue.data(notifications);
-    } catch (e, trace) {
-      state = AsyncValue.error(e, trace);
+  void ackAll() {
+    final repo = ref.read(notificationRepoProvider);
+    for (final notification in state) {
+      repo.ackEvent(notification.eventId);
     }
-  }
-
-  Future<void> markAllAsRead() async {
-    state = const AsyncValue.data([]);
-    await notificationRepo.markAllAsRead();
+    state = [];
   }
 }
 
-final notificationDatasourceProvider = Provider<NotificationDatasource>(
-  (ref) => NotificationDatasource(),
+final notificationDataSourceProvider = Provider(
+  (ref) {
+    final dataSource = NotificationDatasource();
+    ref.onDispose(dataSource.disconnect);
+    return dataSource;
+  },
 );
-
-final notificationRepoProvider = Provider<NotificationRepo>(
-  (ref) => NotificationRepoImpl(ref.watch(notificationDatasourceProvider)),
+final notificationRepoProvider = Provider(
+  (ref) => NotificationRepoImpl(ref.watch(notificationDataSourceProvider)),
 );
-
-final notificationControllerProvider = StateNotifierProvider<
-    NotificationController, AsyncValue<List<AppNotification>>>(
-  (ref) => NotificationController(
-    ref.watch(notificationRepoProvider),
-    onCredentialChanged: () =>
-        ref.read(credentialControllerProvider.notifier).loadCredentials(),
-    onCredentialDetailChanged: (id) =>
-        ref.invalidate(credentialDetailProvider(id)),
-  ),
+final notificationControllerProvider =
+    NotifierProvider<NotificationController, List<AppNotification>>(
+  NotificationController.new,
 );
-
 final unreadCountProvider = Provider<int>(
-  (ref) =>
-      ref.watch(notificationControllerProvider).asData?.value.length ?? 0,
+  (ref) => ref.watch(notificationControllerProvider).length,
 );

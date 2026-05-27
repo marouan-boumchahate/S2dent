@@ -1,7 +1,8 @@
 import 'package:app/feature/notifications/domain/models/notification.dart';
 
 abstract class NotificationRepo {
-  Future<List<AppNotification>> getNotification();
-  Future<void> markAllAsRead();
-  // Stream<AppNotification> get notificationStream;
+  Stream<AppNotification> get notificationStream;
+  void connect(String accessToken);
+  void disconnect();
+  void ackEvent(String eventId);
 }

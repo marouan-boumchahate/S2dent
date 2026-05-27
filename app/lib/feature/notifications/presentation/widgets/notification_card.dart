@@ -1,4 +1,5 @@
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/theme/app_color.dart';
 import 'package:app/feature/notifications/domain/models/notification.dart';
 import 'package:flutter/material.dart';
 
@@ -11,28 +12,24 @@ class NotificationCard extends StatelessWidget {
   final AppNotification notification;
 
   IconData get _icon {
-    switch (notification.type) {
-      case AppNotificationType.credentialIssuance:
+    switch (notification.status) {
+      case AppNotificationStatus.verified:
         return Icons.verified_rounded;
-      case AppNotificationType.attendenceIssuance:
-        return Icons.checklist_rounded;
-      case AppNotificationType.credentialsRevoked:
-        return Icons.remove_circle_outline_rounded;
-      case AppNotificationType.general:
-        return Icons.info_outline_rounded;
+      case AppNotificationStatus.failed:
+        return Icons.error_outlined;
+      case AppNotificationStatus.unknown:
+        return Icons.question_mark_rounded;
     }
   }
 
   Color _iconColor(ColorScheme colors) {
-    switch (notification.type) {
-      case AppNotificationType.credentialIssuance:
+    switch (notification.status) {
+      case AppNotificationStatus.verified:
         return colors.primary;
-      case AppNotificationType.attendenceIssuance:
-        return colors.tertiary;
-      case AppNotificationType.credentialsRevoked:
+      case AppNotificationStatus.failed:
         return colors.error;
-      case AppNotificationType.general:
-        return colors.secondary;
+      case AppNotificationStatus.unknown:
+        return AppColors.textMuted;
     }
   }
 
@@ -54,57 +51,57 @@ class NotificationCard extends StatelessWidget {
         color: context.colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.blueGrey.withAlpha(160),
+          color: AppColors.border.withAlpha(160),
         ),
       ),
       child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(30),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(_icon, color: color, size: 22),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withAlpha(30),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      notification.title,
-                      style: context.texts.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              child: Icon(_icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification.message,
+                    style: context.texts.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.body,
-                      style: context.texts.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    overflow: TextOverflow.clip,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.txHash,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _timeAgo,
-                      style: context.texts.bodySmall?.copyWith(
-                        color: context.colors.onSurface.withAlpha(100),
-                      ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _timeAgo,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.colors.onSurface.withAlpha(100),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
