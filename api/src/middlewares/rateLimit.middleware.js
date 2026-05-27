@@ -11,7 +11,7 @@ const createRedisStore = (prefix) =>
     });
 
 const createRateLimiter = ({ windowMs, limit, message, keyPrefix }) =>
-    isTestEnvironment
+    (isTestEnvironment || false)
         ? (_req, _res, next) => next()
         : rateLimit({
             windowMs,
