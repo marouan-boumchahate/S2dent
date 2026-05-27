@@ -10,6 +10,7 @@ import { getCache, delCache } from '../../../cache/cache.client.js'
 import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner, hash, recoverSignerFromTypedData } from '../../../utils/crypto.js'
 import { env } from '../../../config/env.js'
+import { emitToUser } from '../../../config/socket.js'
 
 
 // DTOs
@@ -378,6 +379,13 @@ const requestIdentityIssuanceService = async ({ otp, email, signature }) => {
         signerPublicKey,
         signerAddress: checksumAddr,
     })
+
+    const title = student.gender.toLowerCase() === 'male' ? 'Mr.' : 'Ms.'
+    emitToUser(
+        student.academy_wallet_address, 
+        'notification', 
+        { message: `${title} ${student.full_name} has requested on-chain identity issuance.` }
+    )
 
     return { wallet_address: checksumAddr }
 }

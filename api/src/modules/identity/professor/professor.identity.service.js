@@ -10,6 +10,7 @@ import { getCache, delCache } from '../../../cache/cache.client.js'
 import { otpKey } from '../../../cache/cache.keys.js'
 import { recoverSigner, hash, recoverSignerFromTypedData } from '../../../utils/crypto.js'
 import { env } from '../../../config/env.js';
+import { emitToUser } from '../../../config/socket.js'
 
 
 // DTOs
@@ -135,7 +136,7 @@ const getProfessorById = async (professor_id, role) => {
 }
 const getProfessorRevokePayload = async (academyWallet, professorWallet) => {
     const { rows: [professor] } = await db.query(
-        `SELECT u.id AS user_id, u.email, u.full_name,
+        `SELECT u.email, u.full_name,
                 p.employee_number, p.title,
                 ai.wallet_address AS academy_wallet_address,
                 i.wallet_address AS professor_wallet_address,
@@ -296,20 +297,20 @@ const getProfessorIdentitySigningData = (professor) => {
 }
 const getProfessorRecordFromDb = async (walletAddress, academy_id) => {
     const { rows: [professor] } = await db.query(
-        `SELECT u.id AS user_id, u.full_name, u.national_id, 
-                p.employee_number, p.hire_date, p.rank, p.employment_type,
-                i.public_key,
-                ai.wallet_address AS academy_wallet_address,
-                a.name AS academy_name,
-                addr.id AS address_id,
-                d.is_active AS is_department_active
+    `SELECT u.id AS user_id,u.full_name, u.national_id, u.email,
+            p.employee_number, p.hire_date, p.rank, p.employment_type,
+            i.public_key,
+            ai.wallet_address AS academy_wallet_address,
+            a.name AS academy_name,
+            addr.id AS address_id,
+            d.is_active AS is_department_active
          FROM identities i
          JOIN users u ON u.id = i.user_id
          JOIN professors p ON u.id = p.user_id AND p.academy_id = $2
          JOIN academies a ON p.academy_id = a.id
          JOIN identities ai ON ai.academy_id = a.id AND ai.role = 'academy'
          LEFT JOIN addresses addr ON addr.user_id = u.id
-         LEFT JOIN departments d ON d.id = p.department_id
+         LEFT JOIN departments d ON p.department_id = d.id
          WHERE i.wallet_address = $1
             AND i.role = 'professor'
             AND i.status = 'pending'
@@ -382,6 +383,12 @@ const requestIdentityIssuanceService = async ({ otp, email, signature }) => {
         signerPublicKey, 
         signerAddress: checksumAddr
     })
+
+    emitToUser(
+        professor.academy_wallet_address, 
+        'notification', 
+        { message: `${professor.title} ${professor.full_name} has requested on-chain identity issuance.` }
+    )
 
     return { wallet_address: checksumAddr }
 }

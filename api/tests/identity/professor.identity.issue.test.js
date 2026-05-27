@@ -481,7 +481,7 @@ describe('POST /api/identity/professors/issue', function () {
         assert.equal(pending.payload.public_key, PROFESSOR_PUBLIC_KEY);
         assert.equal(pending.payload.entity_id, user.id);
         assert.equal(pending.payload.role, 'professor');
-        assert.equal(pending.payload.email, undefined);
+        assert.equal(pending.payload.email, PROFESSOR_EMAIL);
         assert.equal(pending.payload.signature, signature);
         assert.match(pending.payload.notification.email.success.subject, /^Identity Issuance Confirmed/);
         assert.match(pending.payload.notification.emit.failure.message, /issuance needs attention$/);
