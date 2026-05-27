@@ -7,16 +7,22 @@ class NotificationRepoImpl implements NotificationRepo {
   final NotificationDatasource dataSource;
 
   @override
-  Future<List<AppNotification>> getNotification() async {
-    final notifications = await dataSource.getNotification();
-    return notifications;
+  void ackEvent(String eventId) {
+    dataSource.ackEvent(eventId);
   }
 
   @override
-  Future<void> markAllAsRead() async {
-    await dataSource.markAllAsRead();
+  void connect(String accessToken) {
+    dataSource.connect(accessToken);
   }
 
-  // @override
-  // Stream<AppNotification> get notificationStream => dataSource.notificationStream;
+  @override
+  void disconnect() {
+    dataSource.disconnect();
+  }
+
+  @override
+  Stream<AppNotification> get notificationStream {
+    return dataSource.notificationStream;
+  }
 }

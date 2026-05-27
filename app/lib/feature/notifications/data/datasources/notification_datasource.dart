@@ -1,46 +1,51 @@
-import 'package:app/feature/notifications/domain/models/notification.dart';
-import 'package:flutter/rendering.dart';
+import 'dart:async';
 
-final List<AppNotification> dummyNotification = [
-  AppNotification(
-    id: '1',
-    title: 'New Certificate Issued',
-    body: 'Your Bachelor of Computer Science certificate has been issued.',
-    createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-    type: AppNotificationType.credentialIssuance,
-    credentialId: '4ed8fd80-536c-43e1-9104-2ffc5c3fd7ea',
-  ),
-  AppNotification(
-    id: '2',
-    title: 'Attendance List Published',
-    body:
-        'Attendance list for CS401 - Software Engineering has been published.',
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    type: AppNotificationType.attendenceIssuance,
-    credentialId: '2ef45678-789a-11ee-b962-0242ac120004',
-  ),
-  AppNotification(
-    id: '3',
-    title: 'Certificate Revoked',
-    body: 'Your temporary access certificate has been revoked.',
-    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    type: AppNotificationType.credentialsRevoked,
-    credentialId: '4gh67890-789a-11ee-b962-0242ac120006',
-  ),
-];
+import 'package:app/core/config/app_config.dart';
+import 'package:app/feature/notifications/domain/models/notification.dart';
+import 'package:flutter/material.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class NotificationDatasource {
-  Future<List<AppNotification>> getNotification() async {
-    await Future.delayed(Duration(milliseconds: 300));
-    debugPrint("Notifications List API has been called");
-    return dummyNotification;
+  io.Socket? _socket;
+  final _streamController = StreamController<AppNotification>.broadcast();
+  Stream<AppNotification> get notificationStream => _streamController.stream;
+
+  void connect(String accessToken) {
+    //disconnect if there is already an existing connection (on refreshToken)
+    if (_socket != null) disconnect();
+    _socket = io.io(
+      AppConfig.apiUrl,
+      io.OptionBuilder()
+          //websocket protocol
+          .setTransports(["websocket"])
+          .disableAutoConnect()
+          .build(),
+    );
+    //send accessToken to authenticate
+    _socket!.onConnect((data) => _socket!.emit("join", accessToken));
+
+    //listener for notifiactions
+    _socket!.on(
+      "notification",
+      (data) {
+        try {
+          _streamController.add(AppNotification.fromJson(data));
+        } catch (e) {
+          debugPrint("Notification parsing failed $e");
+        }
+      },
+    );
+    //finally connect
+    _socket!.connect();
   }
 
-  // Stream<AppNotification> get notificationStream =>
-  //     socketService.on('notification').map((data) => AppNotification.fromJson(data));
+  void ackEvent(String eventId) {
+    _socket?.emit("ack_event", eventId);
+  }
 
-  Future<void> markAllAsRead() async {
-    debugPrint("Mark all notifications as read API has been called");
-    //await dio.delete('/notifications');
+  void disconnect() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
   }
 }

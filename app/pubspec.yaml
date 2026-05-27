@@ -54,6 +54,7 @@ dependencies:
   lottie: ^3.3.3
   url_launcher: ^6.3.2
   dio: ^5.9.2
+  socket_io_client: ^3.1.4
 
 dev_dependencies:
   flutter_test:

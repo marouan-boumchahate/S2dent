@@ -1,47 +1,49 @@
-enum AppNotificationType {
-  credentialIssuance,
-  attendenceIssuance,
-  credentialsRevoked,
-  general,
+enum AppNotificationStatus {
+  verified,
+  failed,
+  unknown,
+}
+
+AppNotificationStatus appNotificationStatusFromJson(String value) {
+  try {
+    return AppNotificationStatus.values.byName(value);
+  } catch (e) {
+    return AppNotificationStatus.unknown;
+  }
 }
 
 class AppNotification {
   const AppNotification({
-    required this.id,
-    required this.title,
-    required this.body,
+    required this.eventId,
+    required this.txHash,
+    required this.message,
     required this.createdAt,
-    required this.type,
-    this.credentialId,
+    required this.status,
   });
 
-  final String id;
-  final String title;
-  final String body;
+  final String eventId;
+  final String txHash;
+  final String message;
   final DateTime createdAt;
-  final AppNotificationType type;
-  // present when the notification is related to a specific credential
-  final String? credentialId;
+  final AppNotificationStatus status;
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      id: json['id'],
-      title: json['title'],
-      body: json['body'],
+      eventId: json['event_id'],
+      txHash: json['tx_hash'],
+      message: json['message'],
       createdAt: DateTime.parse(json['created_at']),
-      type: AppNotificationType.values.byName(json['type']),
-      credentialId: json['credential_id'],
+      status: appNotificationStatusFromJson(json['status']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      "id": id,
-      "title": title,
-      "body": body,
+      "event_id": eventId,
+      "tx_hash": txHash,
+      "message": message,
       "created_at": createdAt.toIso8601String(),
-      "type": type.name,
-      "credential_id": credentialId,
+      "status": status.name,
     };
   }
 }
