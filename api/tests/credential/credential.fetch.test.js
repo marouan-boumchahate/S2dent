@@ -5,6 +5,7 @@ import sinon from 'sinon';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
+import { env } from '../../src/config/env.js';
 import { signTokens } from '../../src/utils/jwt.js';
 import { hash } from '../../src/utils/crypto.js';
 
@@ -12,7 +13,8 @@ describe('GET /api/credentials/:id', () => {
   const SEED_ACADEMY_EMAIL = 'seed.credential.fetch@seed.internal';
   const SEED_ACADEMY_NUMBER = 'ACD_CRD_F_0001';
 
-  const ACADEMY_WALLET = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const ACADEMY_SIGNER = ethers.Wallet.fromPhrase('test test test test test test test test test test test junk');
+  const ACADEMY_WALLET = ACADEMY_SIGNER.address;
   const PROFESSOR_WALLET = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
   const STUDENT_WALLET = '0xcccccccccccccccccccccccccccccccccccccccc';
   const OTHER_STUDENT_WALLET = '0xdddddddddddddddddddddddddddddddddddddddd';
@@ -46,22 +48,75 @@ describe('GET /api/credentials/:id', () => {
 
   const getPayloadHash = (payload) => hash(JSON.stringify(payload, Object.keys(payload).sort()));
 
-  const buildBlockchainCredential = ({ payloadHash, encryptedPayload = 'encrypted-payload', statusOverrides = {} } = {}) => ({
-    identity: {},
-    payload: {
+  const buildBlockchainCredential = async ({
+    credentialId,
+    title,
+    code,
+    type,
+    academyName,
+    issuerAddress = ACADEMY_WALLET,
+    studentAddress,
+    studentName,
+    payloadHash,
+    encryptedPayload = 'encrypted-payload',
+    statusOverrides = {},
+  } = {}) => {
+    const domain = {
+      name: 'S2dent',
+      version: '1',
+      chainId: Number(env.blockchain.chainId || 31337),
+      verifyingContract: env.blockchain.deployedContractAddress,
+    };
+
+    const types = {
+      Credential: [
+        { name: 'credentialIdHash', type: 'bytes32' },
+        { name: 'title', type: 'string' },
+        { name: 'code', type: 'string' },
+        { name: 'credentialType', type: 'string' },
+        { name: 'authorizerWalletAddress', type: 'address' },
+        { name: 'authorizerName', type: 'string' },
+        { name: 'issuerWalletAddress', type: 'address' },
+        { name: 'studentWalletAddress', type: 'address' },
+        { name: 'studentName', type: 'string' },
+        { name: 'payloadHash', type: 'bytes32' },
+      ],
+    };
+
+    const message = {
+      credentialIdHash: hash(credentialId),
+      title,
+      code,
+      credentialType: type,
+      authorizerWalletAddress: ethers.getAddress(issuerAddress),
+      authorizerName: academyName,
+      issuerWalletAddress: ethers.getAddress(issuerAddress),
+      studentWalletAddress: ethers.getAddress(studentAddress),
+      studentName,
       payloadHash,
-      encryptedPayload,
-    },
-    signature: '0x' + 'b'.repeat(130),
-    status: {
-      issuedAt: new Date('2024-01-01'),
-      revokedAt: null,
-      academyAddress: ethers.getAddress(ACADEMY_WALLET),
-      issuerAddress: ethers.getAddress(ACADEMY_WALLET),
-      revocationReason: null,
-      ...statusOverrides,
-    },
-  });
+    };
+
+    const signature = await ACADEMY_SIGNER.signTypedData(domain, types, message);
+
+    return {
+      identity: {
+        academyName,
+      },
+      payload: {
+        payloadHash,
+        encryptedPayload,
+      },
+      signature,
+      status: {
+        issuedAt: new Date('2024-01-01'),
+        revokedAt: null,
+        academyAddress: ethers.getAddress(issuerAddress),
+        issuerAddress: ethers.getAddress(issuerAddress),
+        revocationReason: null,
+        ...statusOverrides,
+      },
+    };
+  };
 
   const makeApp = async (overrides = {}) => {
     const defaultMocks = {
@@ -130,7 +185,7 @@ describe('GET /api/credentials/:id', () => {
       [user.id, ethers.getAddress(wallet), '0x04studpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 
-    return user.id;
+    return { id: user.id, fullName };
   };
 
   const seedProfessor = async (academyId, wallet, email) => {
@@ -157,7 +212,7 @@ describe('GET /api/credentials/:id', () => {
       [user.id, ethers.getAddress(wallet), '0x04profpub' + wallet.slice(2, 10).padEnd(120, '0')]
     );
 
-    return user.id;
+    return { id: user.id, fullName };
   };
 
   const seedCredential = async ({
@@ -235,9 +290,11 @@ describe('GET /api/credentials/:id', () => {
   });
 
   it('returns 200 for student view and hides raw payload', async () => {
-    await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
+    const student = await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
     await seedProfessor(ACADEMY_ID, PROFESSOR_WALLET, 'prof.fetch@credential.test');
 
+    const title = 'Student View';
+    const code = `${TEST_CODE_PREFIX}${uniqueSuffix()}`;
     const payload = {
       certificate_name: 'Fetch Student',
       certificate_code: 'FS-1',
@@ -249,8 +306,8 @@ describe('GET /api/credentials/:id', () => {
     };
 
     const { id: credentialId, payloadHash } = await seedCredential({
-      title: 'Student View',
-      code: `${TEST_CODE_PREFIX}${uniqueSuffix()}`,
+      title,
+      code,
       type: 'certificate',
       authorizerWallet: ACADEMY_WALLET,
       issuerWallet: ACADEMY_WALLET,
@@ -263,7 +320,17 @@ describe('GET /api/credentials/:id', () => {
       '../../src/blockchain/credential.blockchain.js': {
         issueCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
         revokeCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
-        getCredential: async () => buildBlockchainCredential({ payloadHash, encryptedPayload: 'encrypted-student' }),
+        getCredential: async () => buildBlockchainCredential({
+          credentialId,
+          title,
+          code,
+          type: 'certificate',
+          academyName: 'Seed Fetch Academy',
+          studentAddress: STUDENT_WALLET,
+          studentName: student.fullName,
+          payloadHash,
+          encryptedPayload: 'encrypted-student',
+        }),
       },
     });
 
@@ -276,13 +343,15 @@ describe('GET /api/credentials/:id', () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.meta.id, credentialId);
+    assert.equal(res.body.data.payload, null);
     assert.equal(res.body.data.encryptedPayload, 'encrypted-student');
-    assert.equal('payload' in res.body.data, false);
   });
 
   it('returns 200 for academy view and includes raw payload', async () => {
-    await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
+    const student = await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
 
+    const title = 'Academy View';
+    const code = `${TEST_CODE_PREFIX}${uniqueSuffix()}`;
     const payload = {
       certificate_name: 'Fetch Academy',
       certificate_code: 'FA-1',
@@ -294,8 +363,8 @@ describe('GET /api/credentials/:id', () => {
     };
 
     const { id: credentialId, payloadHash } = await seedCredential({
-      title: 'Academy View',
-      code: `${TEST_CODE_PREFIX}${uniqueSuffix()}`,
+      title,
+      code,
       type: 'certificate',
       authorizerWallet: ACADEMY_WALLET,
       issuerWallet: ACADEMY_WALLET,
@@ -308,7 +377,17 @@ describe('GET /api/credentials/:id', () => {
       '../../src/blockchain/credential.blockchain.js': {
         issueCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
         revokeCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
-        getCredential: async () => buildBlockchainCredential({ payloadHash, encryptedPayload: 'encrypted-academy' }),
+        getCredential: async () => buildBlockchainCredential({
+          credentialId,
+          title,
+          code,
+          type: 'certificate',
+          academyName: 'Seed Fetch Academy',
+          studentAddress: STUDENT_WALLET,
+          studentName: student.fullName,
+          payloadHash,
+          encryptedPayload: 'encrypted-academy',
+        }),
       },
     });
 
@@ -319,7 +398,7 @@ describe('GET /api/credentials/:id', () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.deepEqual(res.body.data.payload, payload);
-    assert.equal('encryptedPayload' in res.body.data, false);
+    assert.equal(res.body.data.encryptedPayload, null);
   });
 
   it('returns 404 when student requests another student credential', async () => {
@@ -359,8 +438,10 @@ describe('GET /api/credentials/:id', () => {
   });
 
   it('returns 500 when payload hash mismatches blockchain payload', async () => {
-    await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
+    const student = await seedStudent(ACADEMY_ID, STUDENT_WALLET, 'student.fetch@credential.test');
 
+    const title = 'Tamper Credential';
+    const code = `${TEST_CODE_PREFIX}${uniqueSuffix()}`;
     const payload = {
       certificate_name: 'Tamper Test',
       certificate_code: 'TT-1',
@@ -372,8 +453,8 @@ describe('GET /api/credentials/:id', () => {
     };
 
     const { id: credentialId } = await seedCredential({
-      title: 'Tamper Credential',
-      code: `${TEST_CODE_PREFIX}${uniqueSuffix()}`,
+      title,
+      code,
       type: 'certificate',
       authorizerWallet: ACADEMY_WALLET,
       issuerWallet: ACADEMY_WALLET,
@@ -396,7 +477,16 @@ describe('GET /api/credentials/:id', () => {
       '../../src/blockchain/credential.blockchain.js': {
         issueCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
         revokeCredential: async () => ({ hash: '0x0', wait: async () => ({ hash: '0x0' }) }),
-        getCredential: async () => buildBlockchainCredential({ payloadHash: mismatchedHash }),
+        getCredential: async () => buildBlockchainCredential({
+          credentialId,
+          title,
+          code,
+          type: 'certificate',
+          academyName: 'Seed Fetch Academy',
+          studentAddress: STUDENT_WALLET,
+          studentName: student.fullName,
+          payloadHash: mismatchedHash,
+        }),
       },
     });
 

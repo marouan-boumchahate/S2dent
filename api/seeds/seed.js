@@ -2,11 +2,14 @@ import {
   WALLETS,
   academyProfile,
   addressProfile,
+  attendanceCredentialProfile,
+  credentialProfile,
   departmentProfile,
   professorProfile,
   studentProfile,
   userProfile,
 } from './data.js';
+import { fullCredentialIssuance } from './credential.js';
 import { authenticate } from './auth.js';
 import { createAcademy } from './academy.js';
 import { createAddress } from './address.js';
@@ -122,6 +125,32 @@ const seedProfessor = async ({ academyId, departmentId, academyToken, academyPri
   return { id, tokens };
 };
 
+const seedCredentials = async ({ academyToken, professorToken }) => {
+  log('credential', 'issuing academy enrollment credential');
+  const enrollment = await fullCredentialIssuance({
+    ...credentialProfile('enrollment'),
+    student_address: WALLETS.student.address,
+    issuerToken: academyToken,
+    issuerPrivateKey: WALLETS.academy.privateKey,
+  });
+  log('credential', `academy enrollment issued → credential_id=${enrollment.credential_id}`);
+
+  await wait(1000);
+
+  log('credential', 'issuing professor attendance credential');
+  const attendance = await fullCredentialIssuance({
+    ...attendanceCredentialProfile(),
+    student_address: WALLETS.student.address,
+    issuerToken: professorToken,
+    issuerPrivateKey: WALLETS.professor.privateKey,
+  });
+  log('credential', `professor attendance issued → credential_id=${attendance.credential_id}`);
+
+  await wait(1000);
+
+  return { enrollment, attendance };
+};
+
 
 // Orchestrator
 // ------------
@@ -143,12 +172,16 @@ const main = async () => {
     academyPrivateKey: WALLETS.academy.privateKey,
   };
   const professor = await seedProfessor(ctx);
-  //console.log('\n\n\nProfessor ID:', professor.id); // Debug log
   const student = await seedStudent({ ...ctx, advisorId: professor.id });
+  const credentials = await seedCredentials({
+    academyToken: academy.tokens.accessToken,
+    professorToken: professor.tokens.accessToken,
+  });
   
   printTokens('academy', academy.tokens);
   printTokens('professor', professor.tokens);
   printTokens('student', student.tokens);
+  log('credential', `completed ${Object.keys(credentials).length} credential issuances`);
 };
 
 main().catch((e) => {

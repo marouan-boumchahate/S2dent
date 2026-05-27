@@ -160,10 +160,21 @@ const issueCredentialSchema = Joi.object({
 const revokeCredentialSchema = Joi.object({
     reason: Joi.string().max(500).required()
 });
+const verifyCredentialTokenSchema = Joi.object({
+    student_address: Joi.string().pattern(ETH_ADDRESS).required()
+        .messages({
+          'string.pattern.base': 'student_address must be a valid Ethereum address (0x…)',
+        }),
+    student_signature: Joi.string().pattern(SIGNATURE).required()
+        .messages({
+          'string.pattern.base': 'student_signature must be a valid Ethereum signature (0x…)',
+        }),
+});
 
 
 export {
     createCredentialSchema,
     issueCredentialSchema,
-    revokeCredentialSchema
+    revokeCredentialSchema,
+    verifyCredentialTokenSchema
 }

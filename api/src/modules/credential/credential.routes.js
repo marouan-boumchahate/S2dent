@@ -5,7 +5,8 @@ import { validate } from '../../middlewares/validate.middleware.js';
 import { 
     createCredentialSchema, 
     issueCredentialSchema,
-    revokeCredentialSchema
+    revokeCredentialSchema,
+    verifyCredentialTokenSchema
 } from './credential.validator.js';
 import { 
     createCredentialController,
@@ -13,7 +14,9 @@ import {
     revokeCredentialController,
     fetchCredentialController,
     fetchAllCredentialsController,
-    getCredentialSignatureSchemaController
+    getCredentialSignatureSchemaController,
+    fetchCredentialForVerificationController,
+    generateVerifierCredentialTokenController
 } from './credential.controller.js';
 
 
@@ -26,14 +29,22 @@ router.get(
     fetchAllCredentialsController
 )
 router.get(
+    '/verification',
+    authenticate,
+    requireRole('verifier'),
+    fetchCredentialForVerificationController
+)
+router.get(
+    '/:id/signature-schema',
+    authenticate,
+    requireRole('student', 'professor', 'academy', 'verifier'),
+    getCredentialSignatureSchemaController
+)
+router.get(
     '/:id',
     authenticate,
     requireRole('student', 'professor', 'academy'),
     fetchCredentialController
-)
-router.get(
-    '/:id/signature-schema',
-    getCredentialSignatureSchemaController
 )
 router.post(
     '/',
@@ -42,6 +53,13 @@ router.post(
     validate(createCredentialSchema),
     createCredentialController
 );
+router.post(
+    '/:id/token',
+    authenticate,
+    requireRole('student'),
+    validate(verifyCredentialTokenSchema),
+    generateVerifierCredentialTokenController
+)
 router.post(
     '/:id/issue',
     authenticate,

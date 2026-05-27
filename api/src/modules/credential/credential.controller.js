@@ -5,7 +5,9 @@ import {
     revokeCredentialService,
     fetchCredentialService,
     fetchAllCredentialsService,
-    getCredentialSignatureSchemaService
+    getCredentialSignatureSchemaService,
+    fetchCredentialForVerificationService,
+    generateVerifierCredentialTokenService
 } from './credential.service.js';
 
 
@@ -56,6 +58,30 @@ const fetchCredentialController = async (req, res, next) => {
 
     return ok(res, result, 'Credential fetched successfully');
 };
+const fetchCredentialForVerificationController = async (req, res, next) => {
+    const { credential_id, student_address, student_signature, role } = req.user;
+
+    const result = await fetchCredentialForVerificationService({
+        credential_id,
+        student_address,
+        student_signature,
+        role
+    });
+
+    return ok(res, result, 'Credential fetched successfully for verification');
+};
+const generateVerifierCredentialTokenController = async (req, res, next) => {
+    const { id } = req.params;
+    const { student_address, student_signature } = req.body;
+
+    const result = await generateVerifierCredentialTokenService({
+        credential_id: id,
+        student_address,
+        student_signature
+    });
+
+    return ok(res, result, 'Verifier credential token generated successfully');
+};
 const fetchAllCredentialsController = async (req, res, next) => {
     const { sub, role } = req.user;
 
@@ -78,5 +104,7 @@ export {
     revokeCredentialController,
     fetchCredentialController,
     fetchAllCredentialsController,
-    getCredentialSignatureSchemaController
+    getCredentialSignatureSchemaController,
+    fetchCredentialForVerificationController,
+    generateVerifierCredentialTokenController
 };
