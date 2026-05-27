@@ -7,6 +7,7 @@ const ACCESS_SECRET  = process.env.JWT_ACCESS_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_ENCRYPTION_SECRET = Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex');
 
+
 const signTokens = (payload, options, onlyAccess = false) => { // options: { accessExpiresIn, refreshExpiresIn }
     const accessToken = encryptBySecretKey(
         jwt.sign(payload, ACCESS_SECRET, {
@@ -26,7 +27,6 @@ const signTokens = (payload, options, onlyAccess = false) => { // options: { acc
 
     return { accessToken, refreshToken };
 }
-
 const verifyAccessToken = (token) => {
     const decryptedToken = decryptBySecretKey(token, JWT_ENCRYPTION_SECRET);
     return jwt.verify(decryptedToken, ACCESS_SECRET);
@@ -35,5 +35,6 @@ const verifyRefreshToken = (token) => {
     const decryptedToken = decryptBySecretKey(token, JWT_ENCRYPTION_SECRET);
     return jwt.verify(decryptedToken, REFRESH_SECRET);
 };
+
 
 export { signTokens, verifyAccessToken, verifyRefreshToken };

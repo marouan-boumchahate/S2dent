@@ -4,6 +4,7 @@ import { env } from '../../config/env.js';
 import { issueCredential, revokeCredential, getCredential } from '../../blockchain/credential.blockchain.js';
 import { listenOnTransaction } from '../../blockchain/listener.js';
 import { hash, recoverSignerFromTypedData, encryptWithPublicKey } from '../../utils/crypto.js';
+import { signTokens } from '../../utils/jwt.js';
 import { get } from 'http';
 
 
@@ -43,38 +44,10 @@ const credentialDTO = (credential) => ({
     },
     verification: {
         payload_hash: credential.payload_hash,
-        signature: credential.signature,
+        issuer_signature: credential.signature,
     },
-    payload: credential.payload
-});
-const studentCredentialDTO = (credential) => ({
-    meta: {
-        id: credential.id,
-        title: credential.title,
-        code: credential.code,
-        type: credential.type,
-        description: credential.description,
-        locale: credential.locale,
-        issued_at: credential.issued_at,
-        is_revoked: credential.revoked_at !== null,
-    },
-    student: {
-        address: credential.student_address,
-        name: credential.student_name,
-    },
-    blockchain: {
-        issue_tx_hash: credential.issue_tx_hash,
-        revoke_tx_hash: credential.revoke_tx_hash,
-        revocation_reason: credential.revocation_reason,
-        credential_index: credential.credential_index,
-        academy_address: credential.academy_address,
-        issuer_address: credential.issuer_address,
-    },
-    verification: {
-        payload_hash: credential.payload_hash,
-        signature: credential.signature,
-    },
-    encryptedPayload: credential.encrypted_payload
+    payload: credential.payload ?? null,
+    encryptedPayload: credential.encrypted_payload ?? null
 });
 
 
@@ -382,7 +355,7 @@ const validateIssuerIdentity = async (wallet_address) => {
         throw err;
     }
 }
-const validateSignature = async (credential, signature) => {
+const validateSignature = (credential, signature, targetAddress) => {
     const signingData = getCredentialSigningData({
         credentialId: credential.id,
         title: credential.title,
@@ -396,9 +369,14 @@ const validateSignature = async (credential, signature) => {
         payloadHash: credential.payload_hash
     });
 
-    const recoveredAddress = recoverSignerFromTypedData(signingData.domain, signingData.types, signingData.message, signature);
+    const recoveredAddress = recoverSignerFromTypedData(
+        signingData.domain, 
+        signingData.types, 
+        signingData.message, 
+        signature
+    );
 
-    if (recoveredAddress.toLowerCase() !== credential.issuer_wallet_address.toLowerCase()) {
+    if (recoveredAddress.toLowerCase() !== targetAddress.toLowerCase()) {
         const err = new Error('Invalid signature for the provided credential data');
         err.statusCode = 400;
         err.code = 'INVALID_SIGNATURE';
@@ -444,6 +422,7 @@ const getExactCredential = async (credential_id, wallet_address, role) => {
     let whereClause;
     switch(role) {
         case 'student':
+        case 'verifier':
             whereClause = 'WHERE c.id = $1 AND LOWER(c.student_wallet_address) = LOWER($2)';
             break;
         case 'academy':
@@ -543,6 +522,27 @@ const isStudentAdvisor = async (issuerAddress, advisorId) => {
         throw err;
     }
 }
+const getAcademyName = async (academyAddress) => {
+    const { rows: [academy] } = await db.query(
+        `SELECT a.name
+         FROM academies a
+         JOIN identities i 
+            ON a.id = i.academy_id 
+            AND i.role = 'academy' 
+            AND i.issued_at IS NOT NULL
+         WHERE LOWER(i.wallet_address) = LOWER($1)`,
+        [academyAddress]
+    );
+
+    if (!academy) {
+        const err = new Error('Academy not found for the provided address');
+        err.statusCode = 404;
+        err.code = 'ACADEMY_NOT_FOUND';
+        throw err;
+    }
+
+    return academy.name;
+}
 
 
 // Services
@@ -617,7 +617,7 @@ const issueCredentialService = async (issuer_address, credential_id, signature) 
     if(checksumIssuerAddr !== credential.authorizer_wallet_address)
         await validateIssuerIdentity(checksumIssuerAddr);
 
-    await validateSignature(credential, signature);
+    validateSignature(credential, signature, credential.issuer_wallet_address);
     const encryptedPayload = await encryptWithPublicKey(credential.payload, credential.student_public_key);
     
     
@@ -743,6 +743,18 @@ const fetchCredentialService = async (credential_id, caller_address, role) => {
     const { identity, payload, signature, status } = await getCredential(student_address, credential_index);
 
     isPayloadTamperedWith(originalPayload, payload.payloadHash);
+    validateSignature({
+        id: credential_id,
+        title: title,
+        code: code,
+        type: type,
+        authorizer_wallet_address: status.academyAddress,
+        academy_name: identity.academyName,
+        issuer_wallet_address: status.issuerAddress,
+        student_wallet_address: student_address,
+        student_name,
+        payload_hash: payload.payloadHash
+    }, signature, status.issuerAddress);
 
     const credential = {
         id: credentialId,
@@ -763,13 +775,69 @@ const fetchCredentialService = async (credential_id, caller_address, role) => {
         issuer_address: status.issuerAddress,
         payload_hash: payload.payloadHash,
         signature: signature,
-        payload: originalPayload,
-        encrypted_payload: payload.encryptedPayload,
+        payload: (role === 'student') ? null : originalPayload,
+        encrypted_payload: (role === 'student') ? payload.encryptedPayload : null,
     };
 
-    return (role === 'student') 
-        ? studentCredentialDTO(credential) 
-        : credentialDTO(credential);
+    return credentialDTO(credential);
+}
+const fetchCredentialForVerificationService = async ({
+    credential_id,
+    student_address,
+    student_signature,
+    role
+}) => {
+    const credential = await fetchCredentialService(credential_id, student_address, role);
+
+    const academy_name = await getAcademyName(credential.blockchain.academy_address);
+
+    await validateSignature({
+        id: credential_id,
+        title: credential.meta.title,
+        code: credential.meta.code,
+        type: credential.meta.type,
+        authorizer_wallet_address: credential.blockchain.academy_address,
+        academy_name: academy_name,
+        issuer_wallet_address: credential.blockchain.issuer_address,
+        student_wallet_address: credential.student.address,
+        student_name: credential.student.name,
+        payload_hash: credential.verification.payload_hash
+    }, student_signature, credential.student.address);
+
+    return { ...credential, verification: { ...credential.verification, student_signature } };
+}
+const generateVerifierCredentialTokenService = async ({ 
+    credential_id, 
+    student_address,
+    student_signature,
+    expirationTimeInSeconds
+}) => {
+    const credential = await fetchCredentialForVerificationService({
+        credential_id,
+        student_address,
+        student_signature,
+        role: 'verifier'
+    })
+
+    if(!credential) {
+        const err = new Error('Credential not found or invalid for token generation');
+        err.statusCode = 404;
+        err.code = 'CREDENTIAL_NOT_FOUND_FOR_TOKEN';
+        throw err;
+    }
+
+    const tokenPayload = {
+        credential_id,
+        student_address,
+        student_signature,
+        role: 'verifier',
+        expirationTimeInSeconds
+    };
+    const options = { accessExpiresIn: expirationTimeInSeconds };
+
+    const { accessToken: token } = signTokens(tokenPayload, options, true);
+
+    return token;
 }
 const fetchAllCredentialsService = async (wallet_address, role) => {
     const credentials = await getAllCredentials(wallet_address, role);
@@ -805,5 +873,7 @@ export {
     revokeCredentialService, 
     fetchCredentialService,
     fetchAllCredentialsService,
-    getCredentialSignatureSchemaService
+    getCredentialSignatureSchemaService,
+    fetchCredentialForVerificationService,
+    generateVerifierCredentialTokenService
 };
