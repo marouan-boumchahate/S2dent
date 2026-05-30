@@ -276,6 +276,47 @@ const ensureAcademyExists = async (academyId) => {
     throw err;
   }
 }
+const getUserAcademyId = async (role_id, role) => {
+  let clause;
+  switch(role) {
+    case 'professor':
+      clause = 'JOIN professors p ON p.academy_id = a.id AND p.id = $1';
+      break;
+    case 'student':
+      clause = 'JOIN students s ON s.academy_id = a.id AND s.id = $1';
+      break;
+    default:
+      const err = new Error('Invalid role for academy summary');
+      err.statusCode = 400;
+      err.code = 'INVALID_ROLE';
+      throw err;
+  }
+
+  const { rows: [academy] } = await db.query(
+    `SELECT
+        a.id,
+        a.email,
+        a.name,
+        a.short_name,
+        a.description,
+        a.website,
+        a.logo_url,
+        a.phone
+      FROM academies AS a
+      ${clause}
+      LIMIT 1`,
+    [role_id],
+  );
+
+  if (!academy) {
+    const err = new Error('Academy not found or does not have an active identity');
+    err.statusCode = 404;
+    err.code = 'ACADEMY_NOT_FOUND';
+    throw err;
+  }
+
+  return academy;
+}
 
 
 // Services
@@ -328,10 +369,14 @@ const fetchAcademyByIdService = async (academyId) => {
   const academy = await getAcademyById(academyId);
   return { academy: academyDto(academy) };
 }
+const fetchAcademySummaryService = async (role_id, role) => 
+  await getUserAcademyId(role_id, role);
+
 
 export {
   createAcademyService,
   fetchAllAcademiesService,
   fetchAcademyByIdService,
+  fetchAcademySummaryService,
   updateAcademyService,
 };

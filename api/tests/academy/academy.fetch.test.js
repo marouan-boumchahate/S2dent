@@ -4,9 +4,23 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import crypto from 'crypto';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/academies';
 const TEST_EMAIL_LIKE = '%@academy-getbyid.test';
+
+const issueAdminToken = () => signTokens(
+  {
+    sub: '0x0000000000000000000000000000000000000001',
+    role: 'admin',
+    uid: 'admin-user',
+    rid: 'admin-role',
+  },
+  undefined,
+  true,
+).accessToken;
+
+let adminToken;
 
 const DEFAULT_BLOCKCHAIN_IDENTITY = {
   identity: {
@@ -122,6 +136,7 @@ const seedAcademy = async ({
 describe('GET /api/academies/:id', () => {
   beforeEach(async () => {
     await cleanupDB();
+    adminToken = issueAdminToken();
   });
 
   afterEach(async () => {
@@ -146,7 +161,9 @@ describe('GET /api/academies/:id', () => {
       }),
     });
 
-    const res = await request(app).get(`${endpoint}/${academy.id}`);
+    const res = await request(app)
+      .get(`${endpoint}/${academy.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
@@ -174,7 +191,8 @@ describe('GET /api/academies/:id', () => {
     const app = await makeApp();
 
     const res = await request(app)
-      .get(`${endpoint}/00000000-0000-0000-0000-000000000001`);
+      .get(`${endpoint}/00000000-0000-0000-0000-000000000001`)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 404);
     assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
@@ -185,7 +203,8 @@ describe('GET /api/academies/:id', () => {
     const app = await makeApp();
 
     const res = await request(app)
-      .get(`${endpoint}/${academy.id}`);
+      .get(`${endpoint}/${academy.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 404);
     assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
@@ -213,7 +232,9 @@ describe('GET /api/academies/:id', () => {
       }),
     });
 
-    const res = await request(app).get(`${endpoint}/${academy.id}`);
+    const res = await request(app)
+      .get(`${endpoint}/${academy.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
 

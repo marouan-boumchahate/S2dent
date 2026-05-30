@@ -35,7 +35,13 @@ const getUserColumns = async () => {
 };
 
 const issueAccessToken = (payload = {}) => signTokens(
-  { sub: payload.sub || ACADEMY_WALLET, role: payload.role || 'academy', ...payload },
+  {
+    sub: payload.sub || ACADEMY_WALLET,
+    role: payload.role || 'admin',
+    uid: payload.uid || payload.rid || ACADEMY_ID,
+    rid: payload.rid || payload.uid || ACADEMY_ID,
+    ...payload,
+  },
   undefined,
   true,
 ).accessToken;
@@ -200,9 +206,9 @@ before(async () => {
   PROFESSOR_USER_ID = await seedUser(PROFESSOR_EMAIL, 'Professor');
   STUDENT_USER_ID = await seedUser(STUDENT_EMAIL, 'Student');
 
-  ACADEMY_TOKEN = issueAccessToken({ role: 'academy', pid: ACADEMY_ID, sub: ACADEMY_WALLET });
-  PROFESSOR_TOKEN = issueAccessToken({ role: 'professor', uid: PROFESSOR_USER_ID, sub: PROFESSOR_WALLET });
-  STUDENT_TOKEN = issueAccessToken({ role: 'student', uid: STUDENT_USER_ID, sub: STUDENT_WALLET });
+  ACADEMY_TOKEN = issueAccessToken({ role: 'admin', uid: ACADEMY_ID, rid: ACADEMY_ID, sub: ACADEMY_WALLET });
+  PROFESSOR_TOKEN = issueAccessToken({ role: 'professor', uid: PROFESSOR_USER_ID, rid: PROFESSOR_USER_ID, sub: PROFESSOR_WALLET });
+  STUDENT_TOKEN = issueAccessToken({ role: 'student', uid: STUDENT_USER_ID, rid: STUDENT_USER_ID, sub: STUDENT_WALLET });
 });
 
 after(async () => {
@@ -218,7 +224,7 @@ describe('GET /api/addresses/:id', () => {
     sinon.restore();
   });
 
-  it('success.admin returns the address by id for academy token', async () => {
+  it('success.admin returns the address by id for admin token', async () => {
     const seeded = await createAddress({ userId: STUDENT_USER_ID });
 
     const res = await request(app)

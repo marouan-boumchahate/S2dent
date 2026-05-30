@@ -14,8 +14,8 @@ const router = Router();
 
 router.post(
   '/',
-  //authenticate,
-  //requireRole('academy', 'admin'),
+  authenticate,
+  requireRole('academy', 'admin'),
   validate(createAddressSchema),
   createAddressController,
 );
@@ -35,7 +35,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('academy'),
+  requireRole('academy', 'admin'),
   getAddressController
 )
 

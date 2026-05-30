@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
 contract S2dent {
     address owner;
 
@@ -73,4 +76,14 @@ contract S2dent {
         uint256 _value2,
         string memory _msg
     ) internal pure { require(_value1 < _value2, _msg); }
+
+    function isMessageSignedByOwner(
+        string memory _message,
+        bytes memory _signature
+    ) public view returns (bool) {
+        return ECDSA.recover(
+            MessageHashUtils.toEthSignedMessageHash(bytes(_message)),
+            _signature
+        ) == owner;
+    }
 }

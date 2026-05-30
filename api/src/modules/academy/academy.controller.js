@@ -2,6 +2,7 @@ import {
     createAcademyService,
     fetchAllAcademiesService,
     fetchAcademyByIdService,
+    fetchAcademySummaryService,
     updateAcademyService,
 } from './academy.service.js';
 import { created, ok } from '../../utils/response.js';
@@ -37,8 +38,14 @@ const getAcademyByIdController = async (req, res) => {
 
     return ok(res, result, 'Academy retrieved successfully');
 };
+const getAcademySummaryController = async (req, res) => {
+    const { rid, role } = req.user;
+    const result = await fetchAcademySummaryService(rid, role);
+
+    return ok(res, result, 'Academy summary retrieved successfully');
+};
 const updateAcademyController = async (req, res) => {
-    const { id } = req.params;
+    const { rid } = req.user;
     const payload = {
         description: req.body.description,
         logo_url: req.body.logo_url,
@@ -46,7 +53,7 @@ const updateAcademyController = async (req, res) => {
         website: req.body.website,
     };
 
-    const result = await updateAcademyService({ ...payload, academy_id: id });
+    const result = await updateAcademyService({ ...payload, academy_id: rid });
 
     return ok(res, result, 'Academy updated successfully');
 };
@@ -62,6 +69,7 @@ export {
     createAcademyController,
     getAllAcademiesController,
     getAcademyByIdController,
+    getAcademySummaryController,
     updateAcademyController,
     getMyAcademyController
 };

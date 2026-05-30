@@ -4,6 +4,7 @@ import sinon from 'sinon';
 import crypto from 'crypto';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/academies';
 const TEST_EMAIL_LIKE = '%@academy-update.test';
@@ -11,6 +12,17 @@ const TEST_EMAIL_LIKE = '%@academy-update.test';
 const randomHex = (size) => crypto.randomBytes(size).toString('hex');
 const buildWalletAddress = () => `0x${randomHex(20)}`;
 const buildPublicKey = () => `0x04${randomHex(64)}`;
+
+const issueAcademyToken = (academyId) => signTokens(
+  {
+    sub: '0x0000000000000000000000000000000000000001',
+    role: 'academy',
+    uid: academyId,
+    rid: academyId,
+  },
+  undefined,
+  true,
+).accessToken;
 
 let identityColumnCache = null;
 
@@ -125,11 +137,13 @@ const fetchAcademyFields = async (academyId) => {
 
 describe('PUT /api/academies/:id', () => {
   let seededAcademy;
+  let academyToken;
 
   beforeEach(async () => {
     await cleanupDB();
     const seed = await seedAcademy();
     seededAcademy = seed.academy;
+    academyToken = issueAcademyToken(seededAcademy.id);
   });
 
   afterEach(async () => {
@@ -146,7 +160,8 @@ describe('PUT /api/academies/:id', () => {
     };
 
     const res = await request(app)
-      .put(`${endpoint}/${seededAcademy.id}`)
+      .put(`${endpoint}/me`)
+      .set('Authorization', `Bearer ${academyToken}`)
       .send(body);
 
     assert.equal(res.status, 200);
@@ -169,7 +184,8 @@ describe('PUT /api/academies/:id', () => {
     const initial = await fetchAcademyFields(seededAcademy.id);
 
     const res = await request(app)
-      .put(`${endpoint}/${seededAcademy.id}`)
+      .put(`${endpoint}/me`)
+      .set('Authorization', `Bearer ${academyToken}`)
       .send({ phone: '+905551234567' });
 
     assert.equal(res.status, 200);
@@ -201,7 +217,8 @@ describe('PUT /api/academies/:id', () => {
     }
 
     const res = await request(app)
-      .put(`${endpoint}/${seededAcademy.id}`)
+      .put(`${endpoint}/me`)
+      .set('Authorization', `Bearer ${academyToken}`)
       .send({ phone: '+905551112233' });
 
     assert.equal(res.status, 404);
@@ -210,7 +227,8 @@ describe('PUT /api/academies/:id', () => {
 
   it('should return 422 for invalid URL fields', async () => {
     const res = await request(app)
-      .put(`${endpoint}/${seededAcademy.id}`)
+      .put(`${endpoint}/me`)
+      .set('Authorization', `Bearer ${academyToken}`)
       .send({ website: 'not-a-url' });
 
     assert.equal(res.status, 422);

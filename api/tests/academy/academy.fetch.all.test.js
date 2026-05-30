@@ -4,6 +4,7 @@ import sinon from 'sinon';
 import crypto from 'crypto';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const endpoint = '/api/academies';
 const TEST_EMAIL_LIKE = '%@academy-getall.test';
@@ -13,6 +14,19 @@ const randomHex = (size) => crypto.randomBytes(size).toString('hex');
 const buildWalletAddress = () => `0x${randomHex(20)}`;
 const buildTxHash = () => `0x${randomHex(32)}`;
 const buildPublicKey = () => `0x04${randomHex(64)}`;
+
+const issueAdminToken = () => signTokens(
+  {
+    sub: '0x0000000000000000000000000000000000000001',
+    role: 'admin',
+    uid: 'admin-user',
+    rid: 'admin-role',
+  },
+  undefined,
+  true,
+).accessToken;
+
+let adminToken;
 
 const cleanupDB = async () => {
   await db.query(
@@ -91,6 +105,7 @@ const seedAcademy = async ({
 describe('GET /api/academies', () => {
   beforeEach(async () => {
     await cleanupDB();
+    adminToken = issueAdminToken();
   });
 
   afterEach(async () => {
@@ -108,7 +123,9 @@ describe('GET /api/academies', () => {
       shortName: 'GAB',
     });
 
-    const res = await request(app).get(endpoint);
+    const res = await request(app)
+      .get(endpoint)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.academies));
@@ -122,7 +139,9 @@ describe('GET /api/academies', () => {
   });
 
   it('should return 200 with empty array when no academies exist', async () => {
-    const res = await request(app).get(endpoint);
+    const res = await request(app)
+      .get(endpoint)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.academies));
@@ -141,7 +160,9 @@ describe('GET /api/academies', () => {
       withIdentity: false,
     });
 
-    const res = await request(app).get(endpoint);
+    const res = await request(app)
+      .get(endpoint)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     const academies = res.body.data.academies;
@@ -157,7 +178,9 @@ describe('GET /api/academies', () => {
     await seedAcademy({ name: 'Alpha Academy', shortName: 'ALP' });
     await seedAcademy({ name: 'Omega Academy', shortName: 'OMG' });
 
-    const res = await request(app).get(endpoint);
+    const res = await request(app)
+      .get(endpoint)
+      .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     const academies = res.body.data.academies;

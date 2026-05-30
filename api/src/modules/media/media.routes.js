@@ -9,8 +9,8 @@ const router = Router()
 
 router.post(
     '/upload', 
-    // authenticate,
-    // requireRole('admin', 'professor', 'student', 'academy'),
+    authenticate,
+    requireRole('admin', 'professor', 'student', 'academy'),
     uploadSingleImage, 
     validateMediaUpload, 
     uploadMediaController

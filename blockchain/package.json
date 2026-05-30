@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "node": "npx hardhat node",
     "deploy:local": "npx hardhat ignition deploy ignition/modules/Credential.ts --network localhost",
     "check:student": "npx hardhat run scripts/checkStudent.ts --network localhost",
     "check:professor": "npx hardhat run scripts/checkProfessor.ts --network localhost",
@@ -28,5 +29,8 @@
     "ts-node": "^10.9.2",
     "typescript": "~5.8.0",
     "viem": "^2.47.4"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1"
   }
 }

@@ -13,7 +13,8 @@ import {
   updateProfessorByAdminController, 
   getProfessorByIdController,
   getMyProfileController,
-  getAllProfessorsController
+  getAllProfessorsController,
+  getAllProfessorsNamesController,
 } from './professor.controller.js';
  
 const router = Router();
@@ -24,6 +25,12 @@ router.get(
   authenticate,
   requireRole('academy'),
   getAllProfessorsController,
+);
+router.get(
+  '/names',
+  authenticate,
+  requireRole('academy'),
+  getAllProfessorsNamesController,
 );
 router.get(
   '/me',

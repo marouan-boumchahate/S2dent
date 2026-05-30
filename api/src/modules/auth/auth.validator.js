@@ -11,6 +11,10 @@ const verifySignatureSchema = Joi.object({
   signature: Joi.string().length(132).required(),
 });
 
+const verifyAdminSignatureSchema = Joi.object({
+  signature: Joi.string().length(132).required(),
+});
+
 const refreshTokenSchema = Joi.object({
   refresh_token: Joi.string().required(),
 });
@@ -19,4 +23,4 @@ const sendOtpSchema = Joi.object({
   email: Joi.string().email().required(),
 });
 
-export { generateNonceSchema, verifySignatureSchema, refreshTokenSchema, sendOtpSchema };
+export { generateNonceSchema, verifySignatureSchema, verifyAdminSignatureSchema, refreshTokenSchema, sendOtpSchema };
