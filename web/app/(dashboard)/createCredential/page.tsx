@@ -130,7 +130,7 @@ function ReviewModal({
     },
     types: {
       Credential: [
-        { name: 'credentialId', type: 'bytes32' },
+        { name: 'credentialHash', type: 'bytes32' },
         { name: 'title', type: 'string' },
         { name: 'code', type: 'string' },
         { name: 'credentialType', type: 'string' },
@@ -143,7 +143,7 @@ function ReviewModal({
       ],
     },
     message: {
-      credentialId: '0x' + Math.random().toString(16).slice(2).padEnd(64, '0'),
+      credentialHash: '0x' + Math.random().toString(16).slice(2).padEnd(64, '0'),
       title: data.title,
       code: data.code,
       credentialType: data.credType.toLowerCase(),
