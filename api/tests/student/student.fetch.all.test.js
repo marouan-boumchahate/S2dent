@@ -5,6 +5,7 @@ import {
   cleanupFetchDB,
   teardownAcademySeed,
   seedAcademy,
+  seedAdvisorProfessor,
   seedStudent,
   issueAcademyToken,
   TEST_EMAIL_SUFFIX,
@@ -16,6 +17,7 @@ const endpoint = '/api/students';
 let academyId;
 let departmentId;
 let academyToken;
+let advisorId;
 
 describe('GET /api/students', () => {
   before(async () => {
@@ -27,6 +29,14 @@ describe('GET /api/students', () => {
 
   beforeEach(async () => {
     await cleanupFetchDB();
+
+    const advisor = await seedAdvisorProfessor({
+      academyId,
+      departmentId,
+      email: `advisor.all.${Date.now()}${TEST_EMAIL_SUFFIX}`,
+      fullName: 'Advisor All Student Fetch',
+    });
+    advisorId = advisor.professor.id;
   });
 
   afterEach(async () => {
@@ -41,12 +51,14 @@ describe('GET /api/students', () => {
     const active = await seedStudent({
       academyId,
       departmentId,
+      advisorId,
       email: `active.${Date.now()}${TEST_EMAIL_SUFFIX}`,
       fullName: 'Active Student Fetch',
     });
     const revoked = await seedStudent({
       academyId,
       departmentId,
+      advisorId,
       email: `revoked.${Date.now()}${TEST_EMAIL_SUFFIX}`,
       fullName: 'Revoked Student Fetch',
       revoked: true,
@@ -77,6 +89,7 @@ describe('GET /api/students', () => {
     const seededStudent = await seedStudent({
       academyId,
       departmentId,
+      advisorId,
       email: `guard.${Date.now()}${TEST_EMAIL_SUFFIX}`,
       fullName: 'Guard Student Fetch',
     });

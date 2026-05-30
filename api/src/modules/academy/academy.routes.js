@@ -7,6 +7,7 @@ import {
   createAcademyController,
   getAllAcademiesController,
   getAcademyByIdController,
+  getAcademySummaryController,
   getMyAcademyController,
   updateAcademyController,
 } from './academy.controller.js';
@@ -16,6 +17,8 @@ const router = Router();
 
 router.get(
   '/',
+  authenticate,
+  requireRole('admin'),
   getAllAcademiesController,
 );
 router.get(
@@ -25,16 +28,28 @@ router.get(
   getMyAcademyController,
 );
 router.get(
+  '/summary',
+  authenticate,
+  requireRole('professor', 'student'),
+  getAcademySummaryController,
+)
+router.get(
   '/:id',
+  authenticate,
+  requireRole('admin'),
   getAcademyByIdController,
 );
 router.post(
   '/',
+  authenticate,
+  requireRole('admin'),
   validate(createAcademySchema),
   createAcademyController,
 );
 router.put(
-  '/:id',
+  '/me',
+  authenticate,
+  requireRole('academy'),
   validate(updateAcademySchema),
   updateAcademyController,
 );

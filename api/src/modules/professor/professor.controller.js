@@ -3,7 +3,8 @@ import {
     createProfessorService, 
     updateProfessorService, 
     fetchProfessorService,
-    fetchAllProfessorsService
+    fetchAllProfessorsService,
+    fetchAllProfessorsNamesService
 } from './professor.service.js';
 
 const createProfessorController = async (req, res) => {
@@ -56,6 +57,12 @@ const getAllProfessorsController = async (req, res) => {
     const result = await fetchAllProfessorsService(academy_id);
     return ok(res, result, 'All professors retrieved successfully');
 };
+const getAllProfessorsNamesController = async (req, res) => {
+    const { rid: academy_id } = req.user;
+
+    const result = await fetchAllProfessorsNamesService(academy_id);
+    return ok(res, result, 'All professors names retrieved successfully');
+};
 const getProfessorByIdController = async (req, res) => {
     const { id } = req.params;
     const result = await fetchProfessorService(id);
@@ -74,6 +81,7 @@ export {
     updateProfessorController, 
     updateProfessorByAdminController, 
     getAllProfessorsController,
+    getAllProfessorsNamesController,
     getProfessorByIdController, 
     getMyProfileController 
 };

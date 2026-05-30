@@ -10,7 +10,7 @@ import {
   userProfile,
 } from './data.js';
 import { fullCredentialIssuance } from './credential.js';
-import { authenticate } from './auth.js';
+import { authenticate, authenticateAdmin } from './auth.js';
 import { createAcademy } from './academy.js';
 import { createAddress } from './address.js';
 import { createUser } from './user.js';
@@ -35,10 +35,13 @@ const printTokens = (label, { accessToken, refreshToken }) => {
 // -------
 const seedAcademy = async () => {
   const profile = academyProfile();
-  const id = await createAcademy(profile);
+  const adminTokens = await authenticateAdmin(WALLETS.admin);
+  log('auth', 'admin authenticated');
+
+  const id = await createAcademy(profile, adminTokens.accessToken);
   log('academy', `created → id=${id}`);
 
-  await createAddress({ academy_id: id, ...addressProfile() });
+  await createAddress({ academy_id: id, ...addressProfile() }, adminTokens.accessToken);
   log('address', `created for academy=${id}`);
 
   await issueIdentity('academy', { email: profile.email, privateKey: WALLETS.academy.privateKey });
@@ -56,7 +59,7 @@ const seedStudent = async ({ academyId, departmentId, academyToken, academyPriva
   const userId = await createUser(profile, academyToken);
   log('user', `student → id=${userId}`);
 
-  await createAddress({ user_id: userId, ...addressProfile() });
+  await createAddress({ user_id: userId, ...addressProfile() }, academyToken);
   log('address', `created for student=${userId}`);
 
   const id = await createStudent(
@@ -96,7 +99,7 @@ const seedProfessor = async ({ academyId, departmentId, academyToken, academyPri
   const userId = await createUser(profile, academyToken);
   log('user', `professor → id=${userId}`);
 
-  await createAddress({ user_id: userId, ...addressProfile() });
+  await createAddress({ user_id: userId, ...addressProfile() }, academyToken);
   log('address', `created for professor=${userId}`);
 
   const id = await createProfessor(

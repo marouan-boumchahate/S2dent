@@ -210,7 +210,7 @@ const updateProfessorInDB = async ({
     professor_id
   ]
 );
-const getProfessorsFromDB = async (academy_id = null) => {
+const getProfessorsFromDB = async (academy_id) => {
   const { rows } = await db.query(
     `SELECT
         p.id,
@@ -227,6 +227,22 @@ const getProfessorsFromDB = async (academy_id = null) => {
       JOIN identities i ON i.user_id = u.id AND i.role = 'professor'
       JOIN pending_transactions pt
         ON pt.tx_hash = COALESCE(i.revoke_identity_tx_hash, i.issue_identity_tx_hash)
+      WHERE d.academy_id = $1
+      ORDER BY u.full_name ASC`,
+    [academy_id]
+  );
+
+  return rows;
+};
+const getProfessorsNamesFromDB = async (academy_id) => {
+  const { rows } = await db.query(
+    `SELECT
+        p.id,
+        u.full_name
+      FROM professors p
+      JOIN users u ON u.id = p.user_id
+      JOIN departments d ON d.id = p.department_id
+      JOIN identities i ON i.user_id = u.id AND i.role = 'professor' AND i.status = 'issued'
       WHERE d.academy_id = $1
       ORDER BY u.full_name ASC`,
     [academy_id]
@@ -304,10 +320,20 @@ const fetchAllProfessorsService = async (academy_id) => {
   const professors = await getProfessorsFromDB(academy_id);
   return { professors: professors.map((professor) => ProfessorSummaryDto(professor)) };
 };
+const fetchAllProfessorsNamesService = async (academy_id) => {
+  const professors = await getProfessorsNamesFromDB(academy_id);
+  return professors;
+};
 const fetchProfessorService = async (professor_id) => {
   const professor = await getProfessorFromDB(professor_id);
   return { professor: professorDto(professor) };
 }
 
 
-export { createProfessorService, updateProfessorService, fetchAllProfessorsService, fetchProfessorService };
+export { 
+  createProfessorService, 
+  updateProfessorService, 
+  fetchAllProfessorsService, 
+  fetchAllProfessorsNamesService,
+  fetchProfessorService 
+};

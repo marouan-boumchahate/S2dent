@@ -1,8 +1,10 @@
 import esmock from 'esmock'
 import request from 'supertest'
 import { strict as assert } from 'assert'
+import { signTokens } from '../../src/utils/jwt.js'
 
 const mockUploadImage = async () => 'https://res.cloudinary.com/demo/image/upload/v1/sample.png'
+const { accessToken } = signTokens({ sub: 'media-test-user', role: 'student' })
 
 const makeApp = async () => {
   const { default: app } = await esmock.strict(
@@ -25,6 +27,7 @@ describe('POST /api/media/upload', () => {
 
     const res = await request(app)
       .post('/api/media/upload')
+      .set('Authorization', `Bearer ${accessToken}`)
       .attach('image', Buffer.from('89504e470d0a1a0a', 'hex'), {
         filename: 'sample.png',
         contentType: 'image/png',
@@ -41,6 +44,7 @@ describe('POST /api/media/upload', () => {
 
     const res = await request(app)
       .post('/api/media/upload')
+      .set('Authorization', `Bearer ${accessToken}`)
       .attach('image', Buffer.from('plain text file'), {
         filename: 'sample.txt',
         contentType: 'text/plain',

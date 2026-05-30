@@ -13,6 +13,7 @@ import departmentRouter from './modules/department/department.routes.js'
 import credentialRouter from './modules/credential/credential.routes.js'
 import mediaRouter from './modules/media/media.routes.js'
 
+import generalIdentityRouter from './modules/identity/general/general.identity.routes.js'
 import academyIdentityRouter from './modules/identity/academy/academy.identity.routes.js'
 import professorIdentityRouter from './modules/identity/professor/professor.identity.routes.js'
 import studentIdentityRouter from './modules/identity/student/student.identity.routes.js'
@@ -37,6 +38,8 @@ app.use('/api/users', userRouter)
 app.use('/api/addresses', addressRouter)
 app.use('/api/departments', departmentRouter)
 
+
+app.use('/api/identities/', generalIdentityRouter)
 app.use('/api/identity/academies', academyIdentityRouter)
 app.use('/api/identity/professors', professorIdentityRouter)
 app.use('/api/identity/students', studentIdentityRouter)

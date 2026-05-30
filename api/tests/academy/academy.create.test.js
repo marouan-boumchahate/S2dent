@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import sinon from 'sinon';
 import app from '../../src/app.js';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 // MY SETUP
 // ========
@@ -16,6 +17,19 @@ const validBody = (overrides = {}) => ({
     tax_id: 'TAX-FBU-001',
     ...overrides,
 });
+
+const issueAdminToken = () => signTokens(
+    {
+        sub: '0x0000000000000000000000000000000000000001',
+        role: 'admin',
+        uid: 'admin-user',
+        rid: 'admin-role',
+    },
+    undefined,
+    true,
+).accessToken;
+
+let adminToken;
 
 const cleanupDB = async () => {
     const matchClause = `
@@ -65,6 +79,7 @@ const cleanupDB = async () => {
 describe('POST /api/academies', () => {
     beforeEach(async () => {
         await cleanupDB();
+        adminToken = issueAdminToken();
     });
 
     afterEach(async () => {
@@ -77,6 +92,7 @@ describe('POST /api/academies', () => {
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(body);
 
         assert.equal(res.status, 201);
@@ -116,6 +132,7 @@ describe('POST /api/academies', () => {
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(body);
 
         assert.equal(res.status, 201);
@@ -129,10 +146,12 @@ describe('POST /api/academies', () => {
     it('returns 409 ACADEMY_EMAIL_DUPLICATE when email already exists', async () => {
         await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody());
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody({
                 name: 'Test Academy 2',
                 short_name: 'TA2',
@@ -148,10 +167,12 @@ describe('POST /api/academies', () => {
     it('returns 409 ACADEMY_DUPLICATE when academy name already exists', async () => {
         await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody());
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody({
                 email: 'other@test.edu.tr',
                 short_name: 'TA2',
@@ -167,10 +188,12 @@ describe('POST /api/academies', () => {
     it('returns 409 ACADEMY_SHORT_NAME_DUPLICATE when academy short name already exists', async () => {
         await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody());
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody({
                 email: 'other@test.edu.tr',
                 name: 'Test Academy 2',
@@ -186,6 +209,7 @@ describe('POST /api/academies', () => {
     it('returns 422 when body is empty', async () => {
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send({});
 
         assert.equal(res.status, 422);
@@ -197,6 +221,7 @@ describe('POST /api/academies', () => {
     it('returns 422 for invalid academy type', async () => {
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody({ type: 'spaceship' }));
 
         assert.equal(res.status, 422);
@@ -207,6 +232,7 @@ describe('POST /api/academies', () => {
     it('returns 422 for invalid website URL', async () => {
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody({ website: 'not-a-url' }));
 
         assert.equal(res.status, 422);
@@ -231,6 +257,7 @@ describe('POST /api/academies', () => {
 
             const res = await request(app)
                 .post('/api/academies')
+                .set('Authorization', `Bearer ${adminToken}`)
                 .send(body);
 
             assert.equal(res.status, 422, `Expected 422 when ${field} is missing`);
@@ -244,6 +271,7 @@ describe('POST /api/academies', () => {
 
         const res = await request(app)
             .post('/api/academies')
+            .set('Authorization', `Bearer ${adminToken}`)
             .send(validBody());
 
         assert.equal(res.status, 500);

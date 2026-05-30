@@ -91,10 +91,16 @@ const seedTUser = async () => {
 };
 
 let USER_ID;
-let ACADEMY_TOKEN;
+let ADMIN_TOKEN;
 
 const issueAccessToken = (payload = {}) => signTokens(
-  { sub: '0x0000000000000000000000000000000000000001', role: 'academy', ...payload },
+  {
+    sub: '0x0000000000000000000000000000000000000001',
+    role: 'admin',
+    uid: 'admin-user',
+    rid: 'admin-role',
+    ...payload,
+  },
   undefined,
   true,
 ).accessToken;
@@ -103,13 +109,13 @@ describe('POST /api/addresses', () => {
   before(async () => {
     await cleanupAddresses();
     USER_ID = await seedTUser();
-    ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
+    ADMIN_TOKEN = issueAccessToken();
   });
 
   beforeEach(async () => {
     await cleanupAddresses();
     USER_ID = await seedTUser();
-    ACADEMY_TOKEN = issueAccessToken({ rid: USER_ID });
+    ADMIN_TOKEN = issueAccessToken();
   });
 
   afterEach(async () => {
@@ -120,7 +126,7 @@ describe('POST /api/addresses', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -157,7 +163,7 @@ describe('POST /api/addresses', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(body);
 
     assert.equal(res.status, 201);
@@ -177,7 +183,7 @@ describe('POST /api/addresses', () => {
   it('returns 422 when body is empty', async () => {
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send({});
 
     assert.equal(res.status, 422);
@@ -195,7 +201,7 @@ describe('POST /api/addresses', () => {
 
       const res = await request(app)
         .post(endpoint)
-        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+        .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
         .send(body);
 
       assert.equal(
@@ -212,7 +218,7 @@ describe('POST /api/addresses', () => {
   it('returns 422 when latitude is out of range', async () => {
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(validBody({ latitude: 100 }));
 
     assert.equal(res.status, 422);
@@ -224,7 +230,7 @@ describe('POST /api/addresses', () => {
   it('returns 422 when longitude is out of range', async () => {
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(validBody({ longitude: -200 }));
 
     assert.equal(res.status, 422);
@@ -238,7 +244,7 @@ describe('POST /api/addresses', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(validBody({ postal_code: tooLongPostalCode }));
 
     assert.equal(res.status, 422);
@@ -252,7 +258,7 @@ describe('POST /api/addresses', () => {
 
     const res = await request(app)
       .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
       .send(validBody({ user_id: USER_ID }));
 
     assert.equal(res.status, 500);

@@ -8,6 +8,7 @@ import { getNonce } from '../../utils/crypto.js';
 import { getAcademyIdentity } from '../../blockchain/identity/academy.identity.blockchain.js';
 import { getStudentIdentity } from '../../blockchain/identity/student.identity.blockchain.js';
 import { getProfessorIdentity } from '../../blockchain/identity/professor.identity.blockchain.js';
+import { isOwnerService } from '../../blockchain/s2dent.blockchain.js';
 import { recoverSigner, hash } from '../../utils/crypto.js';
 import { signTokens, verifyRefreshToken } from '../../utils/jwt.js';
 import { sendOtpEmail } from '../../utils/email.js';
@@ -234,6 +235,40 @@ const getUserByEmail = async (email) => {
 
 
 // Services
+const generateAdminNonceService = async () => {
+    const nonce = getNonce(64);
+    await setCache('admin_nonce', nonce, 5 * 60);
+
+    return { message: `Sign this nonce to authenticate as admin: ${nonce}` };
+}
+const verifyAdminSignatureService = async (signature) => {
+    const nonce = await getCache('admin_nonce');
+
+    if (!nonce) {
+        const err = new Error('Nonce is missing or has expired');
+        err.statusCode = 400;
+        err.code = 'INVALID_NONCE';
+        throw err;
+    }
+
+    const message = `Sign this nonce to authenticate as admin: ${nonce}`;
+    const isValid = await isOwnerService(message, signature);
+
+    if (!isValid) {
+        const err = new Error('Invalid signature');
+        err.statusCode = 401;
+        err.code = 'INVALID_SIGNATURE';
+        throw err;
+    }
+
+    const tokens = getJwt(
+        { role: 'admin' }, 
+        { accessExpiresIn: '1h', refreshExpiresIn: '1d' }
+    );
+    await delCache('admin_nonce');
+    
+    return tokenResponseDto(tokens);
+}
 const generateNonceService = async (wallet_address) => {
     const checksumAddr = ethers.getAddress(wallet_address);
     const { role } = await fetchIdentityByAddress(checksumAddr);
@@ -311,7 +346,9 @@ const sendOtpService = async (email) => {
 
 
 export { 
+    generateAdminNonceService,
     generateNonceService, 
+    verifyAdminSignatureService,
     verifySignatureService, 
     refreshTokenService, 
     logoutService, 

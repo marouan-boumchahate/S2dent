@@ -36,7 +36,13 @@ const getUserColumns = async () => {
 };
 
 const issueAccessToken = (payload = {}) => signTokens(
-  { sub: payload.sub || ACADEMY_WALLET, role: payload.role || 'academy', ...payload },
+  {
+    sub: payload.sub || ACADEMY_WALLET,
+    role: payload.role || 'academy',
+    uid: payload.uid || payload.rid || ACADEMY_ID,
+    rid: payload.rid || payload.uid || ACADEMY_ID,
+    ...payload,
+  },
   undefined,
   true,
 ).accessToken;
@@ -204,10 +210,10 @@ before(async () => {
   STUDENT_USER_ID = await seedUser(STUDENT_EMAIL, 'Student');
   NO_ADDRESS_USER_ID = await seedUser(NO_ADDRESS_EMAIL, 'Missing');
 
-  ACADEMY_TOKEN = issueAccessToken({ role: 'academy', pid: ACADEMY_ID, sub: ACADEMY_WALLET });
-  PROFESSOR_TOKEN = issueAccessToken({ role: 'professor', uid: PROFESSOR_USER_ID, sub: PROFESSOR_WALLET });
-  STUDENT_TOKEN = issueAccessToken({ role: 'student', uid: STUDENT_USER_ID, sub: STUDENT_WALLET });
-  NO_ADDRESS_TOKEN = issueAccessToken({ role: 'student', uid: NO_ADDRESS_USER_ID, sub: STUDENT_WALLET });
+  ACADEMY_TOKEN = issueAccessToken({ role: 'academy', uid: ACADEMY_ID, rid: ACADEMY_ID, sub: ACADEMY_WALLET });
+  PROFESSOR_TOKEN = issueAccessToken({ role: 'professor', uid: PROFESSOR_USER_ID, rid: PROFESSOR_USER_ID, sub: PROFESSOR_WALLET });
+  STUDENT_TOKEN = issueAccessToken({ role: 'student', uid: STUDENT_USER_ID, rid: STUDENT_USER_ID, sub: STUDENT_WALLET });
+  NO_ADDRESS_TOKEN = issueAccessToken({ role: 'student', uid: NO_ADDRESS_USER_ID, rid: NO_ADDRESS_USER_ID, sub: STUDENT_WALLET });
 });
 
 after(async () => {

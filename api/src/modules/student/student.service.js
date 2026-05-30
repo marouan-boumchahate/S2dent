@@ -23,6 +23,7 @@ const StudentSummaryDto = (student) => ({
   name: student.full_name,
   serial_number: student.student_number,
   department: student.department_name,
+  advisor_name: student.advisor_name,
   last_transaction_status: student.last_transaction_status,
   issued_at: student.issued_at,
   is_revoked: student.revoked_at !== null,
@@ -140,7 +141,7 @@ const ensureStudentExists = async (student_id) => {
   return row;
 }
 
-const getStudentsFromDB = async (academy_id = null) => {
+const getStudentsFromDB = async (academy_id) => {
   const { rows } = await db.query(
     `SELECT
         s.id,
@@ -148,11 +149,14 @@ const getStudentsFromDB = async (academy_id = null) => {
         u.email,
         s.student_number,
         d.name AS department_name,
+        up.full_name AS advisor_name,
         i.wallet_address,
         i.revoked_at,
         i.issued_at,
         pt.status AS last_transaction_status
       FROM students s
+      JOIN professors p ON p.id = s.advisor_id
+      JOIN users up ON up.id = p.user_id
       JOIN users u ON u.id = s.user_id
       JOIN departments d ON d.id = s.department_id
       JOIN identities i ON i.user_id = u.id AND i.role = 'student'
