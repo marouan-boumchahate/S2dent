@@ -8,6 +8,7 @@ const ADMIN_GROUPS = [
   { label: 'Professors', href: '/professors', icon: '/professor.png' },
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
   { label: 'Departments', href: '/departments', icon: '/corporation.png' },
+  { label: 'Issue identity', href: '/issueidentities', icon: '/certificate.png' },
   { label: 'Settings', href: '/settings', icon: '/setting_1.png' },
 ];
 
