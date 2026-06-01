@@ -1941,9 +1941,9 @@ Side Effects:
    - enrollment: `course_name`, `course_code`, `academic_year`, `semester`, `enrollment_date`.
    - attendance: `course_code`, `course_name`, `academic_year`, `semester`, `total_sessions`, `attended_sessions`, `excused_absences`, `period_from`, `period_to`.
    - degree: `degree_title`, `degree_level`, `major`, `program_code`, `faculty`, `department`, `graduation_date`, `gpa`, `gpa_scale`, `class_rank`, `class_size`, `honors`, `total_credits_earned`, `required_credits`.
-- certificate: `certificate_name`, `certificate_code`, `certificate_category`, `program_duration_hours`, `delivery_mode`, `start_date`, `end_date`, `final_score`, `passing_score`, `instructor_name`.
-- achievement: `achievement_title`, `achievement_type`, `event_name`, `event_type`, `event_organizer`, `event_date`, `event_location`, `score`, `placement`, `team_name`, `project_title`, `project_description`.
-- transcript: `academic_year_from`, `academic_year_to`, `program_name`, `degree_level`, `cumulative_gpa`, `gpa_scale`, `total_credits_attempted`, `total_credits_earned`.
+   - certificate: `certificate_name`, `certificate_code`, `certificate_category`, `program_duration_hours`, `delivery_mode`, `start_date`, `end_date`, `final_score`, `passing_score`, `instructor_name`.
+   - achievement: `achievement_title`, `achievement_type`, `event_name`, `event_type`, `event_organizer`, `event_date`, `event_location`, `score`, `placement`, `team_name`, `project_title`, `project_description`.
+   - transcript: `academic_year_from`, `academic_year_to`, `program_name`, `degree_level`, `cumulative_gpa`, `gpa_scale`, `total_credits_attempted`, `total_credits_earned`.
 ```json
 {
   "title": "Attendance Certificate - Programming 101",
