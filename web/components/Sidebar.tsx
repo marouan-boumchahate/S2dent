@@ -2,6 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { useLogo } from '@/lib/logoContext';
 
 const ADMIN_GROUPS = [
   { label: 'Students', href: '/students', icon: '/student_1.png' },
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [role, setRole] = useState<'admin' | 'professor'>('admin');
+  const { logoUrl } = useLogo();
 
   useEffect(() => {
     const stored = localStorage.getItem('userRole') as 'admin' | 'professor' | null;
@@ -61,15 +63,15 @@ export default function Sidebar() {
       `}>
 
         {/* Logo */}
-        <div className="p-6 border-b border-borderLine flex flex-col items-center text-center gap-3">
+        <div className="p-6 border-b border-borderLine flex flex-col items-center text-center gap-2">
           <button
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden self-end text-textMuted hover:text-textLight"
           >
             ✕
           </button>
-          <div className="w-32 h-32 flex items-center justify-center -mb-7">
-            <Image src="/logo.png" alt="University Logo" width={128} height={128} className="object-contain" />
+          <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full">
+            <img src={logoUrl} alt="University Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-textLight">S2dent</h2>

@@ -213,7 +213,7 @@ function ReviewModal({
             </div>
           ) : (
             // actual view details and with same asked information form marouan flat string for esay look and i added a highlighted values i dont know if thay required or not but i think they will be good            
-            <div className="bg-gray-900 text-xs rounded-xl p-4 leading-relaxed break-all font-mono text-gray-300">
+            <div className="bg-gray-900 text-xs rounded-xl p-4 leading-relaxed break-all font-mono text-gray-300 overflow-y-auto max-h-48">
               {'{ '}
               {Object.entries(signingData.message).map(([k, v], i) => (
                 <span key={k}>

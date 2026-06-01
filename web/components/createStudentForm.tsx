@@ -26,8 +26,13 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
   const [enrollmentStatus, setEnrollmentStatus] = useState('');
   const [enrollmentDate, setEnrollmentDate] = useState('');
   const [actualGraduationDate, setActualGraduationDate] = useState('');
+  const [adviserId, setAdviserId] = useState('');
 
   const router = useRouter();
+
+  const professorOptions = ['', ...store.professors.map(p =>
+    [p.title, p.firstName, p.lastName].filter(Boolean).join(' ')
+  )];
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +40,17 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
     onStepChange(2);
   };
 
- const handleStep3Submit = (e: React.FormEvent) => {
-  e.preventDefault();
-  store.addStudent({
-    firstName, middleName, lastName, dateOfBirth, gender, nationality,
-    nationalId, email, phone, photoUrl, notes,
-    department, currentLevel, enrollmentStatus, enrollmentDate,
-    actualGraduationDate,
-  });
-  onClose();
-router.push('/students');
-};
+  const handleStep3Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+store.addStudent({
+  firstName, middleName, lastName, dateOfBirth, gender, nationality,
+  nationalId, email, phone, photoUrl, notes,
+  department, currentLevel, enrollmentStatus, enrollmentDate,
+  actualGraduationDate, adviserId,
+});
+    onClose();
+    router.push('/students');
+  };
 
   if (step === 2) {
     return (
@@ -106,6 +111,12 @@ router.push('/students');
               value={actualGraduationDate}
               onChange={setActualGraduationDate}
             />
+            <FormField
+              label="Adviser"
+              value={adviserId}
+              onChange={setAdviserId}
+              options={professorOptions}
+            />
           </div>
 
           {/* notes */}
@@ -129,7 +140,7 @@ router.push('/students');
           </button>
           <Button
             title="Submit"
-            onClick={() => {}}
+            onClick={() => { }}
             type="submit"
             className="w-full bg-mint font-bold"
           />
@@ -179,7 +190,7 @@ router.push('/students');
         >
           Cancel
         </button>
-        <Button title="Next →" onClick={() => {}} type="submit" className="w-full bg-mint font-bold" />
+        <Button title="Next →" onClick={() => { }} type="submit" className="w-full bg-mint font-bold" />
       </div>
     </form>
   );

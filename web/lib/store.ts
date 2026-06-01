@@ -18,6 +18,7 @@ export type Student = {
   dateOfBirth: string;
   gender: string;
   notes: string;
+  adviserId?: string;
   createdAt: string;
 };
 

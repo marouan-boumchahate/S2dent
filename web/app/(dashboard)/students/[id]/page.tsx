@@ -66,19 +66,26 @@ function CertTypeBadge({ type }: { type: string }) {
   );
 }
 
-// Update modal — CGPA only
+// Update modal — CGPA + Adviser
 function UpdateModal({
   currentCgpa,
+  currentAdviserId,
   onConfirm,
   onCancel,
 }: {
   currentCgpa: string;
-  onConfirm: (cgpa: string) => void;
+  currentAdviserId: string;
+  onConfirm: (cgpa: string, adviserId: string) => void;
   onCancel: () => void;
 }) {
   const [cgpa, setCgpa] = useState(currentCgpa || '');
+  const [adviserId, setAdviserId] = useState(currentAdviserId || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const professorOptions = ['', ...store.professors.map(p =>
+    [p.title, p.firstName, p.lastName].filter(Boolean).join(' ')
+  )];
 
   const handleSubmit = async () => {
     const val = parseFloat(cgpa);
@@ -91,7 +98,7 @@ function UpdateModal({
     // TODO: replace with real blockchain update call
     await new Promise(r => setTimeout(r, 800));
     setLoading(false);
-    onConfirm(cgpa);
+    onConfirm(cgpa, adviserId);
   };
 
   return (
@@ -112,6 +119,15 @@ function UpdateModal({
           placeholder="e.g. 3.90"
         />
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+
+        <div className="mt-4">
+          <FormField
+            label="Adviser"
+            value={adviserId}
+            onChange={setAdviserId}
+            options={professorOptions}
+          />
+        </div>
 
         <div className="flex gap-3 mt-6">
           <button
@@ -211,12 +227,14 @@ export default function StudentDetailPage() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [cgpa, setCgpa] = useState('');
+  const [adviserId, setAdviserId] = useState('');
 
   useEffect(() => {
     const found = store.students.find(s => s.id === id);
     if (!found) { router.push('/students'); return; }
     setStudent(found);
     setCgpa((found as any).cgpa ?? '');
+    setAdviserId((found as any).adviserId ?? '');
   }, [id, router]);
 
   if (!student) {
@@ -226,9 +244,11 @@ export default function StudentDetailPage() {
   const fullName = [student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ');
   const initials = getInitials(student);
 
-  const handleUpdate = (newCgpa: string) => {
+  const handleUpdate = (newCgpa: string, newAdviserId: string) => {
     (student as any).cgpa = newCgpa;
+    (student as any).adviserId = newAdviserId;
     setCgpa(newCgpa);
+    setAdviserId(newAdviserId);
     setShowUpdateModal(false);
   };
 
@@ -243,6 +263,7 @@ export default function StudentDetailPage() {
       {showUpdateModal && (
         <UpdateModal
           currentCgpa={cgpa}
+          currentAdviserId={adviserId}
           onConfirm={handleUpdate}
           onCancel={() => setShowUpdateModal(false)}
         />
@@ -296,6 +317,7 @@ export default function StudentDetailPage() {
                 <InfoRow label="CGPA" value={cgpa ? `${cgpa} / 4.00` : '—'} />
                 <InfoRow label="Expected Graduation" value={student.actualGraduationDate || '—'} />
                 <InfoRow label="Year" value={student.currentLevel} />
+                <InfoRow label="Adviser" value={adviserId || '—'} />
               </div>
 
               <div className="w-full mt-6 space-y-3">
