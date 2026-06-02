@@ -1,21 +1,32 @@
+import 'package:app/core/utils/show_alert_dialog.dart';
+import 'package:app/core/utils/show_verify_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
+import 'package:app/feature/auth/presentation/providers/verification_provider.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/utils/show_verify_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pinput/pinput.dart';
 
-class VerifyOTPPage extends StatefulWidget {
+class VerifyOTPPage extends ConsumerStatefulWidget {
   const VerifyOTPPage({super.key});
 
   @override
-  State<VerifyOTPPage> createState() => _VerifyOTPPageState();
+  ConsumerState<VerifyOTPPage> createState() => _VerifyOTPPageState();
 }
 
-class _VerifyOTPPageState extends State<VerifyOTPPage> {
+class _VerifyOTPPageState extends ConsumerState<VerifyOTPPage> {
   final _otpController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  void onTapVerify() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (!_formKey.currentState!.validate()) return;
+    ref
+        .read(verificationControllerProvider.notifier)
+        .submitIssuance(_otpController.text);
+  }
 
   @override
   void dispose() {
@@ -25,23 +36,34 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
 
   @override
   Widget build(BuildContext context) {
+    final verificationState = ref.watch(verificationControllerProvider);
     final image = Theme.of(context).brightness == Brightness.dark
         ? "assets/images/otp_dark.png"
         : "assets/images/otp_light.png";
+
+    ref.listen(verificationControllerProvider, (previous, next) {
+      if (next.error != null && previous?.error != next.error) {
+        showAlertDialog(context, next.error!, type: AlertType.error);
+      }
+      if (next.isComplete && !(previous?.isComplete ?? false)) {
+        showCustomDialog(context);
+      }
+    });
+
     return AuthLayout(
       children: [
         _content(context, image),
         PrimaryButton(
-          onTap: () {
-            showCustomDialog(context);
-          },
+          onTap: verificationState.isLoading ? null : onTapVerify,
           label: "VERIFY",
+          isEnable: !verificationState.isLoading,
+          isLoading: verificationState.isLoading,
         ),
       ],
     );
   }
 
-  Form _content(BuildContext context, image) {
+  Form _content(BuildContext context, String image) {
     return Form(
       key: _formKey,
       child: Column(
@@ -65,6 +87,15 @@ class _VerifyOTPPageState extends State<VerifyOTPPage> {
   Pinput _otpFields(BuildContext context) {
     return Pinput(
       length: 6,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return "OTP required";
+        }
+        if (value.length < 6) {
+          return "Must be 6 figures";
+        }
+        return null;
+      },
       controller: _otpController,
       keyboardType: TextInputType.visiblePassword,
       textCapitalization: TextCapitalization.characters,

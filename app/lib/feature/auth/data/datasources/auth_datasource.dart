@@ -1,6 +1,7 @@
 import 'package:app/feature/auth/domain/models/auth_token.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart';
+
 class AuthDatasource {
   const AuthDatasource(this._dio);
 
@@ -9,10 +10,10 @@ class AuthDatasource {
   Future<String> getNonce(String walletAddress) async {
     debugPrint("Auth - Get nonce API has been called");
     final response = await _dio.get(
-      '/nonce',
-      queryParameters: {'address': walletAddress},
+      '/auth/nonce',
+      queryParameters: {'wallet_address': walletAddress},
     );
-    return response.data['message'] as String;
+    return response.data['data']['message'] as String;
   }
 
   Future<AuthToken> verifySignature(
@@ -21,8 +22,8 @@ class AuthDatasource {
   ) async {
     debugPrint("Auth - Verify signature API has been called");
     final response = await _dio.post(
-      '/verify',
-      data: {'address': walletAddress, 'signature': signature},
+      '/auth/verify',
+      data: {'wallet_address': walletAddress, 'signature': signature},
     );
 
     if (response.data['success'] != true) {
@@ -35,8 +36,8 @@ class AuthDatasource {
   Future<AuthToken> refreshAccessToken(String refreshToken) async {
     debugPrint("Auth - Refresh access token API has been called");
     final response = await _dio.post(
-      '/refresh',
-      data: {'refreshToken': refreshToken},
+      '/auth/refresh',
+      data: {'refresh_token': refreshToken},
     );
 
     if (response.data['success'] != true) {
@@ -48,9 +49,9 @@ class AuthDatasource {
 
   Future<void> logout(String refreshToken) async {
     debugPrint("Auth - Logout API has been called");
-    await _dio.post(
-      '/logout',
-      data: {'refreshToken': refreshToken},
+    await _dio.delete(
+      '/auth/logout',
+      data: {'refresh_token': refreshToken},
     );
   }
 }

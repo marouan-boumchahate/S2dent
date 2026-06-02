@@ -119,7 +119,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           isLoading: !isModalReady,
         ),
         _dividerSection(context),
-        SecondaryButton(onTap: onTapVerify, label: "Verify Identity"),
+        SecondaryButton(
+          onTap: isModalReady ? onTapVerify : null,
+          label: "Verify Identity",
+          isDisabled: !isModalReady,
+        ),
       ],
     );
   }
