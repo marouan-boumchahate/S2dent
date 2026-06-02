@@ -70,7 +70,11 @@ class VerificationController extends StateNotifier<VerificationState> {
     final modal = appKitModal;
     if (modal == null || _email == null || _nonce == null) return;
 
-    state = state.copyWith(isLoading: true, isComplete: false, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      isComplete: false,
+      clearError: true,
+    );
     try {
       if (!modal.isConnected) {
         await modal.openModalView();
