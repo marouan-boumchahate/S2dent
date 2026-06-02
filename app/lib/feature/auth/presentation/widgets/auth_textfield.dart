@@ -8,12 +8,14 @@ class AuthTextfield extends StatelessWidget {
     required this.hint,
     required this.controller,
     this.textInputAction,
+    this.validator,
   });
 
   final String label;
   final String hint;
   final TextEditingController controller;
   final TextInputAction? textInputAction;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,7 @@ class AuthTextfield extends StatelessWidget {
               ),
             ),
             textInputAction: textInputAction,
+            validator: validator,
           )
         ],
       ),

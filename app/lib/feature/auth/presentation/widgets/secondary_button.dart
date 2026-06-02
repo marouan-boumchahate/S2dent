@@ -1,4 +1,5 @@
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/theme/app_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
@@ -8,11 +9,13 @@ class SecondaryButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.metamask = false,
+    this.isDisabled = false,
   });
 
   final String label;
   final Function()? onTap;
   final bool metamask;
+  final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +31,7 @@ class SecondaryButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: context.colors.primary,
+              color: isDisabled ? AppColors.textMuted : context.colors.primary,
               width: 2,
             ),
           ),
@@ -51,7 +54,7 @@ class SecondaryButton extends StatelessWidget {
     return Text(
       label,
       style: context.texts.titleLarge!.copyWith(
-        color: context.colors.primary,
+        color: isDisabled ? AppColors.textMuted : context.colors.primary,
       ),
       textAlign: TextAlign.center,
     );
