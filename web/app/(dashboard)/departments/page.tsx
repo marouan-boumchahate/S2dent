@@ -5,6 +5,7 @@ import { store, Department } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import PageHeader from '@/components/PageHeader';
+import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 
 // modal
 function AddModal({ onConfirm, onCancel }: {
@@ -165,6 +166,8 @@ function StatCard({ label, value, sub, subColor }: {
   );
 }
 
+type DepartmentRow = Department & { searchText: string };
+
 // main page
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -177,6 +180,15 @@ export default function DepartmentsPage() {
   }, []);
 
   const refresh = () => setDepartments([...store.departments]);
+
+  // flatten searchable fields into a single searchText key for Allfilter
+  const { filtered, handleSearch } = useSearchFilter<DepartmentRow>(
+    departments as DepartmentRow[],
+    (d) => ({
+      ...d,
+      searchText: [d.code, d.name, d.faculty, d.description].filter(Boolean).join(' '),
+    }),
+  );
 
   // stats
   const total = departments.length;
@@ -247,15 +259,45 @@ export default function DepartmentsPage() {
 
           {/* table */}
           <div className="bg-card border border-borderLine rounded-2xl flex-1 overflow-hidden">
+            <div className="px-6 py-4 border-b border-borderLine flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-textMuted text-sm font-bold uppercase tracking-widest">
+                All Departments
+
+                {/* for filter */}
+                {filtered.length !== departments.length && (
+                  <span className="ml-2 text-mint normal-case font-normal">
+                    — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {/* SearchFilter */}
             <div className="px-6 py-4 border-b border-borderLine">
-              <p className="text-textMuted text-sm font-bold uppercase tracking-widest">All Departments</p>
+              <SearchFilter
+                placeholder="Search departments by name, code, faculty…"
+                filterKeys={[
+                  { label: 'Code', value: 'code' },
+                  { label: 'Name', value: 'name' },
+                  { label: 'Faculty', value: 'faculty' },
+                  { label: 'Status', value: 'status' },
+                ]}
+                onSearch={handleSearch}
+              />
             </div>
 
             {departments.length === 0 ? (
               <div className="flex items-center justify-center min-h-48 py-12">
                 <p className="text-textMuted px-4">No departments yet. Click <span className="text-mint font-bold">+ Add new</span> to create one.</p>
               </div>
+
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+                <p className="text-textMuted">No departments match your search.</p>
+                <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
+              </div>
             ) : (
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -266,18 +308,17 @@ export default function DepartmentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {departments.map(dept => (
-                      <tr
-                        key={dept.id}
-                        className="border-b border-borderLine hover:bg-surface/50 transition"
-                      >
+                    {filtered.map(dept => (
+                      <tr key={dept.id} className="border-b border-borderLine hover:bg-surface/50 transition">
                         <td className="px-6 py-4 text-textMuted text-sm font-mono">{dept.code}</td>
                         <td className="px-6 py-4">
                           <p className="text-textLight text-sm font-semibold">{dept.name}</p>
+
                           {dept.description && (
                             <p className="text-textMuted text-xs mt-0.5 max-w-xs truncate">{dept.description}</p>
                           )}
                         </td>
+
                         <td className="px-6 py-4 text-textLight text-sm">{dept.faculty}</td>
                         <td className="px-6 py-4 text-textLight text-sm">{dept.totalYears} yrs</td>
                         <td className="px-6 py-4 text-textLight text-sm font-medium">{profCount(dept)}</td>

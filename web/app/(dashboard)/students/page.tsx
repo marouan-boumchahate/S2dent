@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
+import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 import { store, Student } from '@/lib/store';
 
 export default function StudentsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
-
   const [role, setRole] = useState<string>('admin');
 
   useEffect(() => {
@@ -20,8 +20,20 @@ export default function StudentsPage() {
     setStudents([...store.students]);
   }, []);
 
+  // searchFilter hook
+  // transform flattens the name fields so users can search names in one go.
+  type StudentRow = Student & { name: string };
+
+  const { filtered, handleSearch } = useSearchFilter<StudentRow>(
+    students as StudentRow[],
+    (s) => ({
+      ...s,
+      name: [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' '),
+    }),
+  );
+
   const total = students.length;
-  const departments = new Set(students.map(s => s.department).filter(Boolean)).size;
+  const departments = new Set(students.map((s) => s.department).filter(Boolean)).size;
 
   // TODO: replace with the API for blockchain status
   const verifiedOnChain = 0;
@@ -36,15 +48,38 @@ export default function StudentsPage() {
         {/* stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Students" value={total} sub="+0 this week" subColor="text-purple-500" />
-          <StatCard label="Verified on-chain" value={verifiedOnChain} sub={total ? `${Math.round(verifiedOnChain / total * 100)}%` : '0%'} subColor="text-mint" />
+          <StatCard label="Verified on-chain" value={verifiedOnChain} sub={total ? `${Math.round((verifiedOnChain / total) * 100)}%` : '0%'} subColor="text-mint" />
           <StatCard label="Pending" value={pending} sub="awaiting wallet" subColor="text-yellow-500" />
           <StatCard label="Departments" value={departments} sub="active" subColor="text-mint" />
         </div>
 
         {/* table */}
         <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
+          <div className="px-6 py-4 border-b border-borderLine flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">
+              All Students
+              {/* for filter */}
+              {filtered.length !== students.length && (
+                <span className="ml-2 text-mint normal-case font-normal">
+                  — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </h3>
+          </div>
+
+          {/* SearchFilter */}
           <div className="px-6 py-4 border-b border-borderLine">
-            <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">All Students</h3>
+            <SearchFilter
+              placeholder="Search students by name, email, department…"
+              filterKeys={[
+                { label: 'Name', value: 'name' },
+                { label: 'Email', value: 'email' },
+                { label: 'Department', value: 'department' },
+                { label: 'Level', value: 'currentLevel' },
+                { label: 'Status', value: 'status' },
+              ]}
+              onSearch={handleSearch}
+            />
           </div>
 
           {students.length === 0 ? (
@@ -55,7 +90,13 @@ export default function StudentsPage() {
                   : 'No students found.'}
               </p>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+              <p className="text-textMuted">No students match your search.</p>
+              <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
+            </div>
           ) : (
+        
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -69,11 +110,9 @@ export default function StudentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((s, i) => (
+                  {filtered.map((s, i) => (
                     <tr key={s.id} className={`border-b border-borderLine hover:bg-surface transition ${i % 2 === 0 ? '' : 'bg-surface/30'}`}>
-                      <td className="px-6 py-4 text-textLight font-medium">
-                        {[s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ')}
-                      </td>
+                      <td className="px-6 py-4 text-textLight font-medium">{s.name}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.email}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.currentLevel || '—'}</td>
@@ -101,7 +140,9 @@ export default function StudentsPage() {
   );
 }
 
-function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: string; value: number; sub: string; subColor?: string }) {
+function StatCard({ label, value, sub, subColor = 'text-textMuted' }: {
+  label: string; value: number; sub: string; subColor?: string;
+}) {
   return (
     <div className="bg-card border border-borderLine rounded-2xl p-5">
       <p className="text-textMuted text-sm mb-1">{label}</p>

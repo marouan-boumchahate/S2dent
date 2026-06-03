@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import { redirect, useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
+import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 import { store, Professor } from '@/lib/store';
+
+type ProfessorRow = Professor & { name: string };
 
 export default function ProfessorsPage() {
   const router = useRouter();
@@ -12,6 +15,16 @@ export default function ProfessorsPage() {
   useEffect(() => {
     setProfessors([...store.professors]);
   }, []);
+
+  // searchFilter hook
+  // transform flattens the name fields so users can search names in one go.
+  const { filtered, handleSearch } = useSearchFilter<ProfessorRow>(
+    professors as ProfessorRow[],
+    (p) => ({
+      ...p,
+      name: [p.title, p.firstName, p.middleName, p.lastName].filter(Boolean).join(' '),
+    }),
+  );
 
   const total = professors.length;
   const departments = new Set(professors.map(p => p.department).filter(Boolean)).size;
@@ -35,15 +48,46 @@ export default function ProfessorsPage() {
 
         {/* table */}
         <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
+          <div className="px-6 py-4 border-b border-borderLine flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">
+              All Professors
+              
+              {/* for filter */}
+              {filtered.length !== professors.length && (
+                <span className="ml-2 text-mint normal-case font-normal">
+                  — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </h3>
+          </div>
+
+          {/* SearchFilter */}
           <div className="px-6 py-4 border-b border-borderLine">
-            <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">All Professors</h3>
+            <SearchFilter
+              placeholder="Search professors by name, email, department…"
+              filterKeys={[
+                { label: 'Name', value: 'name' },
+                { label: 'Email', value: 'email' },
+                { label: 'Department', value: 'department' },
+                { label: 'Rank', value: 'rank' },
+                { label: 'Status', value: 'status' },
+              ]}
+              onSearch={handleSearch}
+            />
           </div>
 
           {professors.length === 0 ? (
             <div className="flex items-center justify-center min-h-48 py-12">
               <p className="text-textMuted px-4">No professors yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
             </div>
+
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+              <p className="text-textMuted">No professors match your search.</p>
+              <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
+            </div>
           ) : (
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -57,11 +101,9 @@ export default function ProfessorsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {professors.map((p, i) => (
+                  {filtered.map((p, i) => (
                     <tr key={p.id} className={`border-b border-borderLine hover:bg-surface transition ${i % 2 === 0 ? '' : 'bg-surface/30'}`}>
-                      <td className="px-6 py-4 text-textLight font-medium">
-                        {[p.title, p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ')}
-                      </td>
+                      <td className="px-6 py-4 text-textLight font-medium">{p.name}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.email}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.rank || '—'}</td>
@@ -103,8 +145,8 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
 function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
-    pending:  'bg-yellow-100 text-yellow-600 border border-yellow-200',
-    failed:   'bg-red-100 text-red-500 border border-red-200',
+    pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
+    failed: 'bg-red-100 text-red-500 border border-red-200',
   };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>

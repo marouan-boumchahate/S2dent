@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import SignAndIssueModal, { SignAndIssueData } from '@/components/SignAndIssueModal';
+import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 
 // Types
 type IdentityStatus = 'waiting' | 'pending';
@@ -16,6 +17,8 @@ interface PendingIdentity {
   walletAddress: string;
   status: IdentityStatus;
 }
+
+type IdentityRow = PendingIdentity & { name: string; [key: string]: unknown };
 
 //subcomponents
 
@@ -60,11 +63,11 @@ function StatCard({ label, value, sub, subColor }: {
 
 //mock data should be replaced with API
 const MOCK_PENDING: PendingIdentity[] = [
-  { id: '1', firstName: 'Ahmed',  lastName: 'Hassan',  role: 'Student',   email: 'ahmed@cu.edu.eg',     walletAddress: '0x4f2aB8...c3b1', status: 'waiting' },
-  { id: '2', firstName: 'Nour',   lastName: 'Ali',     role: 'Student',   email: 'nour@cu.edu.eg',      walletAddress: '0x7e3dC2...a1c5', status: 'waiting' },
-  { id: '3', firstName: 'Sara',   lastName: 'Mohamed', role: 'Student',   email: 'sara@cu.edu.eg',      walletAddress: '0x9c1bF4...f4d2', status: 'pending' },
+  { id: '1', firstName: 'Ahmed', lastName: 'Hassan', role: 'Student', email: 'ahmed@cu.edu.eg', walletAddress: '0x4f2aB8...c3b1', status: 'waiting' },
+  { id: '2', firstName: 'Nour', lastName: 'Ali', role: 'Student', email: 'nour@cu.edu.eg', walletAddress: '0x7e3dC2...a1c5', status: 'waiting' },
+  { id: '3', firstName: 'Sara', lastName: 'Mohamed', role: 'Student', email: 'sara@cu.edu.eg', walletAddress: '0x9c1bF4...f4d2', status: 'pending' },
   { id: '4', firstName: 'Khaled', lastName: 'Mansour', role: 'Professor', email: 'k.mansour@cu.edu.eg', walletAddress: '0x2a1bD9...e2f4', status: 'waiting' },
-  { id: '5', firstName: 'Hana',   lastName: 'Farouk',  role: 'Professor', email: 'h.farouk@cu.edu.eg',  walletAddress: '0x6c2dF1...b3a1', status: 'pending' },
+  { id: '5', firstName: 'Hana', lastName: 'Farouk', role: 'Professor', email: 'h.farouk@cu.edu.eg', walletAddress: '0x6c2dF1...b3a1', status: 'pending' },
 ];
 
 // Page
@@ -79,17 +82,26 @@ export default function IssueIdentitiesPage() {
     setIdentities(MOCK_PENDING);
   }, []);
 
+  // flatten full name so it's searchable as a single field
+  const { filtered, handleSearch } = useSearchFilter<IdentityRow>(
+    identities as IdentityRow[],
+    (i) => ({
+      ...i,
+      name: [i.firstName, i.lastName].filter(Boolean).join(' '),
+    }),
+  );
+
   const waitingCount = identities.filter((i) => i.status === 'waiting').length;
 
-const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
-  credentialType: identity.role,// "Student" or "Professor"
-  title: `${identity.firstName} ${identity.lastName}`,
-  code: identity.role === 'Student' ? 'STU' : 'PRF', 
-  authorizedBy: 'Fenerbahçe University',
-  studentName: `${identity.firstName} ${identity.lastName}`,
-  studentWallet: identity.walletAddress,
-  payloadHash: '0x' + Math.random().toString(16).slice(2, 18) + '...',
-});
+  const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
+    credentialType: identity.role,// "Student" or "Professor"
+    title: `${identity.firstName} ${identity.lastName}`,
+    code: identity.role === 'Student' ? 'STU' : 'PRF',
+    authorizedBy: 'Fenerbahçe University',
+    studentName: `${identity.firstName} ${identity.lastName}`,
+    studentWallet: identity.walletAddress,
+    payloadHash: '0x' + Math.random().toString(16).slice(2, 18) + '...',
+  });
 
   const handleIssueClick = (identity: PendingIdentity) => {
     if (identity.status !== 'waiting') return;
@@ -136,9 +148,9 @@ const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
           {/* stat cards later will be taakes the api for data !!!!!!!! */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Pending issuance" value={waitingCount} sub="wallet connected" subColor="text-yellow-400" />
-            <StatCard label="No wallet yet"    value={6}           sub="awaiting" />
-            <StatCard label="Already issued"   value={22}         sub="on-chain"  subColor="text-mint" />
-            <StatCard label="Revoked"          value={1}            sub="flagged"   subColor="text-red-400" />
+            <StatCard label="No wallet yet" value={6} sub="awaiting" />
+            <StatCard label="Already issued" value={22} sub="on-chain" subColor="text-mint" />
+            <StatCard label="Revoked" value={1} sub="flagged" subColor="text-red-400" />
           </div>
 
           {/* banner message*/}
@@ -154,14 +166,41 @@ const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
           {/* table */}
           <div className="bg-card border border-borderLine rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-borderLine">
-              <p className="text-textMuted text-sm font-bold uppercase tracking-widest">
+              <h3 className="text-textMuted text-sm font-bold uppercase tracking-widest">
                 Pending identity issuance
-              </p>
+
+                {/* for filter */}
+                {filtered.length !== identities.length && (
+                  <span className="ml-2 text-mint normal-case font-normal">
+                    — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {/* SearchFilter */}
+            <div className="px-6 py-4 border-b border-borderLine">
+              <SearchFilter
+                placeholder="Search by name, email, role…"
+                filterKeys={[
+                  { label: 'Name', value: 'name' },
+                  { label: 'Email', value: 'email' },
+                  { label: 'Role', value: 'role' },
+                  { label: 'Status', value: 'status' },
+                ]}
+                onSearch={handleSearch}
+              />
             </div>
 
             {identities.length === 0 ? (
               <div className="flex items-center justify-center min-h-48 py-12">
                 <p className="text-textMuted text-sm">No pending identities. All users have been issued.</p>
+              </div>
+
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+                <p className="text-textMuted">No identities match your search.</p>
+                <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -176,19 +215,13 @@ const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
                     </tr>
                   </thead>
                   <tbody>
-                    {identities.map((identity) => (
+                    {filtered.map(identity => (
                       <tr key={identity.id} className="border-b border-borderLine last:border-0 hover:bg-surface/50 transition">
-                        <td className="px-6 py-4 text-textLight text-sm font-semibold">
-                          {identity.firstName} {identity.lastName}
-                        </td>
-                        <td className="px-6 py-4">
-                          <RoleBadge role={identity.role} />
-                        </td>
+                        <td className="px-6 py-4 text-textLight text-sm font-semibold">{identity.name}</td>
+                        <td className="px-6 py-4"><RoleBadge role={identity.role} /></td>
                         <td className="px-6 py-4 text-textMuted text-sm">{identity.email}</td>
                         <td className="px-6 py-4 text-textMuted text-xs font-mono">{identity.walletAddress}</td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={identity.status} />
-                        </td>
+                        <td className="px-6 py-4"><StatusBadge status={identity.status} /></td>
                         <td className="px-6 py-4">
                           <button
                             onClick={() => handleIssueClick(identity)}
