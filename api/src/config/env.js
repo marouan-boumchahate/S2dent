@@ -1,8 +1,27 @@
 import dotenv from 'dotenv'
 
 dotenv.config({
-  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+  override: false
 })
+
+const parseRedisUrl = (redisUrl) => {
+  if (!redisUrl) return {}
+
+  try {
+    const url = new URL(redisUrl)
+
+    return {
+      host: url.hostname,
+      port: url.port ? Number(url.port) : undefined,
+      password: url.password || undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+const redisFromUrl = parseRedisUrl(process.env.REDIS_URL)
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -23,9 +42,10 @@ export const env = {
     ssl: process.env.DB_SSL === 'true',
   },
   redis: {
-    host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT,
-    password: process.env.REDIS_PASSWORD,
+    url: process.env.REDIS_URL,
+    host: redisFromUrl.host || process.env.REDIS_HOST,
+    port: redisFromUrl.port || process.env.REDIS_PORT,
+    password: redisFromUrl.password || process.env.REDIS_PASSWORD,
   },
   blockchain: {
     rpcUrl: process.env.BLOCKCHAIN_RPC_URL,
