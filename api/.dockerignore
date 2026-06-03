@@ -1,0 +1,12 @@
+node_modules
+.env
+.env.test
+.git
+tests/
+docs/
+*.md
+*.litcoffee
+
+# Ignore all shell scripts EXCEPT the entrypoint
+*.sh
+!entrypoint.sh
