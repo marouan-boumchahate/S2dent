@@ -4,6 +4,7 @@ import { strict as assert } from 'assert';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
@@ -37,6 +38,9 @@ const DEFAULT_CA_ATTRS = {
     getProfessorCertificateAttrs: () => ({ fake: 'attrs' }),
 };
 const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => FAKE_CERT };
+
+const makeToken = (sub, role) => signTokens({ sub, role, rid: 'rid-1' });
+const ADMIN_TOKEN = makeToken(ethers.Wallet.createRandom().address, 'admin').accessToken;
 
 const buildCachePayload = ({ id, role = 'academy', message = ISSUE_MESSAGE }) => JSON.stringify({
     id,
@@ -343,6 +347,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         assert.equal(res.status, 200);
@@ -375,6 +380,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: ISSUE_OTP, signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 200);
@@ -403,6 +409,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: ISSUE_OTP, signature });
 
         assert.equal(calls.length, 1);
@@ -447,6 +454,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: ISSUE_OTP, signature });
 
         assert.equal(attrCalls.length, 1);
@@ -469,6 +477,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         const { rows: [pending] } = await db.query(
@@ -494,6 +503,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         const { rows: [cert] } = await db.query(
@@ -519,6 +529,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         const { rows } = await db.query(
@@ -543,6 +554,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         assert.equal(listenerCalls.length, 1);
@@ -560,6 +572,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'ghost@test-identity.edu', otp: ISSUE_OTP, signature });
 
         assert.equal(res.status, 404);
@@ -583,6 +596,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         assert.equal(res.status, 409);
@@ -601,6 +615,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: ISSUE_OTP, signature });
 
         assert.equal(res.status, 404);
@@ -619,6 +634,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         assert.equal(res.status, 200);
@@ -644,6 +660,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'orphan@test-identity.edu', otp: ISSUE_OTP, signature });
 
         assert.equal(res.status, 404);
@@ -667,6 +684,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         assert.equal(res.status, 502);
@@ -690,6 +708,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         const { rows } = await db.query(
@@ -718,6 +737,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send(body);
 
         const { rows } = await db.query(
@@ -734,6 +754,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 422);
@@ -748,6 +769,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: '12', signature: await ISSUE_SIGNER.signMessage(ISSUE_MESSAGE) });
 
         assert.equal(res.status, 422);
@@ -760,6 +782,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ email: 'seed@fenerbahce.edu.tr', otp: ISSUE_OTP, signature: 'not-a-signature' });
 
         assert.equal(res.status, 422);

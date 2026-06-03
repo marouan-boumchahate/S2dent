@@ -46,15 +46,20 @@ export const finalizeIdentity = async (role, { walletAddress, academyToken, acad
   );
 };
 
-export const issueIdentity = async (role, { email, privateKey }) => {
+export const issueIdentity = async (role, { email, privateKey, adminToken } = {}) => {
   const { data } = await post('/auth/otp/send', { email });
   const message = data.message;
 
   const signature = await new ethers.Wallet(privateKey).signMessage(message);
 
-  return post(`/identity/${PATHS[role]}/issue`, {
-    email,
-    otp: TEST_OTP,
-    signature,
-  });
+  // If an admin token is provided, include it in the request Authorization header
+  return post(
+    `/identity/${PATHS[role]}/issue`,
+    {
+      email,
+      otp: TEST_OTP,
+      signature,
+    },
+    adminToken,
+  );
 };

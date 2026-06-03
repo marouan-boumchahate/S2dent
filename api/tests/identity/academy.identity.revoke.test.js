@@ -3,6 +3,7 @@ import request from 'supertest';
 import { strict as assert } from 'assert';
 import { ethers } from 'ethers';
 import db from '../../src/config/db.js';
+import { signTokens } from '../../src/utils/jwt.js';
 
 const FAKE_TX_HASH = '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1';
 const WALLET_ADDRESS = ethers.getAddress('0x8fa1b2c3d4e5f67890123456789abcdefabcdef0');
@@ -20,6 +21,9 @@ const DEFAULT_CA_ATTRS = {
     getAcademyCertificateAttrs: () => ({ fake: 'attrs' }),
 };
 const DEFAULT_CA_IDENTITY = { buildIdentityCertificate: async () => ({}) };
+
+const makeToken = (sub, role) => signTokens({ sub, role, rid: 'rid-1' });
+const ADMIN_TOKEN = makeToken(ethers.Wallet.createRandom().address, 'admin').accessToken;
 
 const seedAcademy = async ({
     wallet_address = WALLET_ADDRESS,
@@ -163,6 +167,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 200);
@@ -188,6 +193,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_UPPER, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 200);
@@ -203,6 +209,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         const { rows: [pending] } = await db.query(
@@ -228,6 +235,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(listenerCalls.length, 1);
@@ -239,6 +247,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: '0x0000000000000000000000000000000000000001', revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 404);
@@ -259,6 +268,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 502);
@@ -279,6 +289,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: WALLET_ADDRESS, revocation_reason: REVOCATION_REASON });
 
         const { rows } = await db.query(
@@ -293,6 +304,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 422);
@@ -306,6 +318,7 @@ describe('POST /api/identity/academies/revoke', function () {
 
         const res = await request(app)
             .post(endpoint)
+            .set('Authorization', `Bearer ${ADMIN_TOKEN}`)
             .send({ wallet_address: 'not-a-wallet', revocation_reason: REVOCATION_REASON });
 
         assert.equal(res.status, 422);

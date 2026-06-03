@@ -340,14 +340,36 @@ const getStudentRecordFromDb = async (walletAddress, academy_id) => {
 
     return student
 }
-const getStudentWalletByUserId = async (userId) => {
+const getStudentWalletByUserId = async (user_id, requester_id, requester_role) => {
+    let clause = '';
+    let params = [user_id];
+
+    switch(requester_role) {
+        case 'professor':
+            clause = 'AND s.advisor_id = $2';
+            params.push(requester_id);
+            break;
+        case 'academy':
+            clause = 'AND s.academy_id = $2';
+            params.push(requester_id);
+            break;
+        default:
+            const err = new Error('Invalid requester role');
+            err.statusCode = 400;
+            err.code = 'INVALID_REQUESTER_ROLE';
+            throw err;
+    }
+
+    console.log('getStudentWalletByUserId params:', params, 'clause:', clause);
     const { rows: [identity] } = await db.query(
         `SELECT wallet_address
-         FROM identities
-         WHERE user_id = $1
+         FROM identities i
+         JOIN students s ON i.user_id = s.user_id
+         WHERE i.user_id = $1
            AND role = 'student'
+           ${clause}
          LIMIT 1`,
-        [userId]
+        params
     )
 
     if (!identity?.wallet_address) {
@@ -529,8 +551,14 @@ const fetchStudentIdentityByWalletService = async (walletAddress) => {
         ...toIdentityDto(identity),
     }
 }
-const fetchStudentIdentityByUserIdService = async (userId) => {
-    const walletAddress = await getStudentWalletByUserId(userId)
+const fetchStudentIdentityByUserIdService = async ({
+    user_id, requester_id, requester_role
+}) => {
+    const walletAddress = await getStudentWalletByUserId(
+        user_id, 
+        requester_id, 
+        requester_role
+    )
     return fetchStudentIdentityByWalletService(walletAddress)
 }
 
