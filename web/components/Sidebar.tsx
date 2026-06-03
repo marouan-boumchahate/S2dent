@@ -14,6 +14,7 @@ const ADMIN_GROUPS = [
 ];
 
 const PROFESSOR_GROUPS = [
+  { label: 'Students', href: '/students', icon: '/student_1.png' },
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
   { label: 'Settings', href: '/settings', icon: '/setting.png' },
 ];
