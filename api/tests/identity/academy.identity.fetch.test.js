@@ -120,8 +120,11 @@ describe('GET /api/identity/academies', () => {
       },
     })
 
+    const adminToken = makeToken(ethers.Wallet.createRandom().address, 'admin')
+
     const res = await request(app)
       .get(`${endpoint}/by-id/${ACADEMY_ID}`)
+      .set('Authorization', `Bearer ${adminToken.accessToken}`)
 
     assert.equal(res.status, 200)
     assert.equal(res.body.success, true)

@@ -16,7 +16,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
-  requireRole('academy'),
+  requireRole('academy', 'professor'),
   getAllStudentsController,
 );
 router.get(
@@ -28,7 +28,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('academy'),
+  requireRole('academy', 'professor'),
   getStudentByIdController,
 );
 

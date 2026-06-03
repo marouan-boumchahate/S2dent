@@ -32,11 +32,11 @@ router.get(
   requireRole('academy', 'professor', 'student'),
   getUserAddressController
 );
-// router.get(
-//   '/:id',
-//   authenticate,
-//   requireRole('academy', 'admin'),
-//   getAddressController
-// )
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('academy', 'admin'),
+  getAddressController
+)
 
 export default router;

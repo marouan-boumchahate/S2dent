@@ -33,18 +33,16 @@ const printTokens = (label, { accessToken, refreshToken }) => {
 
 // Seeders
 // -------
-const seedAcademy = async () => {
+const seedAcademy = async (adminAccessToken) => {
   const profile = academyProfile();
-  const adminTokens = await authenticateAdmin(WALLETS.admin);
-  log('auth', 'admin authenticated');
 
-  const id = await createAcademy(profile, adminTokens.accessToken);
+  const id = await createAcademy(profile, adminAccessToken);
   log('academy', `created → id=${id}`);
 
-  await createAddress({ academy_id: id, ...addressProfile() }, adminTokens.accessToken);
+  await createAddress({ academy_id: id, ...addressProfile() }, adminAccessToken);
   log('address', `created for academy=${id}`);
 
-  await issueIdentity('academy', { email: profile.email, privateKey: WALLETS.academy.privateKey });
+  await issueIdentity('academy', { email: profile.email, privateKey: WALLETS.academy.privateKey, adminToken: adminAccessToken });
   log('identity', `issued for academy=${WALLETS.academy.address}`);
 
   await wait(1500);
@@ -160,7 +158,10 @@ const seedCredentials = async ({ academyToken, professorToken }) => {
 const main = async () => {
   console.log('Starting seed...\n');
 
-  const academy = await seedAcademy();
+  const adminTokens = await authenticateAdmin(WALLETS.admin);
+  log('auth', 'admin authenticated');
+  
+  const academy = await seedAcademy(adminTokens.accessToken);
 
   const departmentId = await createDepartment(
     departmentProfile(),
@@ -181,6 +182,7 @@ const main = async () => {
     professorToken: professor.tokens.accessToken,
   });
   
+  printTokens('admin', adminTokens);
   printTokens('academy', academy.tokens);
   printTokens('professor', professor.tokens);
   printTokens('student', student.tokens);

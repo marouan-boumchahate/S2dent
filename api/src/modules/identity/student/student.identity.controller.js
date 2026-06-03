@@ -63,7 +63,13 @@ const getIdentityByAddress = async (req, res) => {
 }
 const getIdentityById = async (req, res) => {
     const { id } = req.params
-    const result = await fetchStudentIdentityByUserIdService(id)
+    const { rid, role } = req.user
+    
+    const result = await fetchStudentIdentityByUserIdService({
+        user_id: id,
+        requester_id: rid,
+        requester_role: role
+    })
 
     return ok(res, result, 'Student identity retrieved successfully')
 }

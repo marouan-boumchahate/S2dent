@@ -15,6 +15,8 @@ router.get(
 )
 router.get(
   '/by-id/:id',
+  authenticate,
+  requireRole('admin'),
   getIdentityById,
 )
 router.get(
@@ -24,11 +26,15 @@ router.get(
 
 router.post(
   '/issue',
+  authenticate,
+  requireRole('admin'),
   validate(issueIdentitySchema),
   issueIdentity,
 )
 router.post(
   '/revoke',
+  authenticate,
+  requireRole('admin'),
   validate(revokeIdentitySchema),
   revokeIdentity,
 )

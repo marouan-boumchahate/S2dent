@@ -22,9 +22,9 @@ router.get(
   getMyIdentity,
 )
 router.get(
-  '/by-id/:id',
+  '/by-user-id/:id',
   authenticate,
-  requireRole('academy'),
+  requireRole('academy', 'professor'),
   getIdentityById,
 )
 router.get(

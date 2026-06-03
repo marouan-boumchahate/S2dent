@@ -141,7 +141,22 @@ const ensureStudentExists = async (student_id) => {
   return row;
 }
 
-const getStudentsFromDB = async (academy_id) => {
+const getStudentsFromDB = async (role_id, role) => {
+  let clause = '';
+  switch(role) {
+    case 'professor':
+      clause = 's.advisor_id = $1';
+      break;
+    case 'academy':
+      clause = 's.academy_id = $1';
+      break;
+    default:
+      const err = new Error('Invalid requester role');
+      err.statusCode = 400;
+      err.code = 'INVALID_REQUESTER_ROLE';
+      throw err;
+  }
+
   const { rows } = await db.query(
     `SELECT
         s.id,
@@ -162,14 +177,35 @@ const getStudentsFromDB = async (academy_id) => {
       JOIN identities i ON i.user_id = u.id AND i.role = 'student'
       JOIN pending_transactions pt
         ON pt.tx_hash = COALESCE(i.revoke_identity_tx_hash, i.issue_identity_tx_hash)
-      WHERE s.academy_id = $1
+      WHERE ${clause}
       ORDER BY u.full_name ASC`,
-    [academy_id]
+    [role_id],
   );
 
   return rows;
 };
-const getStudentFromDB = async (student_id) => {
+const getStudentFromDB = async (student_id, requester_id, requester_role) => {
+  let clause = '';
+  let params = [student_id];
+
+  if (requester_id && requester_role) {
+    switch(requester_role) {
+      case 'professor':
+        clause = 'AND s.advisor_id = $2';
+        params.push(requester_id);
+        break;
+      case 'academy':
+        clause = 'AND s.academy_id = $2';
+        params.push(requester_id);
+        break;
+      default:
+        const err = new Error('Invalid requester role');
+        err.statusCode = 400;
+        err.code = 'INVALID_REQUESTER_ROLE';
+        throw err;
+    }
+  }
+
   const { rows: [student] } = await db.query(`
     SELECT
       s.id,
@@ -190,8 +226,9 @@ const getStudentFromDB = async (student_id) => {
     JOIN users u ON p.user_id = u.id
     WHERE s.id = $1
       AND i.issued_at IS NOT NULL
+      ${clause}
     LIMIT 1
-  `, [student_id]);
+  `, params);
 
   if (!student) {
     const err = new Error('No active student account found for the provided ID');
@@ -302,12 +339,12 @@ export const updateStudentService = async (payload) => {
 
   return { student: toStudentDto(student) };
 };
-const fetchAllStudentsService = async (academy_id) => {
-  const students = await getStudentsFromDB(academy_id);
+const fetchAllStudentsService = async (role_id, role) => {
+  const students = await getStudentsFromDB(role_id, role);
   return { students: students.map((student) => StudentSummaryDto(student)) };
 };
-const fetchStudentService = async (student_id) => {
-  const student = await getStudentFromDB(student_id);
+const fetchStudentService = async ({ student_id, requester_id, requester_role }) => {
+  const student = await getStudentFromDB(student_id, requester_id, requester_role);
   return { student: toStudentDto(student) };
 };
 
