@@ -24,6 +24,22 @@ class PKStorageService {
   Future<void> clearPK() async {
     await _flutterStorage.delete(key: "PK");
   }
+
+  Future<void> saveAddress(String address) async {
+    await _flutterStorage.write(key: "walletAddress", value: address);
+  }
+
+  Future<String?> getAddress() async {
+    return _flutterStorage.read(key: "walletAddress");
+  }
+
+  Future<void> handleWalletChange(String newAddress) async {
+    final storedAddress = await getAddress();
+    if (storedAddress != null && storedAddress != newAddress) {
+      await clearPK();
+    }
+    await saveAddress(newAddress);
+  }
 }
 
 final pkStorageServiceProvider = Provider<PKStorageService>(

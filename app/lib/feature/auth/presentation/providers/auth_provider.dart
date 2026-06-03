@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/core/network/api_client.dart';
+import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/feature/auth/data/datasources/auth_datasource.dart';
@@ -16,6 +17,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
   AuthController({
     required this.authRepo,
     required this.tokenStorage,
+    required this.pkStorage,
     required this.appKitModal,
     required this.onLogout,
     this.onLogin,
@@ -23,6 +25,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
 
   final AuthRepo authRepo;
   final TokenStorageService tokenStorage;
+  final PKStorageService pkStorage;
   final ReownAppKitModal? appKitModal;
   final void Function() onLogout;
   final void Function(String accessToken)? onLogin;
@@ -63,6 +66,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
           await authRepo.verifySignature(address, signature as String);
 
       await tokenStorage.saveTokens(token.accessToken, token.refreshToken);
+      await pkStorage.handleWalletChange(address);
 
       state = AsyncValue.data(token);
       onLogin?.call(token.accessToken);
@@ -122,6 +126,7 @@ final authControllerProvider =
   (ref) => AuthController(
     authRepo: ref.watch(authRepositoryProvider),
     tokenStorage: ref.watch(tokenStorageServiceProvider),
+    pkStorage: ref.watch(pkStorageServiceProvider),
     appKitModal: ref.watch(appKitModalProvider),
     onLogout: () {
       ref.read(appKitModalProvider.notifier).state = null;
