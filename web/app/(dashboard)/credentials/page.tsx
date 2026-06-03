@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import { store, Credential } from '@/lib/store';
+import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 
 // helpers
 function getStudentName(studentId: string) {
@@ -13,12 +14,12 @@ function getStudentName(studentId: string) {
 
 function TypeBadge({ type }: { type: Credential['type'] }) {
   const colors: Record<string, string> = {
-    Degree:      'bg-mint/10 text-mint border-mint/30',
+    Degree: 'bg-mint/10 text-mint border-mint/30',
     Achievement: 'bg-orange-400/10 text-orange-400 border-orange-400/30',
     Certificate: 'bg-purple-400/10 text-purple-400 border-purple-400/30',
-    Enrollment:  'bg-blue-400/10 text-blue-400 border-blue-400/30',
-    Attendance:  'bg-cyan-400/10 text-cyan-400 border-cyan-400/30',
-    Transcript:  'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
+    Enrollment: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
+    Attendance: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/30',
+    Transcript: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors[type] ?? colors.Certificate}`}>
@@ -30,9 +31,9 @@ function TypeBadge({ type }: { type: Credential['type'] }) {
 function StatusBadge({ status }: { status: Credential['status'] }) {
   const colors: Record<string, string> = {
     Verified: 'bg-mint/10 text-mint border-mint/30',
-    Pending:  'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
-    Failed:   'bg-red-400/10 text-red-400 border-red-400/30',
-    Revoked:  'bg-red-400/10 text-red-400 border-red-400/30',
+    Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
+    Failed: 'bg-red-400/10 text-red-400 border-red-400/30',
+    Revoked: 'bg-red-400/10 text-red-400 border-red-400/30',
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors[status] ?? colors.Pending}`}>
@@ -53,6 +54,8 @@ function StatCard({ label, value, sub, subColor }: {
   );
 }
 
+type CredentialRow = Credential & { studentName: string };
+
 export default function CredentialsPage() {
   const router = useRouter();
   const [credentials, setCredentials] = useState<Credential[]>([]);
@@ -61,10 +64,19 @@ export default function CredentialsPage() {
     setCredentials([...store.credentials]);
   }, []);
 
-  const total    = credentials.length;
+  // flatten student name into each row so it's searchable
+  const { filtered, handleSearch } = useSearchFilter<CredentialRow>(
+    credentials as CredentialRow[],
+    (c) => ({
+      ...c,
+      studentName: getStudentName(c.issuedTo),
+    }),
+  );
+
+  const total = credentials.length;
   const verified = credentials.filter(c => c.status === 'Verified').length;
-  const pending  = credentials.filter(c => c.status === 'Pending').length;
-  const revoked  = credentials.filter(c => c.status === 'Revoked').length;
+  const pending = credentials.filter(c => c.status === 'Pending').length;
+  const revoked = credentials.filter(c => c.status === 'Revoked').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -75,23 +87,54 @@ export default function CredentialsPage() {
 
         {/* stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total credentials" value={total}    sub="on blockchain" />
-          <StatCard label="Verified"          value={verified} sub="valid"         subColor="text-mint" />
-          <StatCard label="Pending"           value={pending}  sub="awaiting tx"   subColor="text-yellow-400" />
-          <StatCard label="Revoked"           value={revoked}  sub="flagged"       subColor="text-red-400" />
+          <StatCard label="Total credentials" value={total} sub="on blockchain" />
+          <StatCard label="Verified" value={verified} sub="valid" subColor="text-mint" />
+          <StatCard label="Pending" value={pending} sub="awaiting tx" subColor="text-yellow-400" />
+          <StatCard label="Revoked" value={revoked} sub="flagged" subColor="text-red-400" />
         </div>
 
         {/* table */}
         <div className="bg-card rounded-2xl border border-borderLine overflow-hidden flex-1">
           <div className="px-6 py-4 border-b border-borderLine">
-            <p className="text-textMuted text-sm font-bold uppercase tracking-widest">All Credentials</p>
+            <h3 className="text-textMuted text-sm font-bold uppercase tracking-widest">
+              All Credentials
+
+              {/* for filter */}
+              {filtered.length !== credentials.length && (
+                <span className="ml-2 text-mint normal-case font-normal">
+                  — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </h3>
+          </div>
+
+          {/* SearchFilter */}
+          <div className="px-6 py-4 border-b border-borderLine">
+            <SearchFilter
+              placeholder="Search credentials by title, student, type…"
+              filterKeys={[
+                { label: 'Title', value: 'title' },
+                { label: 'Student', value: 'studentName' },
+                { label: 'Type', value: 'type' },
+                { label: 'Code', value: 'code' },
+                { label: 'Status', value: 'status' },
+              ]}
+              onSearch={handleSearch}
+            />
           </div>
 
           {credentials.length === 0 ? (
             <div className="flex items-center justify-center min-h-48 py-12">
               <p className="text-textMuted px-4">No credentials yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
             </div>
+
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+              <p className="text-textMuted">No credentials match your search.</p>
+              <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
+            </div>
           ) : (
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -102,10 +145,10 @@ export default function CredentialsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {credentials.map(cred => (
+                  {filtered.map(cred => (
                     <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
                       <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
-                      <td className="px-6 py-4 text-textLight text-sm">{getStudentName(cred.issuedTo)}</td>
+                      <td className="px-6 py-4 text-textLight text-sm">{cred.studentName}</td>
                       <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
                       <td className="px-6 py-4 text-textMuted text-sm font-mono">{cred.code || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">

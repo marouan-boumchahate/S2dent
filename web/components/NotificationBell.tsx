@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotifications, NOTIF_META, Notification } from './NotificationContext';
 
-// ─── Time helper ──────────────────────────────────────────────────────────────
+// time
 
 function timeAgo(date: Date): string {
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -13,7 +13,7 @@ function timeAgo(date: Date): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// ─── Single notification item ─────────────────────────────────────────────────
+// single notification item
 
 function NotifItem({ notif, onRead }: { notif: Notification; onRead: (id: string) => void }) {
   const meta = NOTIF_META[notif.type];
@@ -47,7 +47,7 @@ function NotifItem({ notif, onRead }: { notif: Notification; onRead: (id: string
   );
 }
 
-// ─── Bell component ───────────────────────────────────────────────────────────
+// bell component
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
@@ -67,7 +67,7 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      {/* Bell button */}
+      {/* bell button */}
       <button
         onClick={() => setOpen(o => !o)}
         className="relative w-9 h-9 rounded-xl border border-borderLine bg-card hover:bg-surface transition flex items-center justify-center"
@@ -86,7 +86,7 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown panel */}
+      {/* dropdown panel */}
       {open && (
         <div className="absolute right-0 top-11 w-80 bg-card border border-borderLine rounded-2xl shadow-2xl z-50 overflow-hidden">
 
