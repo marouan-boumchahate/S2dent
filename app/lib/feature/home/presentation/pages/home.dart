@@ -1,4 +1,6 @@
-﻿import 'package:app/core/widgets/layouts/main_layout.dart';
+﻿import 'package:app/core/services/pk_storage.service.dart';
+import 'package:app/core/utils/show_alert_dialog.dart';
+import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
@@ -10,6 +12,7 @@ import 'package:app/feature/home/presentation/widgets/custom_horizontal_containe
 import 'package:app/feature/home/presentation/widgets/custom_vertical_container.dart';
 import 'package:app/feature/home/presentation/widgets/custom_vertical_divider.dart';
 import 'package:app/feature/home/presentation/widgets/notification_button.dart';
+import 'package:app/feature/home/presentation/widgets/pk_setup_dialog.dart';
 import 'package:app/feature/home/presentation/widgets/quick_action.dart';
 import 'package:app/feature/home/presentation/widgets/stat_item.dart';
 import 'package:app/core/extensions/context_extensions.dart';
@@ -29,6 +32,29 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isCopied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    pkCheckUp();
+  }
+
+  Future<void> pkCheckUp() async {
+    final pk = await ref.read(pkStorageServiceProvider).getPK();
+    if (pk != null) return;
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PkSetupDialog(
+        onSave: () => showAlertDialog(
+          context,
+          "Private Key saved successfully",
+          type: AlertType.success,
+        ),
+      ),
+    );
+  }
 
   void onTapCopy(HomeData data) async {
     setState(() {

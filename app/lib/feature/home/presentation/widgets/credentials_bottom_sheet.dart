@@ -6,6 +6,7 @@ import 'package:app/feature/credentials/presentation/widgets/credential_card.dar
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
 import 'package:flutter/material.dart';
 
+//NOT BEBING USED TODO: remove it
 class CredentialsBottomSheet extends StatelessWidget {
   const CredentialsBottomSheet({
     super.key,
