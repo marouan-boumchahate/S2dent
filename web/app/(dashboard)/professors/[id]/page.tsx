@@ -344,6 +344,7 @@ export default function ProfessorDetailPage() {
           <div className="flex-1 space-y-6 overflow-y-auto">
             <div className="bg-card border border-borderLine rounded-2xl p-6">
               <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">On-Chain Information</h3>
+
               <div className="grid grid-cols-2 gap-3">
                 <OnChainField label="Wallet Address" value={MOCK_ONCHAIN.walletAddress} />
                 <OnChainField label="Identity Status" value={MOCK_ONCHAIN.identityStatus} />
@@ -354,29 +355,13 @@ export default function ProfessorDetailPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-borderLine rounded-2xl p-6">
-              <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">Certificates</h3>
-              {MOCK_CERTS.length === 0 ? (
-                <p className="text-textMuted text-sm py-4 text-center">No certificates issued yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {MOCK_CERTS.map(cert => (
-                    <div key={cert.id} className="flex items-center justify-between py-3 px-4 rounded-xl border border-borderLine hover:bg-surface/50 transition">
-                      <div>
-                        <p className="text-textLight text-sm font-semibold">{cert.name}</p>
-                        <p className="text-textMuted text-xs mt-0.5">{cert.date}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CertTypeBadge type={cert.type} />
-                        <button className="text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition">
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {professor.bio && (
+              <div className="bg-card border border-borderLine rounded-2xl p-6">
+                <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">Bio</h3>
+                <p className="text-textLight text-sm leading-relaxed">{professor.bio}</p>
+              </div>
+            )}
+
           </div>
 
         </div>
