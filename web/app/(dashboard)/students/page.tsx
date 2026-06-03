@@ -1,13 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import { store, Student } from '@/lib/store';
 
 export default function StudentsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
+
+  const [role, setRole] = useState<string>('admin');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userRole');
+    if (stored) setRole(stored);
+  }, []);
 
   useEffect(() => {
     setStudents([...store.students]);
@@ -22,16 +29,16 @@ export default function StudentsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Students" onAddNew={() => redirect('/createStudent')} />
+      <PageHeader title="Students" onAddNew={role === 'admin' ? () => router.push('/createStudent') : undefined} />
 
       <div className="p-6 space-y-6">
 
         {/* stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Students" value={total} sub="+0 this week" subColor="text-purple-500"/>
+          <StatCard label="Total Students" value={total} sub="+0 this week" subColor="text-purple-500" />
           <StatCard label="Verified on-chain" value={verifiedOnChain} sub={total ? `${Math.round(verifiedOnChain / total * 100)}%` : '0%'} subColor="text-mint" />
           <StatCard label="Pending" value={pending} sub="awaiting wallet" subColor="text-yellow-500" />
-          <StatCard label="Departments" value={departments} sub="active" subColor="text-mint"/>
+          <StatCard label="Departments" value={departments} sub="active" subColor="text-mint" />
         </div>
 
         {/* table */}
@@ -42,7 +49,11 @@ export default function StudentsPage() {
 
           {students.length === 0 ? (
             <div className="flex items-center justify-center min-h-48 py-12">
-              <p className="text-textMuted px-4">No students yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
+              <p className="text-textMuted px-4">
+                {role === 'admin'
+                  ? <>No students yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</>
+                  : 'No students found.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -104,8 +115,8 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
 function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
-    pending:  'bg-yellow-100 text-yellow-600 border border-yellow-200',
-    failed:   'bg-red-100 text-red-500 border border-red-200',
+    pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
+    failed: 'bg-red-100 text-red-500 border border-red-200',
   };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>

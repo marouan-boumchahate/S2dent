@@ -229,6 +229,13 @@ export default function StudentDetailPage() {
   const [cgpa, setCgpa] = useState('');
   const [adviserId, setAdviserId] = useState('');
 
+  const [role, setRole] = useState<string>('admin');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userRole');
+    if (stored) setRole(stored);
+  }, []);
+
   useEffect(() => {
     const found = store.students.find(s => s.id === id);
     if (!found) { router.push('/students'); return; }
@@ -320,23 +327,25 @@ export default function StudentDetailPage() {
                 <InfoRow label="Adviser" value={adviserId || '—'} />
               </div>
 
-              <div className="w-full mt-6 space-y-3">
-                <Button
-                  title="Update Identity"
-                  onClick={() => setShowUpdateModal(true)}
-                  variant="primary"
-                  className="w-full bg-mint text-navy rounded-xl font-semibold text-sm"
-                />
-                <button
-                  onClick={() => setShowRevokeModal(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Revoke Identity
-                </button>
-              </div>
+              {role === 'admin' && (
+                <div className="w-full mt-6 space-y-3">
+                  <Button
+                    title="Update Identity"
+                    onClick={() => setShowUpdateModal(true)}
+                    variant="primary"
+                    className="w-full bg-mint text-navy rounded-xl font-semibold text-sm"
+                  />
+                  <button
+                    onClick={() => setShowRevokeModal(true)}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Revoke Identity
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
