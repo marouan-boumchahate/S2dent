@@ -62,7 +62,8 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
 
     result.sort((credA, credB) {
       final int cmp = _sortBy == SortBy.date
-          ? credA.issuedAt.compareTo(credB.issuedAt)
+          ? (credA.issuedAt ?? DateTime(0))
+              .compareTo(credB.issuedAt ?? DateTime(0))
           : credA.title.toLowerCase().compareTo(credB.title.toLowerCase());
       return _sortOrder == SortOrder.ascending ? cmp : -cmp;
     });

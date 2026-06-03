@@ -57,9 +57,9 @@ class Student {
       academic: json["academic"] == null
           ? null
           : Academic.fromJson(json["academic"] as Map<String, dynamic>),
-      university: json['university'] == null
+      university: json["university"] == null
           ? null
-          : University.fromJson(json['university'] as Map<String, dynamic>),
+          : University.fromJson(json["university"] as Map<String, dynamic>),
     );
   }
 

@@ -65,14 +65,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.1"
-  bip39_plus:
-    dependency: "direct main"
-    description:
-      name: bip39_plus
-      sha256: "68ca26ca73b6e83c20dc1452e48f7016339491eed8aef19d0ead45c36ec87bbd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
   boolean_selector:
     dependency: transitive
     description:
@@ -281,14 +273,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.1"
-  ed25519_hd_key:
-    dependency: "direct main"
-    description:
-      name: ed25519_hd_key
-      sha256: "31e191ec97492873067e46dc9cc0c7d55170559c83a478400feffa0627acaccf"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.0"
   eip1559:
     dependency: transitive
     description:
@@ -974,7 +958,7 @@ packages:
     source: hosted
     version: "2.1.8"
   pointycastle:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pointycastle
       sha256: "92aa3841d083cc4b0f4709b5c74fd6409a3e6ba833ffc7dc6a8fee096366acf5"
@@ -1483,7 +1467,7 @@ packages:
     source: hosted
     version: "1.1.1"
   web3dart:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: web3dart
       sha256: b7401f8c57833fbde08aaaa8c56e020c5cbdef6bab7f946f69bcc342c9c492b2

@@ -9,7 +9,7 @@ class Identity {
 
   final String walletAddress;
   final String identityTxHash;
-  final DateTime issuedAt;
+  final DateTime? issuedAt;
   final bool isRevoked;
   final DateTime? revokedAt;
 
@@ -17,7 +17,9 @@ class Identity {
     return Identity(
       walletAddress: json["wallet_address"] ?? "",
       identityTxHash: json["identity_tx_hash"] ?? "",
-      issuedAt: DateTime.parse(json["issued_at"]),
+      issuedAt: json["issued_at"] != null
+          ? DateTime.parse(json["issued_at"])
+          : null,
       isRevoked: json["is_revoked"] ?? true,
       revokedAt: json["revoked_at"] == null
           ? null
@@ -29,7 +31,7 @@ class Identity {
     return {
       "wallet_address": walletAddress,
       "identity_tx_hash": identityTxHash,
-      "issued_at": issuedAt.toIso8601String(),
+      "issued_at": issuedAt?.toIso8601String(),
       "is_revoked": isRevoked,
       "revoked_at": revokedAt?.toIso8601String(),
     };
