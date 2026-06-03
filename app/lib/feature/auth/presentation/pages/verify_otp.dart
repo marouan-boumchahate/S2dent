@@ -1,6 +1,7 @@
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/utils/show_verify_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
+import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/feature/auth/presentation/providers/verification_provider.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
 import 'package:app/core/extensions/context_extensions.dart';
@@ -46,6 +47,7 @@ class _VerifyOTPPageState extends ConsumerState<VerifyOTPPage> {
         showAlertDialog(context, next.error!, type: AlertType.error);
       }
       if (next.isComplete && !(previous?.isComplete ?? false)) {
+        ref.read(appKitModalProvider.notifier).state = null;
         showCustomDialog(context);
       }
     });

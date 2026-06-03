@@ -87,9 +87,8 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
                 return "Email is required";
               }
               final parts = value.trim().split('@');
-              if (parts.length != 2 ||
-                  !parts[1].toLowerCase().contains('.edu')) {
-                return "Must be a valid .edu email address";
+              if (parts.length != 2 || parts[1].isEmpty) {
+                return "Must be a valid email address";
               }
               return null;
             },
