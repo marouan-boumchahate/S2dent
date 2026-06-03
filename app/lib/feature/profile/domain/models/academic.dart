@@ -32,20 +32,26 @@ class Academic {
   final String currentLevel;
   final String advisor;
   final EnrollmentStatus enrollmentsStatus;
-  final DateTime enrollmentDate;
-  final DateTime expectedGraduationDate;
-  final DateTime actualGraduationDate;
+  final DateTime? enrollmentDate;
+  final DateTime? expectedGraduationDate;
+  final DateTime? actualGraduationDate;
   final double cgpa;
 
   factory Academic.fromJson(Map<String, dynamic> json) {
     return Academic(
       studentNumber: json["student_number"] ?? "",
       currentLevel: json["current_level"] ?? "",
-      advisor: json['advisor'] ?? "",
+      advisor: json["advisor"] ?? "",
       enrollmentsStatus: enrollmentStatusFromJson(json["enrollment_status"]),
-      enrollmentDate: DateTime.parse(json["enrollment_date"]),
-      expectedGraduationDate: DateTime.parse(json["expected_graduation_date"]),
-      actualGraduationDate: DateTime.parse(json["actual_graduation_date"]),
+      enrollmentDate: json["enrollment_date"] != null
+          ? DateTime.parse(json["enrollment_date"])
+          : null,
+      expectedGraduationDate: json["expected_graduation_date"] != null
+          ? DateTime.parse(json["expected_graduation_date"])
+          : null,
+      actualGraduationDate: json["actual_graduation_date"] != null
+          ? DateTime.parse(json["actual_graduation_date"])
+          : null,
       cgpa: (json["cgpa"] as num?)?.toDouble() ?? 0.0,
     );
   }
@@ -56,9 +62,9 @@ class Academic {
       "current_level": currentLevel,
       "advisor": advisor,
       "enrollment_status": enrollmentsStatus.name,
-      "enrollment_date": enrollmentDate.toIso8601String(),
-      "expected_graduation_date": expectedGraduationDate.toIso8601String(),
-      "actual_graduation_date": actualGraduationDate.toIso8601String(),
+      "enrollment_date": enrollmentDate?.toIso8601String(),
+      "expected_graduation_date": expectedGraduationDate?.toIso8601String(),
+      "actual_graduation_date": actualGraduationDate?.toIso8601String(),
       "cgpa": cgpa,
     };
   }

@@ -28,7 +28,7 @@ class User {
   final String firstName;
   final String middleName;
   final String lastName;
-  final DateTime dateOfBirth;
+  final DateTime? dateOfBirth;
   final Gender gender;
   final String nationality;
   final String nationalId;
@@ -70,7 +70,9 @@ class User {
       firstName: json["first_name"] ?? "",
       middleName: json["middle_name"] ?? "",
       lastName: json["last_name"] ?? "",
-      dateOfBirth: DateTime.parse(json["date_of_birth"]),
+      dateOfBirth: json["date_of_birth"] != null
+          ? DateTime.parse(json["date_of_birth"])
+          : null,
       gender: genderFromJson(json["gender"]),
       nationality: json["nationality"] ?? "",
       nationalId: json["national_id"] ?? "",
@@ -85,7 +87,7 @@ class User {
       "first_name": firstName,
       "middle_name": middleName,
       "last_name": lastName,
-      "date_of_birth": dateOfBirth.toIso8601String(),
+      "date_of_birth": dateOfBirth?.toIso8601String(),
       "gender": gender.name,
       "nationality": nationality,
       "national_id": nationalId,

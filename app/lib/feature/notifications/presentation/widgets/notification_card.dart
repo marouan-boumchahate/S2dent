@@ -34,12 +34,14 @@ class NotificationCard extends StatelessWidget {
   }
 
   String get _timeAgo {
-    final diff = DateTime.now().difference(notification.createdAt);
+    final at = notification.createdAt;
+    if (at == null) return "";
+    final diff = DateTime.now().difference(at);
     if (diff.inMinutes < 1) return 'just now';
     if (diff.inHours < 1) return '${diff.inMinutes}m ago';
     if (diff.inDays < 1) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${notification.createdAt.day}/${notification.createdAt.month}/${notification.createdAt.year}';
+    return '${at.day}/${at.month}/${at.year}';
   }
 
   @override

@@ -24,16 +24,18 @@ class AppNotification {
   final String eventId;
   final String txHash;
   final String message;
-  final DateTime createdAt;
+  final DateTime? createdAt;
   final AppNotificationStatus status;
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      eventId: json['event_id'],
-      txHash: json['tx_hash'],
-      message: json['message'],
-      createdAt: DateTime.parse(json['created_at']),
-      status: appNotificationStatusFromJson(json['status']),
+      eventId: json["event_id"] ?? "",
+      txHash: json["tx_hash"] ?? "",
+      message: json["message"] ?? "",
+      createdAt: json["created_at"] != null
+          ? DateTime.parse(json["created_at"])
+          : null,
+      status: appNotificationStatusFromJson(json["status"] ?? ""),
     );
   }
 
@@ -42,7 +44,7 @@ class AppNotification {
       "event_id": eventId,
       "tx_hash": txHash,
       "message": message,
-      "created_at": createdAt.toIso8601String(),
+      "created_at": createdAt?.toIso8601String(),
       "status": status.name,
     };
   }

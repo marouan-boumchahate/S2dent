@@ -30,7 +30,7 @@ class Credential {
   final String academyAddress;
   final String studentAddress;
   final String studentName;
-  final DateTime issuedAt;
+  final DateTime? issuedAt;
   final bool isRevoked;
   final String issueTxHash;
   final String? revokeTxHash;
@@ -52,8 +52,10 @@ class Credential {
       title: meta["title"] ?? "",
       code: meta["code"] ?? "",
       type: credentialItemTypeFromJson(meta["type"]),
-      issuedAt: DateTime.parse(meta["issued_at"]),
+      issuedAt:
+          meta["issued_at"] != null ? DateTime.parse(meta["issued_at"]) : null,
       isRevoked: meta["is_revoked"] ?? false,
+      //this can be null, and if null we need to capture it (cuz its optional)
       description: meta["description"],
       studentAddress: student["address"] ?? "",
       studentName: student["name"] ?? "",
@@ -76,7 +78,7 @@ class Credential {
         "title": title,
         "code": code,
         "type": type.name,
-        "issued_at": issuedAt.toIso8601String(),
+        "issued_at": issuedAt?.toIso8601String(),
         "is_revoked": isRevoked,
         "description": description,
       },

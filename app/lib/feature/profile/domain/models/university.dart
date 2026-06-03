@@ -17,23 +17,23 @@ class University {
 
   factory University.fromJson(Map<String, dynamic> json) {
     return University(
-      name: json['name'] ?? "",
-      code: json['code'] ?? "",
-      email: json['email'] ?? "",
-      websiteUrl: json['website_url'] ?? "",
-      logoUrl: json['logo_url'] ?? "",
-      phoneNumber: json['phone_number'] ?? "",
+      name: json["name"] ?? "",
+      code: json["code"] ?? "",
+      email: json["email"] ?? "",
+      websiteUrl: json["website_url"] ?? "",
+      logoUrl: json["logo_url"] ?? "",
+      phoneNumber: json["phone_number"] ?? "",
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'name': name,
-      'code': code,
-      'email': email,
-      'website_url': websiteUrl,
-      'logo_url': logoUrl,
-      'phone_number': phoneNumber,
+      "name": name,
+      "code": code,
+      "email": email,
+      "website_url": websiteUrl,
+      "logo_url": logoUrl,
+      "phone_number": phoneNumber,
     };
   }
 }

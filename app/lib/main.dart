@@ -31,6 +31,7 @@ class MyApp extends ConsumerWidget {
     final session = ref.watch(hasSessionProvider);
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       themeMode: theme,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
