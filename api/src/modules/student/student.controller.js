@@ -32,22 +32,29 @@ const updateStudentController = async (req, res) => {
 };
 
 const getAllStudentsController = async (req, res) => {
-    const { rid: academy_id } = req.user;
-    const result = await fetchAllStudentsService(academy_id);
+    const { rid, role } = req.user;
+    const result = await fetchAllStudentsService(rid, role);
 
     return ok(res, result, 'All students retrieved successfully');
 };
 
 const getStudentByIdController = async (req, res) => {
+    const { rid, role } = req.user;
     const { id } = req.params;
-    const result = await fetchStudentService(id);
+    const result = await fetchStudentService({
+        student_id: id,
+        requester_id: rid,
+        requester_role: role,
+    });
 
     return ok(res, result, 'Student retrieved successfully');
 };
 
 const getMyProfileController = async (req, res) => {
     const { rid } = req.user;
-    const result = await fetchStudentService(rid);
+    const result = await fetchStudentService({
+        student_id: rid,
+    });
 
     return ok(res, result, 'Student profile retrieved successfully');
 };

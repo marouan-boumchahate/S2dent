@@ -114,7 +114,7 @@ describe('GET /api/identity/students', () => {
     const token = makeToken(ACADEMY_WALLET, 'academy')
 
     const res = await request(app)
-      .get(`${endpoint}/by-id/${STUDENT_USER_ID}`)
+      .get(`${endpoint}/by-user-id/${STUDENT_USER_ID}`)
       .set('Authorization', `Bearer ${token.accessToken}`)
 
     assert.equal(res.status, 200)
