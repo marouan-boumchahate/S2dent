@@ -49,6 +49,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         },
       );
       await modal.init();
+      if (modal.isConnected) {
+        await modal.disconnect();
+      }
       if (mounted) {
         ref.read(appKitModalProvider.notifier).state = modal;
       }
