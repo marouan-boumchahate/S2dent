@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class TokenStorageService {
-  final _flutterStorage = const FlutterSecureStorage();
+  final _flutterStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   Future<void> saveTokens(String accessToken, String refreshToken) async {
     await Future.wait([

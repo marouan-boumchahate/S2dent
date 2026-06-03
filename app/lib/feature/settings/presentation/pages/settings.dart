@@ -1,10 +1,13 @@
-﻿import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
+﻿import 'package:app/core/services/pk_storage.service.dart';
+import 'package:app/core/utils/show_alert_dialog.dart';
+import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
 import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/info_section.dart';
 import 'package:app/core/widgets/ui/info_tile.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/theme_provider.dart';
+import 'package:app/feature/home/presentation/widgets/pk_setup_dialog.dart';
 import 'package:app/feature/settings/presentation/pages/faqs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +28,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         builder: (context) => FaqsPage(),
       ),
     );
+  }
+
+  void onTapSavePK() async {
+    final pk = await ref.read(pkStorageServiceProvider).getPK();
+    if (!mounted) return;
+    if (pk == null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PkSetupDialog(
+          onSave: () => showAlertDialog(
+            context,
+            "Private Key Saved Successfully",
+            type: AlertType.success,
+          ),
+        ),
+      );
+    } else {
+      showAlertDialog(context, "You already have a saved PK");
+    }
   }
 
   Future<void> onTapContactUs() async {
@@ -65,6 +88,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _appPreference(theme),
           _support(),
+          _security(),
         ],
       ),
     );
@@ -106,6 +130,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               },
             ),
             icon: Icons.dark_mode_outlined,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Padding _security() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: InfoSection(
+        title: "Security",
+        widgets: [
+          PressableInfoTile(
+            label: "Save a Private Key",
+            onTap: onTapSavePK,
+            icon: Icons.save,
           ),
         ],
       ),
