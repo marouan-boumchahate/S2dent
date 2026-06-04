@@ -3,15 +3,13 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { useLogo } from '@/lib/logoContext';
-
-// pages
+import { fetchProfessorById, updateProfessor, ApiProfessorDetail } from '@/lib/api';
 
 type Role = 'admin' | 'professor';
 type Tab = { id: string; label: string };
 
 const ADMIN_TABS: Tab[] = [
   { id: 'academy', label: 'Academy profile' },
-  { id: 'professor', label: 'Professor profile' },
 ];
 
 const PROFESSOR_TABS: Tab[] = [
@@ -44,7 +42,6 @@ function FieldGrid({ children }: { children: React.ReactNode }) {
   );
 }
 
-// fields — can be editble by click on edit profile
 function Field({
   label,
   value,
@@ -84,6 +81,8 @@ function Field({
   );
 }
 
+// buttons & status indicators
+
 function OutlineButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
     <button
@@ -120,7 +119,6 @@ function SettingsRow({ label, sub, action }: { label: string; sub?: string; acti
   );
 }
 
-// save and edit button section 
 function EditBar({
   editing,
   onEdit,
@@ -219,21 +217,21 @@ function ProfileHeader({
   );
 }
 
-// academy profile tab for admin
+// Academy profile tab for admin configuration
 
 function AcademyProfileTab() {
   const initial = {
-    fullName: 'Cairo University',
-    shortName: 'CU',
-    academyNumber: 'ACU-2024-001',
+    fullName: 'Fenerbahçe University',
+    shortName: 'FBU',
+    academyNumber: 'FBU-2026-001',
     type: 'University',
-    email: 'admin@cu.edu.eg',
-    phone: '+20 2 35676601',
-    website: 'https://cu.edu.eg',
-    legalName: 'Cairo University — جامعة القاهرة',
-    registrationNumber: 'EG-0001-1908',
-    taxId: '100-234-567',
-    billingEmail: 'billing@cu.edu.eg',
+    email: 'admin@fenerbahce.edu.tr',
+    phone: '+90 216 910 1907',
+    website: 'https://fenerbahce.edu.tr',
+    legalName: 'Fenerbahçe Üniversitesi',
+    registrationNumber: 'TR-34-FBU',
+    taxId: '344-707-1907',
+    billingEmail: 'billing@fenerbahce.edu.tr',
   };
 
   const [data, setData] = useState(initial);
@@ -297,64 +295,131 @@ function AcademyProfileTab() {
   );
 }
 
-// professor profile tab for professor only it should be but for now for both to make things esay on me in editing and testing the page
+// Professor self-service settings view
 
 function ProfessorProfileTab() {
-  const data = {
+  const initialData = {
     firstName: 'Khaled',
     lastName: 'Mansour',
     dateOfBirth: '12 Mar 1978',
     gender: 'Male',
     nationalId: '27803121234567',
     nationality: 'Egyptian',
-    email: 'k.mansour@cu.edu.eg',
-    phone: '+20 100 000 0042',
+    email: 'k.mansour@fenerbahce.edu.tr',
+    phone: '+90 555 000 4242',
     title: 'Dr.',
     rank: 'Assoc. Prof',
-    department: 'Computer Science',
-    faculty: 'Engineering & Computing',
+    department: 'Computer Engineering',
+    faculty: 'Engineering & Architecture',
     specialization: 'Distributed Systems',
     employmentType: 'Full-time',
     hireDate: '01 Sep 2015',
     officeLocation: 'Building C, Room 214',
+    officeHours: 'Mon/Wed 10:00 - 12:00',
   };
 
-  const noop = () => { };
+  const [data, setData] = useState(initialData);
+  const [draft, setDraft] = useState(initialData);
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [profId, setProfId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = localStorage.getItem('professorId') || localStorage.getItem('userId');
+    if (!id) return;
+    setProfId(id);
+    setLoading(true);
+
+    fetchProfessorById(id)
+      .then((detail) => {
+        const mapped = {
+          ...initialData,
+          rank: detail.rank || initialData.rank,
+          specialization: detail.specialization || initialData.specialization,
+          employmentType: detail.employment_type || initialData.employmentType,
+          officeLocation: detail.office_location || initialData.officeLocation,
+          officeHours: detail.office_hours || initialData.officeHours,
+        };
+        setData(mapped);
+        setDraft(mapped);
+      })
+      .catch(() => { })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const set = (key: keyof typeof draft) => (v: string) =>
+    setDraft((d) => ({ ...d, [key]: v }));
+
+  const handleSave = async () => {
+    if (profId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+        // Routes phone update self-service request to user endpoint
+        await fetch(`${baseUrl}/users`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ phone: draft.phone })
+        });
+      } catch {
+        // Soft UI interface fallback
+      }
+    }
+    setData(draft);
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(data);
+    setEditing(false);
+  };
+
+  if (loading) {
+    return <div className="text-textMuted text-sm py-8 text-center animate-pulse">Loading professor profile...</div>;
+  }
 
   return (
     <div className="w-full">
       <ProfileHeader
-        initials={`${data.firstName[0]}${data.lastName[0]}`}
-        name={`${data.title} ${data.firstName} ${data.lastName}`}
-        sub={`Employee #EMP-0042 · ${data.rank} · ${data.department}`}
+        initials={`${draft.firstName[0]}${draft.lastName[0]}`}
+        name={`${draft.title} ${draft.firstName} ${draft.lastName}`}
+        sub={`Employee #EMP-0042 · ${draft.rank} · ${draft.department}`}
         color="violet"
       />
+
+      {/* <EditBar editing={editing} onEdit={() => setEditing(true)} onSave={handleSave} onCancel={handleCancel} /> */}
+      {/* Edit button hidden because professor profile details are completely read-only */}
 
       <SectionTitle>Personal information</SectionTitle>
       <Card>
         <FieldGrid>
-          <Field label="First name" value={data.firstName} onChange={noop} editing={false} />
-          <Field label="Last name" value={data.lastName} onChange={noop} editing={false} />
-          <Field label="Date of birth" value={data.dateOfBirth} onChange={noop} editing={false} />
-          <Field label="Gender" value={data.gender} onChange={noop} editing={false} />
-          <Field label="National ID" value={data.nationalId} onChange={noop} editing={false} mono />
-          <Field label="Nationality" value={data.nationality} onChange={noop} editing={false} />
-          <Field label="Email" value={data.email} onChange={noop} editing={false} />
-          <Field label="Phone" value={data.phone} onChange={noop} editing={false} />
+          <Field label="First name" value={draft.firstName} onChange={set('firstName')} editing={false} />
+          <Field label="Last name" value={draft.lastName} onChange={set('lastName')} editing={false} />
+          <Field label="Date of birth" value={draft.dateOfBirth} onChange={set('dateOfBirth')} editing={false} />
+          <Field label="Gender" value={draft.gender} onChange={set('gender')} editing={false} />
+          <Field label="National ID" value={draft.nationalId} onChange={set('nationalId')} editing={false} mono />
+          <Field label="Nationality" value={draft.nationality} onChange={set('nationality')} editing={false} />
+          <Field label="Email" value={draft.email} onChange={set('email')} editing={false} />
+          <Field label="Phone" value={draft.phone} onChange={set('phone')} editing={false} />
         </FieldGrid>
       </Card>
 
       <SectionTitle>Academic details</SectionTitle>
       <Card>
         <FieldGrid>
-          <Field label="Title" value={data.title} onChange={noop} editing={false} />
-          <Field label="Rank" value={data.rank} onChange={noop} editing={false} />
-          <Field label="Department" value={data.department} onChange={noop} editing={false} />
-          <Field label="Faculty" value={data.faculty} onChange={noop} editing={false} />
-          <Field label="Specialization" value={data.specialization} onChange={noop} editing={false} />
-          <Field label="Employment type" value={data.employmentType} onChange={noop} editing={false} />
-          <Field label="Hire date" value={data.hireDate} onChange={noop} editing={false} />
-          <Field label="Office location" value={data.officeLocation} onChange={noop} editing={false} />
+          <Field label="Title" value={draft.title} onChange={set('title')} editing={false} />
+          <Field label="Rank" value={draft.rank} onChange={set('rank')} editing={false} />
+          <Field label="Department" value={draft.department} onChange={set('department')} editing={false} />
+          <Field label="Faculty" value={draft.faculty} onChange={set('faculty')} editing={false} />
+          <Field label="Specialization" value={draft.specialization} onChange={set('specialization')} editing={false} />
+          <Field label="Employment type" value={draft.employmentType} onChange={set('employmentType')} editing={false} />
+          <Field label="Hire date" value={draft.hireDate} onChange={set('hireDate')} editing={false} />
+          <Field label="Office location" value={draft.officeLocation} onChange={set('officeLocation')} editing={false} />
+          <Field label="Office hours" value={draft.officeHours} onChange={set('officeHours')} editing={false} />
         </FieldGrid>
       </Card>
 
@@ -374,7 +439,7 @@ function ProfessorProfileTab() {
   );
 }
 
-// main page
+// Main root page framework
 
 export default function SettingsPage() {
   const [role, setRole] = useState<Role>('admin');
@@ -405,7 +470,6 @@ export default function SettingsPage() {
       <PageHeader title="Settings" />
 
       <div className="flex-1 overflow-y-auto w-full">
-        {/* tab bar only shows when there a multiple tabs (admin) */}
         {tabs.length > 1 && (
           <div className="flex gap-1 border-b border-borderLine mb-6 px-1 w-full">
             {tabs.map((tab) => (

@@ -5,21 +5,11 @@ import { useRouter, useParams } from 'next/navigation';
 import { store, Professor } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
+import { fetchProfessorById, updateProfessor, revokeProfessorIdentity, fetchProfessors, fetchStudentOnChain as fetchIdentityOnChain, ApiProfessorDetail, OnChainStudent } from '@/lib/api';
 
-// mock on-chain data — replace with API when ready
-const MOCK_ONCHAIN = {
-  walletAddress: '0x7a3cD9f1...b2e4',
-  identityStatus: 'Active' as 'Active' | 'Inactive' | 'Revoked',
-  issuedDate: 'Feb 10, 2024',
-  blockNumber: '#20,115,443',
-  transactionHash: '0xfe98ba76cd54fe98ba76cd54fe98ba76cd54aa1b',
-  certificateHash: 'f1c2d3e4a5b6c7d8e9f0...1a2b3c4d5e6f',
-};
 
-// mock certificates — replace with API when ready
-const MOCK_CERTS = [
-  { id: '1', name: 'Teaching Excellence 2024', date: 'Dec 15, 2024', type: 'Achievement' },
-];
+
+
 
 function getInitials(p: Professor) {
   return [p.firstName, p.lastName].filter(Boolean).map(n => n[0].toUpperCase()).join('');
@@ -228,6 +218,16 @@ export default function ProfessorDetailPage() {
   const [officeLocation, setOfficeLocation] = useState('');
   const [officeHours, setOfficeHours] = useState('');
 
+  const [role, setRole] = useState<string>('admin');
+  const [apiDetail, setApiDetail] = useState<ApiProfessorDetail | null>(null);
+  const [onChain, setOnChain] = useState<OnChainStudent | null>(null);
+  const [onChainLoading, setOnChainLoading] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userRole');
+    if (stored) setRole(stored);
+  }, []);
+
   useEffect(() => {
     const found = store.professors.find(p => p.id === id);
     if (!found) { router.push('/professors'); return; }
@@ -236,6 +236,28 @@ export default function ProfessorDetailPage() {
     setEmploymentType(found.employmentType ?? '');
     setOfficeLocation(found.officeLocation ?? '');
     setOfficeHours(found.officeHours ?? '');
+
+    setOnChainLoading(true);
+    fetchProfessorById(id)
+      .then(detail => {
+        setApiDetail(detail);
+        if (detail.rank) setRank(detail.rank);
+        if (detail.employment_type) setEmploymentType(detail.employment_type);
+        if (detail.office_location) setOfficeLocation(detail.office_location);
+        if (detail.office_hours) setOfficeHours(detail.office_hours);
+        return fetchProfessors();
+      })
+      .then(list => {
+        const match = list?.find(p => p.id === id);
+        if (match?.wallet_address) {
+          return fetchIdentityOnChain(match.wallet_address);
+        }
+      })
+      .then(onChainData => {
+        if (onChainData) setOnChain(onChainData);
+      })
+      .catch(() => { })
+      .finally(() => setOnChainLoading(false));
   }, [id, router]);
 
   if (!professor) {
@@ -245,7 +267,17 @@ export default function ProfessorDetailPage() {
   const fullName = [professor.title, professor.firstName, professor.middleName, professor.lastName].filter(Boolean).join(' ');
   const initials = getInitials(professor);
 
-  const handleUpdate = (data: { rank: string; employmentType: string; officeLocation: string; officeHours: string }) => {
+  const handleUpdate = async (data: { rank: string; employmentType: string; officeLocation: string; officeHours: string }) => {
+    try {
+      await updateProfessor(id, {
+        rank: data.rank || undefined,
+        employment_type: data.employmentType || undefined,
+        office_location: data.officeLocation || undefined,
+        office_hours: data.officeHours || undefined,
+      });
+    } catch {
+      // fallback to local update if API fails
+    }
     (professor as any).rank = data.rank;
     (professor as any).employmentType = data.employmentType;
     (professor as any).officeLocation = data.officeLocation;
@@ -257,8 +289,14 @@ export default function ProfessorDetailPage() {
     setShowUpdateModal(false);
   };
 
-  const handleRevoke = (reason: string) => {
-    console.log('Revoke reason:', reason);
+  const handleRevoke = async (reason: string) => {
+    try {
+      if (onChain?.identity?.wallet_address) {
+        await revokeProfessorIdentity(onChain.identity.wallet_address, reason);
+      }
+    } catch {
+      // proceed even if API fails
+    }
     store.removeProfessor(professor.id);
     router.push('/professors');
   };
@@ -303,8 +341,11 @@ export default function ProfessorDetailPage() {
               <p className="text-textMuted text-xs mt-0.5">
                 PRF-{new Date(professor.createdAt).getFullYear()}-{professor.id.slice(0, 5).toUpperCase()}
               </p>
-              <span className="mt-2 px-3 py-0.5 rounded-full text-xs font-semibold border border-mint text-mint bg-mint/5">
-                Verified
+              <span className={`mt-2 px-3 py-0.5 rounded-full text-xs font-semibold border ${onChain?.status.is_revoked
+                ? 'border-red-400 text-red-400 bg-red-500/5'
+                : 'border-mint text-mint bg-mint/5'
+                }`}>
+                {onChainLoading ? '…' : onChain?.status.is_revoked ? 'Revoked' : onChain ? 'Verified' : 'Unissued'}
               </span>
 
               <div className="w-full mt-5">
@@ -320,23 +361,25 @@ export default function ProfessorDetailPage() {
                 <InfoRow label="Office Hours" value={officeHours} />
               </div>
 
-              <div className="w-full mt-6 space-y-3">
-                <Button
-                  title="Update Identity"
-                  onClick={() => setShowUpdateModal(true)}
-                  variant="primary"
-                  className="w-full bg-mint text-navy rounded-xl font-semibold text-sm"
-                />
-                <button
-                  onClick={() => setShowRevokeModal(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Revoke Identity
-                </button>
-              </div>
+              {role === 'admin' && (
+                <div className="w-full mt-6 space-y-3">
+                  <Button
+                    title="Update Identity"
+                    onClick={() => setShowUpdateModal(true)}
+                    variant="primary"
+                    className="w-full bg-mint text-navy rounded-xl font-semibold text-sm"
+                  />
+                  <button
+                    onClick={() => setShowRevokeModal(true)}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Revoke Identity
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -345,14 +388,24 @@ export default function ProfessorDetailPage() {
             <div className="bg-card border border-borderLine rounded-2xl p-6">
               <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">On-Chain Information</h3>
 
-              <div className="grid grid-cols-2 gap-3">
-                <OnChainField label="Wallet Address" value={MOCK_ONCHAIN.walletAddress} />
-                <OnChainField label="Identity Status" value={MOCK_ONCHAIN.identityStatus} />
-                <OnChainField label="Issued Date" value={MOCK_ONCHAIN.issuedDate} />
-                <OnChainField label="Block Number" value={MOCK_ONCHAIN.blockNumber} />
-                <OnChainField label="Transaction Hash" value={MOCK_ONCHAIN.transactionHash} fullWidth />
-                <OnChainField label="Certificate Hash (SHA-256)" value={MOCK_ONCHAIN.certificateHash} fullWidth />
-              </div>
+              {onChainLoading ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className={`bg-navy border border-borderLine rounded-xl p-4 h-16 animate-pulse ${i >= 4 ? 'col-span-2' : ''}`} />
+                  ))}
+                </div>
+              ) : onChain ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <OnChainField label="Wallet Address" value={onChain.identity.wallet_address} />
+                  <OnChainField label="Identity Status" value={onChain.status.is_revoked ? 'Revoked' : 'Active'} />
+                  <OnChainField label="Issued Date" value={new Date(onChain.status.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+                  <OnChainField label="Issuer" value={onChain.status.issuer} />
+                  <OnChainField label="Department" value={onChain.identity.department} fullWidth />
+                  <OnChainField label="Academy" value={onChain.identity.academy_name} fullWidth />
+                </div>
+              ) : (
+                <p className="text-textMuted text-sm">No on-chain identity found for this professor.</p>
+              )}
             </div>
 
             {professor.bio && (

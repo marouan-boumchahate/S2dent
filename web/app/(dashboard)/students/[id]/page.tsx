@@ -6,21 +6,7 @@ import { store, Student } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 
-// mock on-chain data — replace with API when ready
-const MOCK_ONCHAIN = {
-  walletAddress: '0x4f2aB8c3...c3b1',
-  identityStatus: 'Active' as 'Active' | 'Inactive' | 'Revoked',
-  issuedDate: 'Jan 15, 2025',
-  blockNumber: '#21,430,882',
-  transactionHash: '0xab12cd34ef56ab12cd34ef56ab12cd34ef56ff3e',
-  certificateHash: 'e3b0c44298fc1c149afb...27ae41e4649b',
-};
-
-// mock certificates — replace with API when ready
-const MOCK_CERTS = [
-  { id: '1', name: 'Bachelor of CS', date: 'Mar 20, 2025', type: 'Degree' },
-  { id: '2', name: "Dean's List 2024", date: 'Jan 10, 2025', type: 'Achievement' },
-];
+import { fetchStudentById, fetchStudentOnChain, fetchStudents, updateStudent, revokeStudentIdentity, ApiStudentDetail, OnChainStudent } from '@/lib/api';
 
 // helpers
 function getInitials(s: Student) {
@@ -230,7 +216,9 @@ export default function StudentDetailPage() {
   const [adviserId, setAdviserId] = useState('');
 
   const [role, setRole] = useState<string>('admin');
-
+  const [apiDetail, setApiDetail] = useState<ApiStudentDetail | null>(null);
+  const [onChain, setOnChain] = useState<OnChainStudent | null>(null);
+  const [onChainLoading, setOnChainLoading] = useState(true);
   useEffect(() => {
     const stored = localStorage.getItem('userRole');
     if (stored) setRole(stored);
@@ -242,6 +230,39 @@ export default function StudentDetailPage() {
     setStudent(found);
     setCgpa((found as any).cgpa ?? '');
     setAdviserId((found as any).adviserId ?? '');
+
+    setOnChainLoading(true);
+    fetchStudentById(id)
+      .then(detail => {
+        setApiDetail(detail);
+        if (detail.cgpa != null) setCgpa(String(detail.cgpa));
+        return fetchStudents();
+      })
+      .then(list => {
+        const match = list?.find(s => s.id === id);
+        if (match?.wallet_address) {
+          return fetchStudentOnChain(match.wallet_address);
+        }
+      })
+      .then(onChainData => {
+        if (onChainData) setOnChain(onChainData);
+      })
+      .catch(() => { })
+      .finally(() => setOnChainLoading(false)); // Guarantees the loading state stops even on failures
+  }, [id, router]);
+
+  useEffect(() => {
+    const found = store.students.find(s => s.id === id);
+    if (!found) { router.push('/students'); return; }
+    setStudent(found);
+    setCgpa((found as any).cgpa ?? '');
+    setAdviserId((found as any).adviserId ?? '');
+    fetchStudentById(id)
+      .then(detail => {
+        setApiDetail(detail);
+        if (detail.cgpa != null) setCgpa(String(detail.cgpa));
+      })
+      .catch(() => { });
   }, [id, router]);
 
   if (!student) {
@@ -251,16 +272,29 @@ export default function StudentDetailPage() {
   const fullName = [student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ');
   const initials = getInitials(student);
 
-  const handleUpdate = (newCgpa: string, newAdviserId: string) => {
+  const handleUpdate = async (newCgpa: string, newAdviserId: string) => {
+    try {
+      await updateStudent(id, {
+        cgpa: parseFloat(newCgpa),
+        advisor_id: newAdviserId || undefined,
+      });
+    } catch {
+      // update failed, but reflect locally anyway
+    }
     (student as any).cgpa = newCgpa;
-    (student as any).adviserId = newAdviserId;
     setCgpa(newCgpa);
     setAdviserId(newAdviserId);
     setShowUpdateModal(false);
   };
 
-  const handleRevoke = (reason: string) => {
-    console.log('Revoke reason:', reason);
+  const handleRevoke = async (reason: string) => {
+    try {
+      if (onChain?.identity?.wallet_address) {
+        await revokeStudentIdentity(onChain.identity.wallet_address, reason);
+      }
+    } catch {
+      // proceed even if API fails
+    }
     store.removeStudent(student.id);
     router.push('/students');
   };
@@ -307,8 +341,11 @@ export default function StudentDetailPage() {
               <p className="text-textMuted text-xs mt-0.5">
                 STU-{new Date(student.createdAt).getFullYear()}-{student.id.slice(0, 5).toUpperCase()}
               </p>
-              <span className="mt-2 px-3 py-0.5 rounded-full text-xs font-semibold border border-mint text-mint bg-mint/5">
-                Verified
+              <span className={`mt-2 px-3 py-0.5 rounded-full text-xs font-semibold border ${onChain?.status.is_revoked
+                ? 'border-red-400 text-red-400 bg-red-500/5'
+                : 'border-mint text-mint bg-mint/5'
+                }`}>
+                {onChainLoading ? '…' : onChain?.status.is_revoked ? 'Revoked' : onChain ? 'Verified' : 'Unissued'}
               </span>
 
               <div className="w-full mt-5">
@@ -353,14 +390,24 @@ export default function StudentDetailPage() {
           <div className="flex-1 space-y-6 overflow-y-auto">
             <div className="bg-card border border-borderLine rounded-2xl p-6">
               <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">On-Chain Information</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <OnChainField label="Wallet Address" value={MOCK_ONCHAIN.walletAddress} />
-                <OnChainField label="Identity Status" value={MOCK_ONCHAIN.identityStatus} />
-                <OnChainField label="Issued Date" value={MOCK_ONCHAIN.issuedDate} />
-                <OnChainField label="Block Number" value={MOCK_ONCHAIN.blockNumber} />
-                <OnChainField label="Transaction Hash" value={MOCK_ONCHAIN.transactionHash} fullWidth />
-                <OnChainField label="Certificate Hash (SHA-256)" value={MOCK_ONCHAIN.certificateHash} fullWidth />
-              </div>
+              {onChainLoading ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className={`bg-navy border border-borderLine rounded-xl p-4 h-16 animate-pulse ${i >= 4 ? 'col-span-2' : ''}`} />
+                  ))}
+                </div>
+              ) : onChain ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <OnChainField label="Wallet Address" value={onChain.identity.wallet_address} />
+                  <OnChainField label="Identity Status" value={onChain.status.is_revoked ? 'Revoked' : 'Active'} />
+                  <OnChainField label="Issued Date" value={new Date(onChain.status.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+                  <OnChainField label="Issuer" value={onChain.status.issuer} />
+                  <OnChainField label="Department" value={onChain.identity.department} fullWidth />
+                  <OnChainField label="Academy" value={onChain.identity.academy_name} fullWidth />
+                </div>
+              ) : (
+                <p className="text-textMuted text-sm">No on-chain identity found for this student.</p>
+              )}
             </div>
 
           </div>

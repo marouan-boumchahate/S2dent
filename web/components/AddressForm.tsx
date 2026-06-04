@@ -2,11 +2,7 @@
 
 import FormField from './FormField';
 import Button from './Button';
-
-interface AddressFormProps {
-  onNext: () => void;
-  onBack: () => void;
-}
+import { useState } from 'react';
 
 export interface AddressData {
   address_line1: string;
@@ -19,21 +15,36 @@ export interface AddressData {
   country: string;
 }
 
-import { useState } from 'react';
+interface AddressFormProps {
+  onNext: (data: AddressData) => void;
+  onBack: () => void;
+  initialData?: Partial<AddressData>; // Keeps inputs populated if the user goes back and forward
+}
 
-export default function AddressForm({ onNext, onBack }: AddressFormProps) {
-  const [addressLine1, setAddressLine1] = useState('');
-  const [addressLine2, setAddressLine2] = useState('');
-  const [street, setStreet] = useState('');
-  const [district, setDistrict] = useState('');
-  const [state, setState] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
+export default function AddressForm({ onNext, onBack, initialData }: AddressFormProps) {
+  const [addressLine1, setAddressLine1] = useState(initialData?.address_line1 || '');
+  const [addressLine2, setAddressLine2] = useState(initialData?.address_line2 || '');
+  const [street, setStreet] = useState(initialData?.street || '');
+  const [district, setDistrict] = useState(initialData?.district || '');
+  const [state, setState] = useState(initialData?.state || '');
+  const [postalCode, setPostalCode] = useState(initialData?.postal_code || '');
+  const [city, setCity] = useState(initialData?.city || '');
+  const [country, setCountry] = useState(initialData?.country || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onNext();
+    
+    // Package the state values into the schema required by your API definitions
+    onNext({
+      address_line1: addressLine1,
+      address_line2: addressLine2,
+      street,
+      district,
+      state,
+      postal_code: postalCode,
+      city,
+      country,
+    });
   };
 
   return (

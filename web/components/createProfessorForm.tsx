@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import Button from './Button';
 import FormField from './FormField';
-import AddressForm from './AddressForm';
+import AddressForm, { AddressData } from './AddressForm';
 
 import { store } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { createProfessor } from '@/lib/api';
 
 export default function CreateProfessorForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -22,6 +24,8 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [notes, setNotes] = useState('');
+
+  const [address, setAddress] = useState<Partial<AddressData>>({});
 
   const [department, setDepartment] = useState('');
   const [title, setTitle] = useState('');
@@ -41,35 +45,88 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
     onStepChange(2);
   };
 
-const handleStep3Submit = (e: React.FormEvent) => {
-  e.preventDefault();
-  store.addProfessor({
-    firstName, middleName, lastName, dateOfBirth, gender, nationality,
-    nationalId, email, phone, photoUrl, notes,
-    department, title, rank, specialization, hireDate,
-    employmentType, officeLocation, officeHours, bio,
-  });
-  onClose();
-  router.push('/professors');
-};
+  const handleStep3Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return; // Safely blocks double-clicks in JS
+    setLoading(true);
+
+    try {
+      // Post directly to your Docker container database
+      await createProfessor({
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        date_of_birth: dateOfBirth,
+        gender,
+        nationality,
+        national_id: nationalId,
+        email,
+        phone,
+        photo_url: photoUrl || null,
+        notes,
+        department,
+        title,
+        rank,
+        specialization,
+        hire_date: hireDate || null,
+        employment_type: employmentType,
+        office_location: officeLocation,
+        office_hours: officeHours,
+        bio,
+        ...address, // Spreads address_line1, city, country, etc. directly into the database payload
+      });
+
+// Keep client-side store updated as a secondary fallback
+      store.addProfessor({
+        firstName,
+        middleName,
+        lastName,
+        dateOfBirth,
+        gender,
+        nationality,
+        nationalId,
+        email,
+        phone,
+        photoUrl,
+        notes,
+        department,
+        title,
+        rank,
+        specialization,
+        hireDate,
+        employmentType,
+        officeLocation,
+        officeHours,
+        bio,
+      });
+
+      onClose();
+      router.push('/professors');
+      router.refresh();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Failed to register professor records. Please check database connectivity.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (step === 2) {
     return (
       <AddressForm
-        onNext={() => { setStep(3); onStepChange(3); }}
+        initialData={address}
+        onNext={(data) => { setAddress(data); setStep(3); onStepChange(3); }}
         onBack={() => { setStep(1); onStepChange(1); }}
       />
     );
   }
-  // here the step 3 and agian the step 2 in the address form
+
   if (step === 3) {
     return (
       <form onSubmit={handleStep3Submit} className="flex flex-col h-full flex-1">
         <h2 className="text-3xl font-bold text-textLight mb-8">Professor Information</h2>
 
         <div className="space-y-6">
-
-          {/* department, title */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Department"
@@ -87,7 +144,6 @@ const handleStep3Submit = (e: React.FormEvent) => {
             />
           </div>
 
-          {/* rank, employment type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Rank"
@@ -104,7 +160,6 @@ const handleStep3Submit = (e: React.FormEvent) => {
             />
           </div>
 
-          {/* specialization, hire date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Specialization"
@@ -121,7 +176,6 @@ const handleStep3Submit = (e: React.FormEvent) => {
             />
           </div>
 
-          {/* office location, office hours */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Office Location"
@@ -138,7 +192,6 @@ const handleStep3Submit = (e: React.FormEvent) => {
             />
           </div>
 
-          {/* bio */}
           <FormField
             label="Bio"
             value={bio}
@@ -146,19 +199,19 @@ const handleStep3Submit = (e: React.FormEvent) => {
             isTextarea
             placeholder="Short biography..."
           />
-
         </div>
 
         <div className="mt-8 pb-4 flex gap-4">
           <button
             type="button"
+            disabled={loading}
             onClick={() => { setStep(2); onStepChange(2); }}
-            className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold"
+            className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold disabled:opacity-50"
           >
             ← Back
           </button>
           <Button
-            title="Submit"
+            title={loading ? "Submitting..." : "Submit"}
             onClick={() => { }}
             type="submit"
             className="w-full bg-mint font-bold"
@@ -168,13 +221,11 @@ const handleStep3Submit = (e: React.FormEvent) => {
     );
   }
 
-  // this should be step 1 !!! the step 2 in the address form
   return (
     <form onSubmit={handleStep1Submit} className="flex flex-col h-full flex-1">
       <h2 className="text-3xl font-bold text-textLight mb-8">Personnel Information</h2>
 
       <div className="space-y-6">
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField label="First Name" value={firstName} onChange={setFirstName} required maxLength={100} />
           <FormField label="Middle Name" value={middleName} onChange={setMiddleName} maxLength={100} />
@@ -198,7 +249,6 @@ const handleStep3Submit = (e: React.FormEvent) => {
         </div>
 
         <FormField label="Notes" value={notes} onChange={setNotes} isTextarea placeholder="Any additional notes..." />
-
       </div>
 
       <div className="mt-8 pb-4 flex gap-4">

@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import Button from './Button';
 import FormField from './FormField';
-import AddressForm from './AddressForm';
+import AddressForm, { AddressData } from './AddressForm';
 
 import { store } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { createStudent } from '@/lib/api';
 
 export default function CreateStudentForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -21,6 +24,9 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [notes, setNotes] = useState('');
+
+  const [address, setAddress] = useState<Partial<AddressData>>({});
+  
   const [department, setDepartment] = useState('');
   const [currentLevel, setCurrentLevel] = useState('');
   const [enrollmentStatus, setEnrollmentStatus] = useState('');
@@ -40,22 +46,71 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
     onStepChange(2);
   };
 
-  const handleStep3Submit = (e: React.FormEvent) => {
+  const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-store.addStudent({
-  firstName, middleName, lastName, dateOfBirth, gender, nationality,
-  nationalId, email, phone, photoUrl, notes,
-  department, currentLevel, enrollmentStatus, enrollmentDate,
-  actualGraduationDate, adviserId,
-});
-    onClose();
-    router.push('/students');
+    if (loading) return; // JavaScript guard clause to block double-clicks
+    setLoading(true);
+
+    try {
+      // Send parameters as snake_case matching the backend schema
+      await createStudent({
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        date_of_birth: dateOfBirth,
+        gender,
+        nationality,
+        national_id: nationalId,
+        email,
+        phone,
+        photo_url: photoUrl || null,
+        notes,
+        department,
+        current_level: currentLevel,
+        enrollment_status: enrollmentStatus || 'active',
+        enrollment_date: enrollmentDate || null,
+        actual_graduation_date: actualGraduationDate || null,
+        adviser_id: adviserId || null,
+        ...address, // Spreads address fields directly into the outgoing body request
+      });
+
+// Maintain local fallback synchronization
+      store.addStudent({
+        firstName,
+        middleName,
+        lastName,
+        dateOfBirth,
+        gender,
+        nationality,
+        nationalId,
+        email,
+        phone,
+        photoUrl,
+        notes,
+        department,
+        currentLevel,
+        enrollmentStatus,
+        enrollmentDate,
+        actualGraduationDate,
+        adviserId,
+      });
+
+      onClose();
+      router.push('/students');
+      router.refresh();
+    } catch (error) {
+      console.error('Error submitting student form:', error);
+      alert('Failed to register student records. Please verify database container connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (step === 2) {
     return (
       <AddressForm
-        onNext={() => { setStep(3); onStepChange(3); }}
+        initialData={address}
+        onNext={(data) => { setAddress(data); setStep(3); onStepChange(3); }}
         onBack={() => { setStep(1); onStepChange(1); }}
       />
     );
@@ -76,7 +131,7 @@ store.addStudent({
               value={department}
               onChange={setDepartment}
               required
-              options={['', 'Computer Science', 'Engineering', 'Mathematics', 'Physics', 'Business', 'Medicine']}
+              options={['', 'Computer Science', 'Engineering', 'Mathematics', 'Physics', 'Business', 'Medicine', 'Computer Engineering']}
             />
             <FormField
               label="Current Level (e.g. Year 2)"
@@ -127,19 +182,19 @@ store.addStudent({
             isTextarea
             placeholder="Any additional notes..."
           />
-
         </div>
 
         <div className="mt-8 pb-4 flex gap-4">
           <button
             type="button"
+            disabled={loading}
             onClick={() => { setStep(2); onStepChange(2); }}
-            className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold"
+            className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold disabled:opacity-50"
           >
             ← Back
           </button>
           <Button
-            title="Submit"
+            title={loading ? "Submitting..." : "Submit"}
             onClick={() => { }}
             type="submit"
             className="w-full bg-mint font-bold"
@@ -155,7 +210,6 @@ store.addStudent({
       <h2 className="text-3xl font-bold text-textLight mb-8">Personnel Information</h2>
 
       <div className="space-y-6">
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField label="First Name" value={firstName} onChange={setFirstName} required maxLength={100} />
           <FormField label="Middle Name" value={middleName} onChange={setMiddleName} maxLength={100} />
@@ -179,7 +233,6 @@ store.addStudent({
         </div>
 
         <FormField label="Notes" value={notes} onChange={setNotes} isTextarea placeholder="Any additional notes..." />
-
       </div>
 
       <div className="mt-8 pb-4 flex gap-4">

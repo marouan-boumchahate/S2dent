@@ -69,6 +69,7 @@ export default function NotificationBell() {
     <div ref={ref} className="relative">
       {/* bell button */}
       <button
+        type="button"
         onClick={() => setOpen(o => !o)}
         className="relative w-9 h-9 rounded-xl border border-borderLine bg-card hover:bg-surface transition flex items-center justify-center"
       >
@@ -103,6 +104,7 @@ export default function NotificationBell() {
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
+                  type="button"
                   onClick={markAllRead}
                   className="text-[10px] text-mint hover:opacity-70 transition font-semibold"
                 >
@@ -111,6 +113,7 @@ export default function NotificationBell() {
               )}
               {notifications.length > 0 && (
                 <button
+                  type="button"
                   onClick={clearAll}
                   className="text-[10px] text-textMuted hover:text-red-400 transition font-semibold"
                 >

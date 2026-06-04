@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 import { store, Student } from '@/lib/store';
+import { fetchStudents, ApiStudent } from '@/lib/api';
 
 export default function StudentsPage() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [role, setRole] = useState<string>('admin');
+  const [apiStudents, setApiStudents] = useState<ApiStudent[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem('userRole');
@@ -18,6 +21,10 @@ export default function StudentsPage() {
 
   useEffect(() => {
     setStudents([...store.students]);
+    fetchStudents()
+      .then(setApiStudents)
+      .catch(() => { }) // silently fall back to store data
+      .finally(() => setApiLoading(false));
   }, []);
 
   // searchFilter hook
@@ -35,9 +42,8 @@ export default function StudentsPage() {
   const total = students.length;
   const departments = new Set(students.map((s) => s.department).filter(Boolean)).size;
 
-  // TODO: replace with the API for blockchain status
-  const verifiedOnChain = 0;
-  const pending = 0;
+  const verifiedOnChain = apiStudents.filter(s => s.last_transaction_status === 'verified').length;
+  const pending = apiStudents.filter(s => s.last_transaction_status === 'pending').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -96,7 +102,7 @@ export default function StudentsPage() {
               <p className="text-textMuted text-sm">Try a different keyword or filter.</p>
             </div>
           ) : (
-        
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -117,8 +123,10 @@ export default function StudentsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{s.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.currentLevel || '—'}</td>
                       <td className="px-6 py-4">
-                        {/* TODO: replace with the API for status */}
-                        <StatusBadge status="pending" />
+                        <StatusBadge
+                          status={apiStudents.find(a => a.id === s.id)?.last_transaction_status ?? 'pending'}
+                          loading={apiLoading}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -153,7 +161,13 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: {
 }
 
 // blockchain status will be set by API
-function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
+function StatusBadge({ status, loading = false }: {
+  status: 'pending' | 'failed' | 'verified';
+  loading?: boolean;
+}) {
+  if (loading) {
+    return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
+  }
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
     pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',

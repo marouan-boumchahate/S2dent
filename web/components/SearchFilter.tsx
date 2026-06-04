@@ -25,22 +25,22 @@ export interface SearchFilterProps {
  * SearchFilter — drop this above any data table.
  *
  * Usage:
- *   <SearchFilter
- *     placeholder="Search students…"
- *     filterKeys={[
- *       { label: 'Name',       value: 'name' },
- *       { label: 'Email',      value: 'email' },
- *       { label: 'Department', value: 'department' },
- *       { label: 'Status',     value: 'status' },
- *     ]}
- *     onSearch={(query, activeKey) => {
- *       // filter your data here
- *     }}
- *   />
+ * <SearchFilter
+ * placeholder="Search students…"
+ * filterKeys={[
+ * { label: 'Name',       value: 'name' },
+ * { label: 'Email',      value: 'email' },
+ * { label: 'Department', value: 'department' },
+ * { label: 'Status',     value: 'status' },
+ * ]}
+ * onSearch={(query, activeKey) => {
+ * // filter your data here
+ * }}
+ * />
  *
  * Helper hook  →  useSearchFilter(data, transform?)  (exported below)
  * lets you filter an array of objects in one line.
- * Pass an optional `transform` to flatten/reshape items before indexing
+ * Pass an optional `transform` to reshape items before indexing
  * (e.g. joining firstName + lastName into a single `name` field).
  */
 export default function SearchFilter({
@@ -115,6 +115,7 @@ export default function SearchFilter({
         {/* Clear button */}
         {query && (
           <button
+            type="button" // Explicitly typed to prevent interaction event triggers
             onClick={handleClear}
             className="absolute right-3 text-textMuted hover:text-textLight transition-colors"
             aria-label="Clear search"
@@ -144,13 +145,13 @@ export default function SearchFilter({
 
           {/* "All" pill */}
           <button
+            type="button" // Explicitly typed to prevent event leak risks
             onClick={() => handlePillClick(null)}
             className={`
               px-3 py-1 rounded-full text-xs font-semibold border transition-all duration-150
-              ${
-                activeKey === null
-                  ? 'bg-mint text-navy border-mint shadow-sm shadow-mint/20'
-                  : 'bg-surface text-textMuted border-borderLine hover:border-mint hover:text-mint'
+              ${activeKey === null
+                ? 'bg-mint text-navy border-mint shadow-sm shadow-mint/20'
+                : 'bg-surface text-textMuted border-borderLine hover:border-mint hover:text-mint'
               }
             `}
           >
@@ -160,13 +161,13 @@ export default function SearchFilter({
           {filterKeys.map((key) => (
             <button
               key={key.value}
+              type="button" // Explicitly typed to safeguard layout rendering
               onClick={() => handlePillClick(key)}
               className={`
                 px-3 py-1 rounded-full text-xs font-semibold border transition-all duration-150
-                ${
-                  activeKey?.value === key.value
-                    ? 'bg-mint text-navy border-mint shadow-sm shadow-mint/20'
-                    : 'bg-surface text-textMuted border-borderLine hover:border-mint hover:text-mint'
+                ${activeKey?.value === key.value
+                  ? 'bg-mint text-navy border-mint shadow-sm shadow-mint/20'
+                  : 'bg-surface text-textMuted border-borderLine hover:border-mint hover:text-mint'
                 }
               `}
             >
@@ -190,18 +191,6 @@ export default function SearchFilter({
  * Pass an optional `transform` to flatten / reshape items before indexing.
  * This replaces the inline `.map()` + separate `syncData` useEffect pattern
  * that was previously needed in the page.
- *
- * @example — basic
- *   const { filtered, handleSearch } = useSearchFilter(students);
- *
- * @example — with transform (flatten name fields)
- *   const { filtered, handleSearch } = useSearchFilter(students, (s) => ({
- *     ...s,
- *     name: [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' '),
- *   }));
- *
- *   <SearchFilter ... onSearch={handleSearch} />
- *   {filtered.map(s => <Row key={s.id} data={s} />)}
  */
 export function useSearchFilter<T extends Record<string, unknown>>(
   data: T[],
@@ -232,7 +221,7 @@ export function useSearchFilter<T extends Record<string, unknown>>(
         );
       }),
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const handleSearch = useCallback(

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { store } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
+import { createCredential } from '@/lib/api';
 
 // payload fields for different types
 type FieldDef = {
@@ -106,6 +107,7 @@ function ReviewModal({
   data,
   onConfirm,
   onCancel,
+  loading,
 }: {
   data: {
     title: string;
@@ -117,6 +119,7 @@ function ReviewModal({
   };
   onConfirm: () => void;
   onCancel: () => void;
+  loading: boolean;
 }) {
   const [humanView, setHumanView] = useState(true);
 
@@ -232,15 +235,17 @@ function ReviewModal({
         <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={onCancel}
-            className="flex-1 p-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-semibold text-sm"
+            disabled={loading}
+            className="flex-1 p-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-semibold text-sm disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 p-3 rounded-xl bg-mint text-navy font-semibold text-sm hover:bg-mint/90 transition flex items-center justify-center gap-2"
+            disabled={loading}
+            className="flex-1 p-3 rounded-xl bg-mint text-navy font-semibold text-sm hover:bg-mint/90 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            Sign & Issue Credential
+            {loading ? 'Issuing On-Chain...' : 'Sign & Issue Credential'}
           </button>
         </div>
       </div>
@@ -262,6 +267,7 @@ export default function NewCredentialPage() {
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [showReview, setShowReview] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // dynamic payload state keyed by field types
   const [payload, setPayload] = useState<Record<string, string>>({});
@@ -283,21 +289,45 @@ export default function NewCredentialPage() {
     setShowReview(true);
   };
 
-  const handleConfirmSign = () => {
-    store.addCredential({
-      title,
-      issuedTo: studentWallet,
-      studentName,
-      type: credType as any,
-      code,
-      locale,
-      description,
-      date: new Date().toISOString().split('T')[0],
-      status: 'Pending',
-      payload,
-    });
-    setShowReview(false);
-    router.push('/credentials');
+  const handleConfirmSign = async () => {
+    if (loading) return; // JS guard block clause to prevent duplicate processing flights
+    setLoading(true);
+
+    try {
+      // Commit parameters seamlessly down to running Docker network setups
+      await createCredential({
+        title,
+        type: credType,
+        code,
+        student_wallet: studentWallet,
+        student_name: studentName,
+        locale,
+        description,
+        payload,
+      });
+
+      store.addCredential({
+        title,
+        issuedTo: studentWallet,
+        studentName,
+        type: credType as any,
+        code,
+        locale,
+        description,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Pending',
+        payload,
+      });
+
+      setShowReview(false);
+      router.push('/credentials');
+      router.refresh();
+    } catch (error) {
+      console.error('Error issuing credential:', error);
+      alert('Failed to issue smart contract record. Verify node connectivity clusters.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fields = credType ? PAYLOAD_FIELDS[credType] ?? [] : [];
@@ -309,6 +339,7 @@ export default function NewCredentialPage() {
           data={{ title, code, credType, studentName, studentWallet, payload }}
           onConfirm={handleConfirmSign}
           onCancel={() => setShowReview(false)}
+          loading={loading}
         />
       )}
       <div className="flex flex-col min-h-0 flex-1">
