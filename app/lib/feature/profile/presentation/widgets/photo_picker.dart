@@ -4,7 +4,7 @@ import 'package:app/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class PhotoPicker extends StatelessWidget {
+class PhotoPicker extends StatefulWidget {
   const PhotoPicker({
     super.key,
     required this.pickedImage,
@@ -19,12 +19,28 @@ class PhotoPicker extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<PhotoPicker> createState() => _PhotoPickerState();
+}
+
+class _PhotoPickerState extends State<PhotoPicker> {
+  bool _imageError = false;
+
+  @override
+  void didUpdateWidget(PhotoPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.photoUrl != widget.photoUrl ||
+        oldWidget.pickedImage != widget.pickedImage) {
+      _imageError = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final image = _photoImage();
+    final image = _imageError ? null : _photoImage();
 
     return Center(
       child: GestureDetector(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -32,9 +48,12 @@ class PhotoPicker extends StatelessWidget {
               radius: 50,
               backgroundColor: context.colors.surfaceContainer,
               backgroundImage: image,
+              onBackgroundImageError: image != null
+                  ? (_, __) => setState(() => _imageError = true)
+                  : null,
               child: image == null
                   ? Text(
-                      initials,
+                      widget.initials,
                       style: context.texts.headlineSmall!.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -61,10 +80,10 @@ class PhotoPicker extends StatelessWidget {
   }
 
   ImageProvider? _photoImage() {
-    final picked = pickedImage;
+    final picked = widget.pickedImage;
     if (picked != null) return FileImage(File(picked.path));
 
-    final value = photoUrl.trim();
+    final value = widget.photoUrl.trim();
     if (value.isEmpty) return null;
     if (value.startsWith("http://") || value.startsWith("https://")) {
       return NetworkImage(value);

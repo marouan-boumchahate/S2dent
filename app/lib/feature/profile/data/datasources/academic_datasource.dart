@@ -1,7 +1,6 @@
 import 'package:app/feature/profile/domain/models/academic.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 class AcademicDataSource {
   const AcademicDataSource(this._dio);
@@ -9,7 +8,6 @@ class AcademicDataSource {
   final Dio _dio;
 
   Future<Student> getAcademicInfo() async {
-    debugPrint("Profile - Get academic info API has been called");
     final response = await _dio.get('/students/me');
     return Student(
       academic: Academic.fromJson(

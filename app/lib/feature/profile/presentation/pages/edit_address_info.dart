@@ -96,30 +96,16 @@ class _EditAddressInfoPageState extends ConsumerState<EditAddressInfoPage> {
   }
 
   ProfileUpdateData _buildUpdateData() {
-    final address = widget.student.address;
-
     return ProfileUpdateData(
-      addressLine1:
-          _changedValue(address?.addressLine1, _addressLine1Controller),
-      addressLine2:
-          _changedValue(address?.addressLine2, _addressLine2Controller),
-      street: _changedValue(address?.street, _streetController),
-      district: _changedValue(address?.district, _districtController),
-      state: _changedValue(address?.state, _stateController),
-      postalCode: _changedValue(address?.postalCode, _postalCodeController),
-      city: _changedValue(address?.city, _cityController),
-      country: _changedValue(address?.country, _countryController),
+      addressLine1: _addressLine1Controller.text.trim(),
+      addressLine2: _addressLine2Controller.text.trim(),
+      street: _streetController.text.trim(),
+      district: _districtController.text.trim(),
+      state: _stateController.text.trim(),
+      postalCode: _postalCodeController.text.trim(),
+      city: _cityController.text.trim(),
+      country: _countryController.text.trim(),
     );
-  }
-
-  String? _changedValue(
-    String? originalValue,
-    TextEditingController controller,
-  ) {
-    final original = originalValue ?? "";
-    final updated = controller.text.trim();
-    if (updated == original) return null;
-    return updated;
   }
 
   @override

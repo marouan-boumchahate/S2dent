@@ -69,7 +69,7 @@ class _CredentialDetailsDialogState
     } catch (e) {
       setState(() => _isDecrypting = false);
       if (!mounted) return;
-      showAlertDialog(context, e.toString());
+      showAlertDialog(context, e.toString(), type: AlertType.error);
     }
   }
 

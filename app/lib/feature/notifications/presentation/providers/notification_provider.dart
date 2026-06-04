@@ -1,4 +1,5 @@
 import 'package:app/core/config/app_config.dart';
+import 'package:app/core/network/api_client.dart';
 import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/notifications/data/datasources/notification_datasource.dart';
@@ -13,9 +14,14 @@ class NotificationController extends Notifier<List<AppNotification>> {
     final repo = ref.watch(notificationRepoProvider);
 
     if (!AppConfig.useMockApi) {
+      final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      tokenStorage.getAccessToken().then((token) {
-        if (token != null) repo.connect(token);
+      // ping the API first so AuthInterceptor refreshes an expired token,
+      // then read the (possibly updated) token from storage before connecting
+      dio.get('/helper/health').whenComplete(() {
+        tokenStorage.getAccessToken().then((token) {
+          if (token != null) repo.connect(token);
+        });
       });
       ref.onDispose(repo.disconnect);
     }

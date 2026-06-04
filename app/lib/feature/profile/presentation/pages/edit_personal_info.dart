@@ -1,4 +1,5 @@
 ﻿import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/services/media_upload_service.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
@@ -6,7 +7,6 @@ import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/providers/profile_provider.dart';
-import 'package:app/feature/profile/presentation/widgets/editible_textfield.dart';
 import 'package:app/feature/profile/presentation/widgets/phone_field.dart';
 import 'package:app/feature/profile/presentation/widgets/photo_picker.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +28,6 @@ class EditPersonalInfoPage extends ConsumerStatefulWidget {
 
 class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _emailController;
   late String _phoneNumber;
   XFile? _pickedImage;
   bool _isSaving = false;
@@ -36,76 +35,68 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   @override
   void initState() {
     super.initState();
-    final user = widget.student.user;
-    _emailController = TextEditingController(text: user?.email ?? "");
-    _phoneNumber = user?.phone ?? "";
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
+    _phoneNumber = widget.student.user?.phone ?? "";
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
-
-    //close keyboard and remove focus from fields
     FocusManager.instance.primaryFocus?.unfocus();
-    final data = _buildUpdateData();
-    if (!data.hasChanged) {
-      Navigator.pop(context);
-      return;
+
+    setState(
+      () => _isSaving = true,
+    );
+
+    try {
+      String? uploadedPhotoUrl;
+      if (_pickedImage != null) {
+        uploadedPhotoUrl = await ref
+            .read(mediaUploadServiceProvider)
+            .uploadImage(_pickedImage!.path);
+      }
+
+      final data = _buildUpdateData(uploadedPhotoUrl);
+      if (!data.hasChanged) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      final saved = await ref
+          .read(profileControllerProvider.notifier)
+          .updateProfile(data);
+
+      if (!mounted) return;
+      if (saved) {
+        Navigator.pop(context);
+        return;
+      }
+
+      final error = ref.read(profileControllerProvider).whenOrNull(
+            error: (error, stackTrace) => error.toString(),
+          );
+      showAlertDialog(context, error ?? "Profile could not be updated.",
+          type: AlertType.error);
+    } catch (e) {
+      if (mounted) {
+        showAlertDialog(context, "Failed to upload photo. Please try again.",
+            type: AlertType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    final saved =
-        await ref.read(profileControllerProvider.notifier).updateProfile(data);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-    });
-
-    if (saved) {
-      Navigator.pop(context);
-      return;
-    }
-
-    final error = ref.read(profileControllerProvider).whenOrNull(
-          error: (error, stackTrace) => error.toString(),
-        );
-    showAlertDialog(context, error ?? "Profile could not be updated.", type: AlertType.error);
   }
 
-  ProfileUpdateData _buildUpdateData() {
+  ProfileUpdateData _buildUpdateData(String? uploadedPhotoUrl) {
     final user = widget.student.user;
-
     return ProfileUpdateData(
-      email: _changedValue(user?.email, _emailController),
       phone: _changedPhoneValue(user?.phone),
-      photoUrl: _pickedImage?.path,
+      photoUrl: uploadedPhotoUrl,
     );
   }
 
   String? _changedPhoneValue(String? originalValue) {
     final original = originalValue ?? "";
     final updated = _phoneNumber.trim();
-    if (updated == original) return null;
-    return updated;
-  }
-
-  String? _changedValue(
-    String? originalValue,
-    TextEditingController controller,
-  ) {
-    final original = originalValue ?? "";
-    final updated = controller.text.trim();
     if (updated == original) return null;
     return updated;
   }
@@ -126,7 +117,9 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.onPrimary,
-      appBar: CustomAppbar(),
+      appBar: CustomAppbar(
+        isDisabledBackButton: _isSaving,
+      ),
       body: MainLayout(
         topSafeArea: false,
         children: [
@@ -150,12 +143,6 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
             onTap: _pickImage,
           ),
           const SizedBox(height: 16),
-          EditibleTextfield(
-            label: "Email",
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            validator: ProfileUpdateData.validateEmail,
-          ),
           PhoneField(
             phoneNumber: _phoneNumber,
             onChanged: (phoneNumber) {

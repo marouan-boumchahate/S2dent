@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:dio/dio.dart';
@@ -6,10 +8,15 @@ class AuthInterceptor extends Interceptor {
   AuthInterceptor({
     required this.tokenStorage,
     required this.dio,
+    this.onSessionExpired,
   });
 
   final TokenStorageService tokenStorage;
   final Dio dio;
+  final void Function()? onSessionExpired;
+
+  // only one refresh in flight at a time; others wait for it
+  static Completer<String>? _refreshCompleter;
 
   @override
   void onRequest(
@@ -30,27 +37,50 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
+    // don't attempt refresh if the refresh request itself failed
+    if (err.requestOptions.path.contains('/auth/refresh')) {
+      await tokenStorage.clearTokens();
+      onSessionExpired?.call();
+      handler.next(err);
+      return;
+    }
+
     try {
-      final refreshToken = await tokenStorage.getRefreshToken();
-      if (refreshToken == null) {
-        await tokenStorage.clearTokens();
-        handler.next(err);
-        return;
-      }
+      final newAccessToken = await _refreshOnce();
 
-      // Fetch a new access token
-      final datasource = AuthDatasource(dio);
-      final newToken = await datasource.refreshAccessToken(refreshToken);
-      await tokenStorage.saveTokens(newToken.accessToken, newToken.refreshToken);
-
-      // Retry the original request with the new token
       final retryOptions = err.requestOptions;
-      retryOptions.headers['Authorization'] = 'Bearer ${newToken.accessToken}';
+      retryOptions.headers['Authorization'] = 'Bearer $newAccessToken';
       final response = await dio.fetch(retryOptions);
       handler.resolve(response);
     } catch (_) {
       await tokenStorage.clearTokens();
+      onSessionExpired?.call();
       handler.next(err);
+    }
+  }
+
+  Future<String> _refreshOnce() async {
+    // if a refresh is already running, wait for it instead of starting another
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<String>();
+    try {
+      final refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken == null) throw Exception('No refresh token');
+
+      final datasource = AuthDatasource(dio);
+      final newToken = await datasource.refreshAccessToken(refreshToken);
+      await tokenStorage.saveTokens(newToken.accessToken, newToken.refreshToken);
+
+      _refreshCompleter!.complete(newToken.accessToken);
+      return newToken.accessToken;
+    } catch (e) {
+      _refreshCompleter!.completeError(e);
+      rethrow;
+    } finally {
+      _refreshCompleter = null;
     }
   }
 }

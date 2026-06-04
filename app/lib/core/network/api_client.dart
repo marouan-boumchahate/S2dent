@@ -2,6 +2,8 @@ import 'package:app/core/config/app_config.dart';
 import 'package:app/core/network/auth_interceptor.dart';
 import 'package:app/core/network/mock_api_interceptor.dart';
 import 'package:app/core/services/token_storage_services.dart';
+import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
+import 'package:app/feature/notifications/presentation/providers/notification_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,14 @@ final dioProvider = Provider<Dio>((ref) {
     dio.interceptors.add(MockApiInterceptor());
   } else {
     final tokenStorage = ref.watch(tokenStorageServiceProvider);
-    dio.interceptors.add(AuthInterceptor(tokenStorage: tokenStorage, dio: dio));
+    dio.interceptors.add(AuthInterceptor(
+      tokenStorage: tokenStorage,
+      dio: dio,
+      onSessionExpired: () {
+        ref.read(notificationRepoProvider).disconnect();
+        ref.invalidate(hasSessionProvider);
+      },
+    ));
     //debug purposses
     dio.interceptors.add(InterceptorsWrapper(
       onResponse: (r, handler) {

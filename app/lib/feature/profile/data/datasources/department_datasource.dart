@@ -1,7 +1,6 @@
 import 'package:app/feature/profile/domain/models/department.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 class DepartmentDataSource {
   const DepartmentDataSource(this._dio);
@@ -9,7 +8,6 @@ class DepartmentDataSource {
   final Dio _dio;
 
   Future<Student> getDepartmentInfo() async {
-    debugPrint("Profile - Get department info API has been called");
     final response = await _dio.get('/departments/me');
     return Student(
       department: Department.fromJson(

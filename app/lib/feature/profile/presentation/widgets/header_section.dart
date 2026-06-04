@@ -1,19 +1,24 @@
-﻿import 'dart:io';
-
-import 'package:app/core/extensions/context_extensions.dart';
+﻿import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/widgets/info_badge.dart';
 import 'package:flutter/material.dart';
 
-class HeaderSection extends StatelessWidget {
+class HeaderSection extends StatefulWidget {
   const HeaderSection({
     super.key,
     required this.student,
   });
 
   final Student student;
+
+  @override
+  State<HeaderSection> createState() => _HeaderSectionState();
+}
+
+class _HeaderSectionState extends State<HeaderSection> {
   @override
   Widget build(BuildContext context) {
+    final student = widget.student;
     return Column(
       children: [
         _userAvatar(context, student),
@@ -51,8 +56,8 @@ class HeaderSection extends StatelessWidget {
   }
 
   Card _userAvatar(BuildContext context, Student student) {
-    final user = student.user;
-    final image = _profileImage(user?.photoUrl ?? "");
+    final photoUrl = student.user?.photoUrl ?? "";
+    final hasUrl = photoUrl.trim().isNotEmpty;
 
     return Card(
       shape: CircleBorder(
@@ -62,26 +67,35 @@ class HeaderSection extends StatelessWidget {
       child: CircleAvatar(
         radius: 60,
         backgroundColor: context.colors.surfaceContainer,
-        backgroundImage: image,
-        child: image == null
-            ? Text(
+        child: hasUrl
+            ? ClipOval(
+                child: Image.network(
+                  photoUrl,
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress != null) {
+                      return const CircularProgressIndicator();
+                    }
+                    return child;
+                  },
+                  errorBuilder: (context, error, stackTrace) => Text(
+                    _initials(student),
+                    style: context.texts.headlineSmall!.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              )
+            : Text(
                 _initials(student),
                 style: context.texts.headlineSmall!.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
-              )
-            : null,
+              ),
       ),
     );
-  }
-
-  ImageProvider? _profileImage(String photoUrl) {
-    final value = photoUrl.trim();
-    if (value.isEmpty) return null;
-    if (value.startsWith("http://") || value.startsWith("https://")) {
-      return NetworkImage(value);
-    }
-    return FileImage(File(value));
   }
 
   String _initials(Student student) {

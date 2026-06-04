@@ -29,14 +29,13 @@ class AppNotification {
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      //match the name in the backend, not sure which one is actually in the backedn
-      eventId: (json["eventId"] ?? json["event_id"] ?? "").toString(),
+      eventId: (json["eventId"] ?? "").toString(),
       txHash: json["tx_hash"] ?? "",
       message: json["message"] ?? "",
       createdAt: json["created_at"] != null
-          ? DateTime.parse(json["created_at"])
+          ? DateTime.tryParse(json["created_at"].toString())
           : null,
-      status: appNotificationStatusFromJson(json["status"] ?? ""),
+      status: appNotificationStatusFromJson(json["status"]?.toString() ?? ""),
     );
   }
 

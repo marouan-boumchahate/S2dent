@@ -1,9 +1,13 @@
 ﻿import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/theme/app_color.dart';
 import 'package:flutter/material.dart';
 
 class CustomBackButton extends StatelessWidget {
-  const CustomBackButton({super.key});
-
+  const CustomBackButton({
+    super.key,
+    this.isDisabled = false,
+  });
+  final bool isDisabled;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -17,9 +21,10 @@ class CustomBackButton extends StatelessWidget {
           width: 2,
         ),
       ),
-      child: BackButton(
-        onPressed: () => Navigator.pop(context),
-        color: context.colors.primary,
+      child: IconButton(
+        icon: Icon(Icons.arrow_back),
+        onPressed: isDisabled ? null : () => Navigator.pop(context),
+        color: isDisabled ? AppColors.textMuted : context.colors.primary,
       ),
     );
   }
