@@ -24,6 +24,7 @@ const parseRedisUrl = (redisUrl) => {
 const redisFromUrl = parseRedisUrl(process.env.REDIS_URL)
 
 export const env = {
+  PRODUCTION: process.env.NODE_ENV === 'production',
   NODE_ENV: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3000,
   email: {

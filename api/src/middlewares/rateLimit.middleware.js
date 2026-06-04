@@ -2,7 +2,7 @@ import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import redis from '../config/redis.js';
 
-const isTestEnvironment = process.env.NODE_ENV === 'test';
+const isProductionEnvironment = process.env.NODE_ENV === 'production';
 
 const createRedisStore = (prefix) =>
     new RedisStore({
@@ -11,7 +11,7 @@ const createRedisStore = (prefix) =>
     });
 
 const createRateLimiter = ({ windowMs, limit, message, keyPrefix }) =>
-    (isTestEnvironment || true)
+    (!isProductionEnvironment)
         ? (_req, _res, next) => next()
         : rateLimit({
             windowMs,

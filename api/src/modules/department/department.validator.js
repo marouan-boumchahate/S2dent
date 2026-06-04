@@ -12,7 +12,7 @@ const createDepartmentSchema = Joi.object({
 });
 
 const updateDepartmentSchema = Joi.object({
-  description: Joi.string().trim().optional(),
+  description: Joi.string().trim().optional().allow(null, ''),
 }).min(1);
 
 export { createDepartmentSchema, updateDepartmentSchema };

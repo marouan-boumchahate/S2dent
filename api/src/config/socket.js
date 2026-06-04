@@ -61,7 +61,21 @@ export const initSocket = (httpServer) => {
 
     io.on('connection', (socket) => {
         socket.on('join', async (token) => {
-            const { sub: wallet_address } = await verifyAccessToken(token)
+            let decodedToken;
+            try {
+                if (typeof token !== 'string') throw new Error('Invalid token format')
+                decodedToken = await verifyAccessToken(token)
+                const msUntilExpiry = decodedToken.exp * 1000 - Date.now()
+                setTimeout(() => {
+                    socket.emit('error', 'Token expired. Please reconnect.')
+                    socket.disconnect()
+                }, msUntilExpiry)
+            } catch (error) {
+                socket.emit('error', 'Authentication failed. Please reconnect with a valid token.')
+                return socket.disconnect()
+            }
+
+            const { sub: wallet_address } = decodedToken
             const normalizedWalletAddress = normalizeWalletAddress(wallet_address)
 
             socket.data.wallet_address = normalizedWalletAddress

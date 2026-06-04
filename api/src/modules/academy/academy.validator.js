@@ -39,16 +39,16 @@ const createAcademySchema = Joi.object({
 });
 
 const updateAcademySchema = Joi.object({
-  description: Joi.string().trim().max(5000).optional(),
-  website: Joi.string().uri().trim().optional()
+  description: Joi.string().trim().max(5000).optional().allow(null, ''),
+  website: Joi.string().uri().trim().optional().allow(null, '')
     .messages({
       'string.uri': 'website must be a valid URL (e.g. https://university.edu)',
     }),
-  logo_url: Joi.string().uri().trim().optional()
+  logo_url: Joi.string().uri().trim().optional().allow(null, '')
     .messages({
       'string.uri': 'logo_url must be a valid URL',
     }),
-  phone: Joi.string().trim().max(32).optional(),
+  phone: Joi.string().trim().max(32).optional().allow(null, ''),
 });
 
 export { createAcademySchema, updateAcademySchema };
