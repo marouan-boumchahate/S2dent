@@ -66,7 +66,7 @@ class Credential {
       academyAddress: blockchain["academy_address"] ?? "",
       issuerAddress: blockchain["issuer_address"] ?? "",
       payloadHash: verification["payload_hash"] ?? "",
-      signature: verification["signature"] ?? "",
+      signature: verification["issuer_signature"] ?? "",
       encryptedPayload: json["encryptedPayload"] ?? "",
     );
   }

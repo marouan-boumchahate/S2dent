@@ -13,10 +13,12 @@ class NotificationDatasource {
   void connect(String accessToken) {
     //disconnect if there is already an existing connection (on refreshToken)
     if (_socket != null) disconnect();
+    final socketUrl = AppConfig.apiUrl.endsWith('/api')
+        ? AppConfig.apiUrl.substring(0, AppConfig.apiUrl.length - 4)
+        : AppConfig.apiUrl;
     _socket = io.io(
-      AppConfig.apiUrl,
+      socketUrl,
       io.OptionBuilder()
-          //websocket protocol
           .setTransports(["websocket"])
           .disableAutoConnect()
           .build(),
@@ -40,7 +42,7 @@ class NotificationDatasource {
   }
 
   void ackEvent(String eventId) {
-    _socket?.emit("ack_event", eventId);
+    _socket?.emit("ack_event", {"id": eventId});
   }
 
   void disconnect() {

@@ -34,7 +34,7 @@ class HeaderSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           InfoBadge(
-            info: (student.identity?.isRevoked ?? true) ? "Inactive" : "Active",
+            info: (student.identity?.isRevoked ?? true) ? "Revoked" : "Active",
             color: (student.identity?.isRevoked ?? true)
                 ? context.colors.error
                 : context.colors.primary,

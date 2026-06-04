@@ -18,11 +18,11 @@ class University {
   factory University.fromJson(Map<String, dynamic> json) {
     return University(
       name: json["name"] ?? "",
-      code: json["code"] ?? "",
+      code: json["short_name"] ?? "",
       email: json["email"] ?? "",
-      websiteUrl: json["website_url"] ?? "",
+      websiteUrl: json["website"] ?? "",
       logoUrl: json["logo_url"] ?? "",
-      phoneNumber: json["phone_number"] ?? "",
+      phoneNumber: json["phone"] ?? "",
     );
   }
 

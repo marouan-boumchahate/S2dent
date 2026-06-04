@@ -1,21 +1,20 @@
 import 'package:app/feature/profile/domain/models/department.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
-import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class DepartmentDataSource {
-  DepartmentDataSource();
+  const DepartmentDataSource(this._dio);
 
-  final Map<String, dynamic> _departmentJson = {
-    "name": "Computer Engineering",
-    "code": "CE",
-    "faculty": "Engineering and Architecture",
-  };
+  final Dio _dio;
 
   Future<Student> getDepartmentInfo() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Get department info API has been called");
+    final response = await _dio.get('/departments/me');
     return Student(
-      department: Department.fromJson(_departmentJson),
+      department: Department.fromJson(
+        response.data['data']['department'] as Map<String, dynamic>,
+      ),
       address: null,
       identity: null,
       user: null,

@@ -1,26 +1,20 @@
 import 'package:app/feature/profile/domain/models/academic.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
-import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class AcademicDataSource {
-  AcademicDataSource();
+  const AcademicDataSource(this._dio);
 
-  final Map<String, dynamic> _academicJson = {
-    "student_number": "220304110",
-    "current_level": "Year 4",
-    "advisor": "Osman Selvi",
-    "enrollment_status": "active",
-    "enrollment_date": "2022-09-19T00:00:00.000Z",
-    "expected_graduation_date": "2026-06-30T00:00:00.000Z",
-    "actual_graduation_date": "2026-06-30T00:00:00.000Z",
-    "cgpa": 3.75,
-  };
+  final Dio _dio;
 
   Future<Student> getAcademicInfo() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Get academic info API has been called");
+    final response = await _dio.get('/students/me');
     return Student(
-      academic: Academic.fromJson(_academicJson),
+      academic: Academic.fromJson(
+        response.data['data']['student'] as Map<String, dynamic>,
+      ),
       address: null,
       identity: null,
       department: null,

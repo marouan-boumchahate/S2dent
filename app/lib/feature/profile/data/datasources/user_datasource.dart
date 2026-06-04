@@ -1,29 +1,19 @@
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/models/user.dart';
-import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class UserDataSource {
-  UserDataSource();
+  const UserDataSource(this._dio);
 
-  Map<String, dynamic> _userJson = {
-    "first_name": "Ousama",
-    "middle_name": "Mohammad Khalid",
-    "last_name": "Jamal Eddin",
-    "date_of_birth": "2002-06-04T00:00:00.000Z",
-    "gender": "male",
-    "nationality": "Syrian",
-    "national_id": "00000",
-    "email": "ousama.eddin@stu.fbu.edu.tr",
-    "phone": "+905551957963",
-    "photo_url": "",
-  };
+  final Dio _dio;
 
   Future<Student> getUserInfo() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Get user info API has been called");
+    final response = await _dio.get('/users/me');
     return Student(
-      user: User.fromJson(_userJson),
+      user: User.fromJson(response.data['data']['user'] as Map<String, dynamic>),
       address: null,
       identity: null,
       department: null,
@@ -33,17 +23,17 @@ class UserDataSource {
   }
 
   Future<Student> updateUserInfo(ProfileUpdateData data) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Update user info API has been called");
-    final user = User.fromJson(_userJson).copyWith(
-      phone: data.phone,
-      email: data.email,
-      photoUrl: data.photoUrl,
+    final response = await _dio.put(
+      '/users',
+      data: {
+        if (data.phone != null) 'phone': data.phone,
+        if (data.email != null) 'email': data.email,
+        if (data.photoUrl != null) 'photo_url': data.photoUrl,
+      },
     );
-
-    _userJson = user.toJson();
     return Student(
-      user: user,
+      user: User.fromJson(response.data['data']['user'] as Map<String, dynamic>),
       address: null,
       identity: null,
       department: null,

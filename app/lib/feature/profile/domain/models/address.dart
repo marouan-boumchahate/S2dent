@@ -59,8 +59,8 @@ class Address {
       postalCode: json["postal_code"] ?? "",
       city: json["city"] ?? "",
       country: json["country"] ?? "",
-      latitude: json["latitude"] ?? "",
-      longtitude: json["longtitude"] ?? json["longitude"] ?? "",
+      latitude: json["latitude"]?.toString() ?? "",
+      longtitude: (json["longtitude"] ?? json["longitude"])?.toString() ?? "",
     );
   }
 
