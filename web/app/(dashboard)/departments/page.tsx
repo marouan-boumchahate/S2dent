@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { store, Department } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import PageHeader from '@/components/PageHeader';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
+import { store, Department } from '@/lib/store';
+import { fetchDepartments, createDepartment, updateDepartment, deleteDepartment, fetchStudents, fetchProfessors, ApiStudent, ApiProfessor } from '@/lib/api';
+
 
 // modal
 function AddModal({ onConfirm, onCancel }: {
@@ -171,15 +173,42 @@ type DepartmentRow = Department & { searchText: string };
 // main page
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [apiStudents, setApiStudents] = useState<ApiStudent[]>([]);
+  const [apiProfessors, setApiProfessors] = useState<ApiProfessor[]>([]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Department | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null);
 
+  const loadData = () => {
+    fetchDepartments()
+      .then(data => {
+        // Map backend snake_case to frontend format
+        const mapped = data.map(d => ({
+          id: d.id,
+          code: d.code,
+          name: d.name,
+          faculty: d.faculty,
+          totalYears: d.total_years,
+          description: d.description,
+          status: d.status as 'Active' | 'Inactive',
+          createdAt: new Date().toISOString()
+        }));
+        setDepartments(mapped);
+      })
+      .catch(() => {
+        setDepartments([...store.departments]); // fallback
+      });
+  };
+
   useEffect(() => {
     setDepartments([...store.departments]);
+    loadData();
+    fetchStudents().then(setApiStudents).catch(() => { });
+    fetchProfessors().then(setApiProfessors).catch(() => { });
   }, []);
 
-  const refresh = () => setDepartments([...store.departments]);
+  const refresh = () => loadData();
 
   // flatten searchable fields into a single searchText key for Allfilter
   const { filtered, handleSearch } = useSearchFilter<DepartmentRow>(
@@ -198,34 +227,57 @@ export default function DepartmentsPage() {
     ? (departments.reduce((sum, d) => sum + d.totalYears, 0) / total).toFixed(1)
     : '0';
 
-  const profCount = (dept: Department) =>
-    store.professors.filter(p =>
+  const profCount = (dept: Department) => {
+    const list = apiProfessors.length > 0 ? apiProfessors : store.professors;
+    return list.filter(p =>
       p.department?.toLowerCase() === dept.name.toLowerCase() ||
       p.department?.toLowerCase() === dept.code.toLowerCase()
     ).length;
+  };
 
-  const stuCount = (dept: Department) =>
-    store.students.filter(s =>
+  const stuCount = (dept: Department) => {
+    const list = apiStudents.length > 0 ? apiStudents : store.students;
+    return list.filter(s =>
       s.department?.toLowerCase() === dept.name.toLowerCase() ||
       s.department?.toLowerCase() === dept.code.toLowerCase()
     ).length;
+  };
 
-  const handleAdd = (data: Omit<Department, 'id' | 'createdAt'>) => {
-    store.addDepartment(data);
+  const handleAdd = async (data: Omit<Department, 'id' | 'createdAt'>) => {
+    try {
+      await createDepartment({
+        code: data.code,
+        name: data.name,
+        faculty: data.faculty,
+        total_years: data.totalYears,
+        description: data.description || '',
+        status: data.status,
+      });
+    } catch {
+      store.addDepartment(data);
+    }
     refresh();
     setShowAddModal(false);
   };
 
-  const handleEdit = (description: string) => {
+  const handleEdit = async (description: string) => {
     if (!editTarget) return;
-    store.updateDepartment(editTarget.id, { description });
+    try {
+      await updateDepartment(editTarget.id, { description });
+    } catch {
+      store.updateDepartment(editTarget.id, { description });
+    }
     refresh();
     setEditTarget(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    store.removeDepartment(deleteTarget.id);
+    try {
+      await deleteDepartment(deleteTarget.id);
+    } catch {
+      store.removeDepartment(deleteTarget.id);
+    }
     refresh();
     setDeleteTarget(null);
   };

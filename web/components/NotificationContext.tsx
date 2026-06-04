@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { getAccessToken } from '@/lib/api'; // Integrated your global auth state resolver
 
 // Types
 
@@ -129,7 +130,7 @@ function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>)
 
   useEffect(() => {
     const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const token = getAccessToken(); // Safely pulls the real 'access_token' parameter string from storage
 
     // REAL SOCKET (active when NEXT_PUBLIC_SOCKET_URL is set)
     if (SOCKET_URL) {

@@ -14,12 +14,23 @@ interface FormFieldProps {
   placeholder?: string;
   isDate?: boolean;
   isTextarea?: boolean;
+  disabled?: boolean; // New prop to lock down field interaction
 }
 
 export default function FormField({
-  label, type = 'text', value, onChange, required, options, maxLength, placeholder, isDate, isTextarea
+  label, 
+  type = 'text', 
+  value, 
+  onChange, 
+  required, 
+  options, 
+  maxLength, 
+  placeholder, 
+  isDate, 
+  isTextarea,
+  disabled = false // Defaulting to active
 }: FormFieldProps) {
-  const baseClass = "w-full bg-navy p-3 rounded-lg border border-borderLine text-textLight focus:border-electric outline-none transition";
+  const baseClass = "w-full bg-navy p-3 rounded-lg border border-borderLine text-textLight focus:border-electric outline-none transition disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div>
@@ -34,6 +45,7 @@ export default function FormField({
             className={baseClass}
             required={required}
             wrapperClassName="w-full"
+            disabled={disabled} // Locks the calendar overlay click actions
           />
         </div>
       ) : options ? (
@@ -42,6 +54,7 @@ export default function FormField({
           onChange={e => onChange(e.target.value)}
           className={`${baseClass} cursor-pointer`}
           required={required}
+          disabled={disabled} // Freezes the dropdown menu selection list
         >
           {options.map(opt => (
             <option key={opt} value={opt}>{opt || 'Select...'}</option>
@@ -56,6 +69,7 @@ export default function FormField({
           maxLength={maxLength}
           placeholder={placeholder}
           rows={4}
+          disabled={disabled} // Disables typing inside textareas
         />
       ) : (
         <input
@@ -66,6 +80,7 @@ export default function FormField({
           required={required}
           maxLength={maxLength}
           placeholder={placeholder}
+          disabled={disabled} // Disables typing inside typical inputs
         />
       )}
     </div>

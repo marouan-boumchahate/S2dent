@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import { store, Credential } from '@/lib/store';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
+import { fetchCredentials, ApiCredential } from '@/lib/api';
 
 // helpers
 function getStudentName(studentId: string) {
@@ -28,7 +29,10 @@ function TypeBadge({ type }: { type: Credential['type'] }) {
   );
 }
 
-function StatusBadge({ status }: { status: Credential['status'] }) {
+function StatusBadge({ status, loading = false }: { status: Credential['status']; loading?: boolean }) {
+  if (loading) {
+    return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
+  }
   const colors: Record<string, string> = {
     Verified: 'bg-mint/10 text-mint border-mint/30',
     Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
@@ -59,9 +63,15 @@ type CredentialRow = Credential & { studentName: string };
 export default function CredentialsPage() {
   const router = useRouter();
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [apiCredentials, setApiCredentials] = useState<ApiCredential[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
 
   useEffect(() => {
     setCredentials([...store.credentials]);
+    fetchCredentials()
+      .then(setApiCredentials)
+      .catch(() => { }) // silently fall back to mock data store on connection delays
+      .finally(() => setApiLoading(false));
   }, []);
 
   // flatten student name into each row so it's searchable
@@ -74,9 +84,15 @@ export default function CredentialsPage() {
   );
 
   const total = credentials.length;
-  const verified = credentials.filter(c => c.status === 'Verified').length;
-  const pending = credentials.filter(c => c.status === 'Pending').length;
-  const revoked = credentials.filter(c => c.status === 'Revoked').length;
+  const verified = apiCredentials.length > 0
+    ? apiCredentials.filter(c => c.status === 'verified').length
+    : credentials.filter(c => c.status === 'Verified').length;
+  const pending = apiCredentials.length > 0
+    ? apiCredentials.filter(c => c.status === 'pending').length
+    : credentials.filter(c => c.status === 'Pending').length;
+  const revoked = apiCredentials.length > 0
+    ? apiCredentials.filter(c => c.status === 'revoked' || c.is_revoked).length
+    : credentials.filter(c => c.status === 'Revoked').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -145,26 +161,42 @@ export default function CredentialsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(cred => (
-                    <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
-                      <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
-                      <td className="px-6 py-4 text-textLight text-sm">{cred.studentName}</td>
-                      <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
-                      <td className="px-6 py-4 text-textMuted text-sm font-mono">{cred.code || '—'}</td>
-                      <td className="px-6 py-4 text-textMuted text-sm">
-                        {cred.date ? new Date(cred.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                      </td>
-                      <td className="px-6 py-4"><StatusBadge status={cred.status} /></td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => router.push(`/credentials/${cred.id}`)}
-                          className="text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map(cred => {
+                    const apiMatch = apiCredentials.find(c => c.id === cred.id);
+                    const displayCode = apiMatch ? apiMatch.code : cred.code;
+                    const displayDate = apiMatch ? apiMatch.issued_at : cred.date;
+
+                    let displayStatus: Credential['status'] = cred.status;
+                    if (apiMatch) {
+                      if (apiMatch.status === 'verified') displayStatus = 'Verified';
+                      else if (apiMatch.status === 'pending') displayStatus = 'Pending';
+                      else if (apiMatch.status === 'failed') displayStatus = 'Failed';
+                      else if (apiMatch.status === 'revoked' || apiMatch.is_revoked) displayStatus = 'Revoked';
+                    }
+
+                    return (
+                      <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
+                        <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
+                        <td className="px-6 py-4 text-textLight text-sm">{cred.studentName}</td>
+                        <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
+                        <td className="px-6 py-4 text-textMuted text-sm font-mono">{displayCode || '—'}</td>
+                        <td className="px-6 py-4 text-textMuted text-sm">
+                          {displayDate ? new Date(displayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={displayStatus} loading={apiLoading} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => router.push(`/credentials/${cred.id}`)}
+                            className="text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

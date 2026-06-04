@@ -3,14 +3,37 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { requestOtp } from '@/lib/api';
 
 export default function VerifyPage() {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const handleVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || loading) return;
+    setLoading(true);
+
+    try {
+      // Trigger the backend node to generate and dispatch a multi-factor email token
+      await requestOtp(email.toLowerCase());
+      
+      // Store email locally so the subsequent OTP verification page knows who to validate
+      localStorage.setItem('pending_verify_email', email.toLowerCase());
+      
+      router.push('/verify/otp');
+    } catch (error) {
+      console.error('OTP request error:', error);
+      alert('Verification request failed. Please confirm the database container is online.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center">
-      <div className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
+      <form onSubmit={handleVerifySubmit} className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
         
         {/* email png */}
         <div className="flex justify-center mb-4">
@@ -31,21 +54,24 @@ export default function VerifyPage() {
             <label className="block text-textMuted mb-2 text-sm uppercase tracking-wide">Your Email</label>
             <input
               type="email"
+              required
+              disabled={loading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@fbu.edu.tr"
-              className="w-full bg-navy p-3 rounded-lg border border-borderLine text-textLight focus:border-electric outline-none transition"
+              className="w-full bg-navy p-3 rounded-lg border border-borderLine text-textLight focus:border-electric outline-none transition disabled:opacity-50"
             />
           </div>
 
           <button
-            onClick={() => router.push('/verify/otp')}
-            className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition"
+            type="submit"
+            disabled={loading}
+            className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition disabled:opacity-50"
           >
-            Verify
+            {loading ? 'Sending Code...' : 'Verify'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

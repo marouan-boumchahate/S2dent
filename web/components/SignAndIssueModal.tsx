@@ -30,13 +30,12 @@ interface SignAndIssueModalProps {
   loading?: boolean;
 }
 
-// helper
-
+// helper row component calibrated to match dashboard design schemas
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="py-3 px-5 text-gray-500 text-sm whitespace-nowrap w-1/3">{label}</td>
-      <td className={`py-3 pr-5 text-gray-900 text-sm font-medium break-all ${mono ? 'font-mono text-gray-600' : ''}`}>
+    <tr className="border-b border-borderLine last:border-0">
+      <td className="py-3 px-5 text-textMuted text-sm whitespace-nowrap w-1/3">{label}</td>
+      <td className={`py-3 pr-5 text-textLight text-sm font-medium break-all ${mono ? 'font-mono text-textMuted' : ''}`}>
         {value || '—'}
       </td>
     </tr>
@@ -53,7 +52,7 @@ export default function SignAndIssueModal({
 }: SignAndIssueModalProps) {
   const [view, setView] = useState<'human' | 'actual'>('human');
 
-  // credentialType shows the ditals based on person
+  // credentialType shows the details based on person
   const isProfessor = data.credentialType === 'Professor';
   const isStudent = data.credentialType === 'Student';
   const roleText = isProfessor ? 'Professor' : 'Student';
@@ -64,7 +63,7 @@ export default function SignAndIssueModal({
   if (isProfessor) {
     actualViewData = {
       professorIdHash: data.payloadHash || "0x8f14e45fceea167a5a36dedd4bea2543d7f8f1d6c5e5b7d9f5f4f6f0c6d4a123",
-      fullName: data.studentName, // get it from generic generic name prop
+      fullName: data.studentName, // get it from generic name prop
       nationalIdHash: data.nationalIdHash || "0x45c48cce2e2d7fbdea1afc51c7c6ad26d6f7b2c4a8e5f1d9b7c3a2e1f4d5c678",
       publicKey: data.publicKey || "0x04a34f8c2d91b7e5c6f8a123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
       walletAddress: data.studentWallet,
@@ -85,7 +84,7 @@ export default function SignAndIssueModal({
       department: data.department || "Computer Engineering"
     };
   } else {
-    // this should be compateble with both but if the credential section will be test it later
+    // compatibility container for direct testing fallback routes
     actualViewData = {
       credentialHash: data.credentialHash || '0xf655c1a399dcc800...',
       title: data.title,
@@ -102,46 +101,47 @@ export default function SignAndIssueModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      {/* backdrop design layer layout wrapper */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
 
-      {/* modal */}
-      <div className="relative bg-white rounded-[24px] p-8 max-w-lg w-full mx-4 shadow-2xl">
+      {/* modal box customized to match dashboard aesthetics */}
+      <div className="relative bg-card border border-borderLine rounded-[24px] p-8 max-w-lg w-full mx-4 shadow-2xl text-textLight">
 
         {/* header */}
-        <h3 className="text-gray-900 text-2xl font-bold mb-1">Sign & Issue Identity</h3>
-        <p className="text-gray-500 text-sm mb-6">
+        <h3 className="text-textLight text-2xl font-bold mb-1">Sign & Issue Identity</h3>
+        <p className="text-textMuted text-sm mb-6">
           Review the signing data before authorizing on-chain.
         </p>
 
-        {/* warning banner message*/}
-        <div className="flex items-start gap-3 bg-[#fffbeb] border border-[#fef08a] rounded-xl px-4 py-4 mb-6">
+        {/* stylized theme warning banner */}
+        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-4 mb-6">
           <span className="text-lg mt-0.5">🔒</span>
-          <p className="text-[#854d0e] text-sm leading-relaxed">
-            <span className="font-bold text-[#b45309]">Signature required.</span> You are about to authorize the
+          <p className="text-yellow-400/90 text-sm leading-relaxed">
+            <span className="font-bold text-yellow-400">Signature required.</span> You are about to authorize the
             issuance of a verifiable identity. Once signed and submitted, this action is permanent
             on the blockchain.
           </p>
         </div>
 
-        {/* toggle */}
+        {/* toggle controls panel */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+          <p className="text-textMuted text-xs font-bold uppercase tracking-widest">
             MESSAGE TO SIGN
           </p>
           <button
+            type="button"
             onClick={() => setView(view === 'human' ? 'actual' : 'human')}
-            className="text-xs border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 px-4 py-1.5 rounded-full transition"
+            className="text-xs border border-borderLine text-textLight bg-surface hover:border-mint px-4 py-1.5 rounded-full transition-all"
           >
             {view === 'human' ? 'Actual view' : 'Human view'}
           </button>
         </div>
 
-        {/* human view */}
+        {/* human view layout */}
         {view === 'human' && (
-          <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white">
-            <div className="bg-[#1d4ed8] px-5 py-3">
-              <p className="text-white text-sm font-bold">Details</p>
+          <div className="rounded-2xl overflow-hidden border border-borderLine bg-surface/30">
+            <div className="bg-surface border-b border-borderLine px-5 py-3">
+              <p className="text-mint text-sm font-bold">Details</p>
             </div>
             <table className="w-full">
               <tbody>
@@ -156,15 +156,15 @@ export default function SignAndIssueModal({
           </div>
         )}
 
-        {/* actual or raw view */}
+        {/* actual raw payload terminal code block */}
         {view === 'actual' && (
           <div className="bg-[#0f172a] rounded-2xl border border-slate-800 p-5 max-h-64 overflow-y-auto">
             <div className="text-sm font-mono break-all leading-loose">
               <span className="text-white">{"{ "}</span>
               {Object.entries(actualViewData).map(([key, val]) => (
                 <span key={key}>
-                  <span className="text-white font-semibold">{key}: </span>
-                  <span className={typeof val === 'string' && val.startsWith('0x') ? "text-[#22d3ee]" : "text-[#a7f3d0]"}>
+                  <span className="text-slate-400 font-semibold">{key}: </span>
+                  <span className={typeof val === 'string' && val.startsWith('0x') ? "text-[#22d3ee]" : "text-mint"}>
                     {typeof val === 'string' && val.startsWith('0x') ? val : `"${val}"`} 
                   </span>{" "}
                 </span>
@@ -174,19 +174,21 @@ export default function SignAndIssueModal({
           </div>
         )}
 
-        {/* actions */}
+        {/* actions interaction footer */}
         <div className="flex gap-4 mt-8">
           <button
+            type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 py-3 px-4 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition font-semibold text-sm disabled:opacity-50"
+            className="flex-1 py-3 px-4 rounded-xl border border-borderLine bg-surface text-textMuted hover:text-textLight transition font-semibold text-sm disabled:opacity-50"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 py-3 px-4 rounded-xl bg-[#10b981] text-white font-bold text-sm hover:bg-[#059669] transition disabled:opacity-60"
+            className="flex-1 py-3 px-4 rounded-xl bg-mint text-navy font-bold text-sm hover:opacity-90 transition disabled:opacity-40"
           >
             {loading ? 'Signing…' : 'Issue Identity'}
           </button>

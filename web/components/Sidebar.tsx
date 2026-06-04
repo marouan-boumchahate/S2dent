@@ -3,6 +3,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useLogo } from '@/lib/logoContext';
+import SidebarItems from './sidebarItems'; // Clean child component link integration
+import { clearTokens } from '@/lib/api'; // Security patch to wipe active JWT sessions on logout
 
 const ADMIN_GROUPS = [
   { label: 'Students', href: '/students', icon: '/student_1.png' },
@@ -33,6 +35,7 @@ export default function Sidebar() {
 
   const handleSignOut = () => {
     localStorage.removeItem('userRole');
+    clearTokens(); // Erases access_token and refresh_token from local storage contexts safely
     router.push('/createLogin');
   };
 
@@ -41,13 +44,16 @@ export default function Sidebar() {
 
   return (
     <>
+      {/* Mobile Menu Toggle */}
       <button
+        type="button"
         onClick={() => setIsSidebarOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-card border border-borderLine rounded-lg text-textLight"
       >
         ☰
       </button>
 
+      {/* Backdrop overlay drawer shadow */}
       {isSidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -63,16 +69,17 @@ export default function Sidebar() {
         lg:translate-x-0
       `}>
 
-        {/* Logo */}
+        {/* Logo Container Section */}
         <div className="p-6 border-b border-borderLine flex flex-col items-center text-center gap-2">
           <button
+            type="button"
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden self-end text-textMuted hover:text-textLight"
           >
             ✕
           </button>
           <div className="w-32 h-32 flex items-center justify-center overflow-hidden rounded-full">
-            <img src={logoUrl} alt="University Logo" className="w-full h-full object-contain" />
+            <Image src={logoUrl} alt="University Logo" width={128} height={128} className="w-full h-full object-contain" unoptimized />
           </div>
           <div>
             <h2 className="text-lg font-bold text-textLight">S2dent</h2>
@@ -80,37 +87,24 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Nav */}
+        {/* Clean Navigation Row Processing */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {groups.map((group) => {
-            const isActive = pathname === group.href;
-            return (
-              <button
-                key={group.label}
-                onClick={() => { router.push(group.href); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl text-base font-bold transition-all duration-200
-                  ${isActive
-                    ? 'bg-mint text-navy shadow-lg shadow-mint/20'
-                    : 'text-textLight hover:bg-surface'
-                  }`}
-              >
-                <Image
-                  src={group.icon}
-                  alt={group.label}
-                  width={26}
-                  height={26}
-                  className={`object-contain transition-all duration-200
-                    ${isActive ? 'brightness-0' : 'opacity-70'}`}
-                />
-                {group.label}
-              </button>
-            );
-          })}
+          {groups.map((group) => (
+            <SidebarItems
+              key={group.label}
+              href={group.href}
+              label={group.label}
+              icon={group.icon}
+              isActive={pathname === group.href}
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          ))}
         </nav>
 
-        {/* Sign out */}
+        {/* Sign Out Action Panel */}
         <div className="p-4 border-t border-borderLine">
           <button
+            type="button"
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition font-semibold text-base"
           >

@@ -3,17 +3,33 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState } from 'react';
+import { login } from '@/lib/api';
 
 export default function LoginForm() {
   const router = useRouter();
   const [role, setRole] = useState<'admin' | 'professor'>('admin');
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    localStorage.setItem('userRole', role);
-    if (role === 'professor') {
-      router.push('/credentials');
-    } else {
-      router.push('/students');
+  const handleSignIn = async () => {
+    if (loading) return; // Guard clause against duplicate submission bursts
+    setLoading(true);
+
+    try {
+      // Execute network transaction against the Docker authentication service
+      await login({ role });
+
+      localStorage.setItem('userRole', role);
+      if (role === 'professor') {
+        router.push('/credentials');
+      } else {
+        router.push('/students');
+      }
+      router.refresh();
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Authentication failed. Please check backend API server containers.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -25,8 +41,9 @@ export default function LoginForm() {
       {/* Switcher — floating above card, centered */}
       <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-10">
         <button
+          disabled={loading}
           onClick={() => setRole(isAdmin ? 'professor' : 'admin')}
-          className="relative flex items-center w-56 h-11 bg-card border border-borderLine rounded-full shadow-lg p-1 cursor-pointer"
+          className="relative flex items-center w-56 h-11 bg-card border border-borderLine rounded-full shadow-lg p-1 cursor-pointer disabled:opacity-50"
         >
           {/* Sliding pill */}
           <div className={`absolute top-1 h-9 w-[calc(50%-4px)] bg-mint rounded-full shadow-md transition-all duration-300
@@ -85,9 +102,10 @@ export default function LoginForm() {
         <div className="space-y-4">
           <button
             onClick={handleSignIn}
-            className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition"
+            disabled={loading}
+            className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition disabled:opacity-50"
           >
-            Sign In With A Wallet
+            {loading ? "Connecting Wallet..." : "Sign In With A Wallet"}
           </button>
 
           <div className="flex items-center gap-3">
@@ -98,7 +116,8 @@ export default function LoginForm() {
 
           <button
             onClick={() => router.push('/verify')}
-            className="w-full p-3 rounded-lg border border-mint text-mint font-bold hover:bg-mint/10 transition"
+            disabled={loading}
+            className="w-full p-3 rounded-lg border border-mint text-mint font-bold hover:bg-mint/10 transition disabled:opacity-50"
           >
             Verify Identity
           </button>

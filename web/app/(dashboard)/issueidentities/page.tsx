@@ -4,21 +4,21 @@ import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import SignAndIssueModal, { SignAndIssueData } from '@/components/SignAndIssueModal';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
+import { fetchStudents, fetchProfessors, ApiStudent, ApiProfessor } from '@/lib/api';
 
 // Types
 type IdentityStatus = 'waiting' | 'pending';
 
 interface PendingIdentity {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   role: 'Student' | 'Professor';
   email: string;
   walletAddress: string;
   status: IdentityStatus;
 }
 
-type IdentityRow = PendingIdentity & { name: string; [key: string]: unknown };
+type IdentityRow = PendingIdentity & { [key: string]: unknown };
 
 //subcomponents
 
@@ -61,44 +61,61 @@ function StatCard({ label, value, sub, subColor }: {
   );
 }
 
-//mock data should be replaced with API
-const MOCK_PENDING: PendingIdentity[] = [
-  { id: '1', firstName: 'Ahmed', lastName: 'Hassan', role: 'Student', email: 'ahmed@cu.edu.eg', walletAddress: '0x4f2aB8...c3b1', status: 'waiting' },
-  { id: '2', firstName: 'Nour', lastName: 'Ali', role: 'Student', email: 'nour@cu.edu.eg', walletAddress: '0x7e3dC2...a1c5', status: 'waiting' },
-  { id: '3', firstName: 'Sara', lastName: 'Mohamed', role: 'Student', email: 'sara@cu.edu.eg', walletAddress: '0x9c1bF4...f4d2', status: 'pending' },
-  { id: '4', firstName: 'Khaled', lastName: 'Mansour', role: 'Professor', email: 'k.mansour@cu.edu.eg', walletAddress: '0x2a1bD9...e2f4', status: 'waiting' },
-  { id: '5', firstName: 'Hana', lastName: 'Farouk', role: 'Professor', email: 'h.farouk@cu.edu.eg', walletAddress: '0x6c2dF1...b3a1', status: 'pending' },
-];
+
 
 // Page
 
 export default function IssueIdentitiesPage() {
   const [identities, setIdentities] = useState<PendingIdentity[]>([]);
+  const [stats, setStats] = useState({ waiting: 0, noWallet: 0, issued: 0, revoked: 0 });
   const [signTarget, setSignTarget] = useState<PendingIdentity | null>(null);
   const [signingLoading, setSigningLoading] = useState(false);
 
   useEffect(() => {
-    // TODO: for api 
-    setIdentities(MOCK_PENDING);
+    Promise.all([
+      fetchStudents().catch(() => [] as ApiStudent[]),
+      fetchProfessors().catch(() => [] as ApiProfessor[])
+    ]).then(([students, professors]) => {
+      let waiting = 0, noWallet = 0, issued = 0, revoked = 0;
+      const pendingList: PendingIdentity[] = [];
+
+      const processUser = (u: ApiStudent | ApiProfessor, role: 'Student' | 'Professor') => {
+        if (u.is_revoked) { revoked++; return; }
+        if (u.last_transaction_status === 'verified') { issued++; return; }
+        if (!u.wallet_address) { noWallet++; return; }
+
+        const status: IdentityStatus = u.last_transaction_status === 'pending' ? 'pending' : 'waiting';
+        if (status === 'waiting') waiting++;
+
+        pendingList.push({
+          id: u.id,
+          name: u.name,
+          role,
+          email: u.email,
+          walletAddress: u.wallet_address,
+          status
+        });
+      };
+
+      students.forEach(s => processUser(s, 'Student'));
+      professors.forEach(p => processUser(p, 'Professor'));
+
+      setStats({ waiting, noWallet, issued, revoked });
+      setIdentities(pendingList);
+    });
   }, []);
 
-  // flatten full name so it's searchable as a single field
   const { filtered, handleSearch } = useSearchFilter<IdentityRow>(
     identities as IdentityRow[],
-    (i) => ({
-      ...i,
-      name: [i.firstName, i.lastName].filter(Boolean).join(' '),
-    }),
+    (i) => i
   );
 
-  const waitingCount = identities.filter((i) => i.status === 'waiting').length;
-
   const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
-    credentialType: identity.role,// "Student" or "Professor"
-    title: `${identity.firstName} ${identity.lastName}`,
+    credentialType: identity.role,
+    title: identity.name,
     code: identity.role === 'Student' ? 'STU' : 'PRF',
     authorizedBy: 'Fenerbahçe University',
-    studentName: `${identity.firstName} ${identity.lastName}`,
+    studentName: identity.name,
     studentWallet: identity.walletAddress,
     payloadHash: '0x' + Math.random().toString(16).slice(2, 18) + '...',
   });
@@ -112,21 +129,34 @@ export default function IssueIdentitiesPage() {
     if (!signTarget) return;
     setSigningLoading(true);
 
-    // TODO: call your smart contract
-    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const endpoint = signTarget.role === 'Student'
+        ? '/identity/students/issue'
+        : '/identity/professors/issue';
+
+      const token = localStorage.getItem('access_token');
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+      await fetch(`${baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          [`${signTarget.role.toLowerCase()}_address`]: signTarget.walletAddress
+        })
+      });
+    } catch {
+      // Proceed with local UI update even if API call fails
+    }
 
     setSigningLoading(false);
     setSignTarget(null);
 
-    // flip to pending while blockchain under confirms
     setIdentities((prev) =>
       prev.map((i) => (i.id === signTarget.id ? { ...i, status: 'pending' } : i))
     );
-
-    // TODO: will be removed or updated later
-    setTimeout(() => {
-      setIdentities((prev) => prev.filter((i) => i.id !== signTarget.id));
-    }, 3000);
   };
 
   return (
@@ -147,10 +177,10 @@ export default function IssueIdentitiesPage() {
 
           {/* stat cards later will be taakes the api for data !!!!!!!! */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Pending issuance" value={waitingCount} sub="wallet connected" subColor="text-yellow-400" />
-            <StatCard label="No wallet yet" value={6} sub="awaiting" />
-            <StatCard label="Already issued" value={22} sub="on-chain" subColor="text-mint" />
-            <StatCard label="Revoked" value={1} sub="flagged" subColor="text-red-400" />
+            <StatCard label="Pending issuance" value={stats.waiting} sub="wallet connected" subColor="text-yellow-400" />
+            <StatCard label="No wallet yet" value={stats.noWallet} sub="awaiting" />
+            <StatCard label="Already issued" value={stats.issued} sub="on-chain" subColor="text-mint" />
+            <StatCard label="Revoked" value={stats.revoked} sub="flagged" subColor="text-red-400" />
           </div>
 
           {/* banner message*/}

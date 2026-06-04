@@ -5,15 +5,23 @@ import { redirect, useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 import { store, Professor } from '@/lib/store';
+import { fetchProfessors, ApiProfessor } from '@/lib/api';
 
 type ProfessorRow = Professor & { name: string };
 
 export default function ProfessorsPage() {
   const router = useRouter();
+
   const [professors, setProfessors] = useState<Professor[]>([]);
+  const [apiProfessors, setApiProfessors] = useState<ApiProfessor[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
 
   useEffect(() => {
     setProfessors([...store.professors]);
+    fetchProfessors()
+      .then(setApiProfessors)
+      .catch(() => { }) // silently fall back to store data
+      .finally(() => setApiLoading(false));
   }, []);
 
   // searchFilter hook
@@ -29,8 +37,7 @@ export default function ProfessorsPage() {
   const total = professors.length;
   const departments = new Set(professors.map(p => p.department).filter(Boolean)).size;
 
-  // TODO: replace with the API for blockchain status
-  const verified = 0;
+  const verified = apiProfessors.filter(p => p.last_transaction_status === 'verified').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -51,7 +58,7 @@ export default function ProfessorsPage() {
           <div className="px-6 py-4 border-b border-borderLine flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">
               All Professors
-              
+
               {/* for filter */}
               {filtered.length !== professors.length && (
                 <span className="ml-2 text-mint normal-case font-normal">
@@ -108,8 +115,10 @@ export default function ProfessorsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{p.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.rank || '—'}</td>
                       <td className="px-6 py-4">
-                        {/* TODO: replace with the API for status */}
-                        <StatusBadge status="pending" />
+                        <StatusBadge
+                          status={apiProfessors.find(a => a.id === p.id)?.last_transaction_status ?? 'pending'}
+                          loading={apiLoading}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -142,7 +151,13 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
 }
 
 // blockchain status will be set by API
-function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
+function StatusBadge({ status, loading = false }: {
+  status: 'pending' | 'failed' | 'verified';
+  loading?: boolean;
+}) {
+  if (loading) {
+    return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
+  }
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
     pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',

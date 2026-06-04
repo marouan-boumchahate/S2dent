@@ -13,6 +13,7 @@ export default function PageHeader({ title, onAddNew }: PageHeaderProps) {
       <div className="flex items-center gap-3">
         {onAddNew && (
           <button
+            type="button" // Explicitly typed to prevent unexpected HTML form submission actions
             onClick={onAddNew}
             className="px-4 py-2 bg-mint text-navy font-bold rounded-lg hover:opacity-90 transition"
           >
