@@ -9,4 +9,9 @@ const signingDataSchema = Joi.object({
   privateKey: Joi.string().required(),
 });
 
-export { signingDataSchema };
+const signingDataStringSchema = Joi.object({
+  value: Joi.string().required(),
+  privateKey: Joi.string().required(),
+});
+
+export { signingDataSchema, signingDataStringSchema };
