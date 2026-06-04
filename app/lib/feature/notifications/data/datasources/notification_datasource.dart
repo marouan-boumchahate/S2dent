@@ -31,9 +31,16 @@ class NotificationDatasource {
       "notification",
       (data) {
         try {
-          _streamController.add(AppNotification.fromJson(data));
+          // socket.io sends [payload, ackFn] when server emits with ack callback
+          final payload = data is List ? data[0] : data;
+          final ack = data is List && data.length > 1 ? data[1] : null;
+          final notification = AppNotification.fromJson(
+            Map<String, dynamic>.from(payload as Map),
+          );
+          _streamController.add(notification);
+          if (ack is Function) ack('received');
         } catch (e) {
-          debugPrint("Notification parsing failed $e");
+          debugPrint("Notification parsing failed: $e | raw: $data");
         }
       },
     );

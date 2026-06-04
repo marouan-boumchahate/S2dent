@@ -161,12 +161,22 @@ class MockApiInterceptor extends Interceptor {
     // ── Identity ──────────────────────────────────────────────────────────
     if (path == '/identity/students/me') {
       return handler.resolve(_ok(options, {
-        'wallet_address': '0x4f2aB8Af89539bBBFe73983BfUUBbbDBbBBDD76S86390',
-        'issue_identity_tx_hash':
-            '0xb6a40a90a8ff601cc045d779c9a544b96e4db5cf24fd1d57392789da1f4f9b02',
-        'issued_at': '2025-10-01T09:30:00.000Z',
-        'is_revoked': false,
-        'revoked_at': null,
+        'wallet_address': '0x4b5C6D7e8F9A0b1C2D3E4F5A6B7C8D9e0F1a2b3C',
+        'identity': {
+          'full_name': 'Ousama Jamal Eddin',
+          'nationality': 'Syrian',
+          'academy_name': 'Fenerbahçe University',
+          'department': 'Computer Engineering',
+          'country': 'Turkiye',
+          'enrollment_date': '2022-09-19T00:00:00.000Z',
+        },
+        'status': {
+          'issued_at': '2025-10-01T09:30:00.000Z',
+          'issuer': '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+          'is_revoked': false,
+          'revoked_at': null,
+          'revoker': null,
+        },
       }));
     }
 
@@ -299,6 +309,13 @@ class MockApiInterceptor extends Interceptor {
           'issuer_signature': '0x3b9a97ed3b68f6d865c4f7afa0261c0b900bbc5aa26289587c37cd5fc58f87fb',
         },
         'encryptedPayload': 'dummyEncryptedPayload001',
+      }));
+    }
+
+    // ── Media upload ──────────────────────────────────────────────────────
+    if (path == '/media/upload') {
+      return handler.resolve(_ok(options, {
+        'url': 'https://cdn.s2dent.io/mock/photo.jpg',
       }));
     }
 

@@ -141,6 +141,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                         child: Image.network(
                           data.universityLogo!,
                           fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.school_outlined),
                         ),
                       )
                     : const Icon(Icons.school_outlined),

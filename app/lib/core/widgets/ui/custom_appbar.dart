@@ -6,13 +6,17 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppbar({
     super.key,
     this.trailing,
+    this.isDisabledBackButton = false,
   });
 
   final Widget? trailing;
+  final bool isDisabledBackButton;
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      leading: CustomBackButton(),
+      leading: CustomBackButton(
+        isDisabled: isDisabledBackButton,
+      ),
       leadingWidth: 80,
       backgroundColor: context.colors.onPrimary,
       actions: [trailing ?? SizedBox()],

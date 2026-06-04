@@ -1,7 +1,6 @@
 import 'package:app/feature/profile/domain/models/identity.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 class IdentityDataSource {
   const IdentityDataSource(this._dio);
@@ -9,7 +8,6 @@ class IdentityDataSource {
   final Dio _dio;
 
   Future<Student> getIdentityInfo() async {
-    debugPrint("Profile - Get identity info API has been called");
     final response = await _dio.get('/identity/students/me');
     return Student(
       identity: Identity.fromJson(
