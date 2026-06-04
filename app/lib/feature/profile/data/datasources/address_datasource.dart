@@ -1,29 +1,21 @@
 import 'package:app/feature/profile/domain/models/address.dart';
 import 'package:app/feature/profile/domain/models/profile_update_data.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
-import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class AddressDataSource {
-  AddressDataSource();
+  const AddressDataSource(this._dio);
 
-  Map<String, dynamic> _addressJson = {
-    "address_line1": "Atasehir Campus",
-    "address_line2": "",
-    "street": "Fenerbahce Street",
-    "district": "Atasehir",
-    "state": "Istanbul",
-    "postal_code": "34758",
-    "city": "Istanbul",
-    "country": "Turkiye",
-    "latitude": "40.9914",
-    "longtitude": "29.1244",
-  };
+  final Dio _dio;
 
   Future<Student> getAddressInfo() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Get address info API has been called");
+    final response = await _dio.get('/addresses');
     return Student(
-      address: Address.fromJson(_addressJson),
+      address: Address.fromJson(
+        response.data['data']['address'] as Map<String, dynamic>,
+      ),
       identity: null,
       department: null,
       user: null,
@@ -33,22 +25,24 @@ class AddressDataSource {
   }
 
   Future<Student> updateAddressInfo(ProfileUpdateData data) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Update address info API has been called");
-    final address = Address.fromJson(_addressJson).copyWith(
-      addressLine1: data.addressLine1,
-      addressLine2: data.addressLine2,
-      street: data.street,
-      district: data.district,
-      state: data.state,
-      postalCode: data.postalCode,
-      city: data.city,
-      country: data.country,
+    final response = await _dio.put(
+      '/addresses',
+      data: {
+        if (data.addressLine1 != null) 'address_line1': data.addressLine1,
+        if (data.addressLine2 != null) 'address_line2': data.addressLine2,
+        if (data.street != null) 'street': data.street,
+        if (data.district != null) 'district': data.district,
+        if (data.state != null) 'state': data.state,
+        if (data.postalCode != null) 'postal_code': data.postalCode,
+        if (data.city != null) 'city': data.city,
+        if (data.country != null) 'country': data.country,
+      },
     );
-
-    _addressJson = address.toJson();
     return Student(
-      address: address,
+      address: Address.fromJson(
+        response.data['data']['address'] as Map<String, dynamic>,
+      ),
       identity: null,
       department: null,
       user: null,

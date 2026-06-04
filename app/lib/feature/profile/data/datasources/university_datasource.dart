@@ -1,25 +1,20 @@
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/domain/models/university.dart';
-import 'package:flutter/rendering.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class UniversityDataSource {
-  UniversityDataSource();
+  const UniversityDataSource(this._dio);
 
-  final Map<String, dynamic> _universityJson = {
-    "name": "Fenerbahçe University",
-    "code": "FBU",
-    "email": "info@fbu.edu.tr",
-    "website_url": "https://www.fbu.edu.tr",
-    "logo_url":
-        "https://upload.wikimedia.org/wikipedia/tr/7/72/Fenerbah%C3%A7e_%C3%9Cniversitesi_FB%C3%9C.png",
-    "phone_number": "",
-  };
+  final Dio _dio;
 
   Future<Student> getUniversityInfo() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     debugPrint("Profile - Get university info API has been called");
+    final response = await _dio.get('/academies/summary');
     return Student(
-      university: University.fromJson(_universityJson),
+      university: University.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+      ),
       address: null,
       identity: null,
       department: null,

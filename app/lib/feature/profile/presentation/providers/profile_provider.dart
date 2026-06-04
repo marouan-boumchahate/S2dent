@@ -1,4 +1,5 @@
-﻿import 'package:app/feature/profile/data/datasources/academic_datasource.dart';
+﻿import 'package:app/core/network/api_client.dart';
+import 'package:app/feature/profile/data/datasources/academic_datasource.dart';
 import 'package:app/feature/profile/data/datasources/address_datasource.dart';
 import 'package:app/feature/profile/data/datasources/department_datasource.dart';
 import 'package:app/feature/profile/data/datasources/identity_datasource.dart';
@@ -127,27 +128,27 @@ class ProfileController extends StateNotifier<AsyncValue<Student>> {
 }
 
 final userDataSourceProvider = Provider<UserDataSource>(
-  (ref) => UserDataSource(),
+  (ref) => UserDataSource(ref.watch(dioProvider)),
 );
 
 final addressDataSourceProvider = Provider<AddressDataSource>(
-  (ref) => AddressDataSource(),
+  (ref) => AddressDataSource(ref.watch(dioProvider)),
 );
 
 final departmentDataSourceProvider = Provider<DepartmentDataSource>(
-  (ref) => DepartmentDataSource(),
+  (ref) => DepartmentDataSource(ref.watch(dioProvider)),
 );
 
 final academicDataSourceProvider = Provider<AcademicDataSource>(
-  (ref) => AcademicDataSource(),
+  (ref) => AcademicDataSource(ref.watch(dioProvider)),
 );
 
 final identityDataSourceProvider = Provider<IdentityDataSource>(
-  (ref) => IdentityDataSource(),
+  (ref) => IdentityDataSource(ref.watch(dioProvider)),
 );
 
 final universityDataSourceProvider = Provider<UniversityDataSource>(
-  (ref) => UniversityDataSource(),
+  (ref) => UniversityDataSource(ref.watch(dioProvider)),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(

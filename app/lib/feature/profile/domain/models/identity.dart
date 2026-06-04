@@ -16,7 +16,7 @@ class Identity {
   factory Identity.fromJson(Map<String, dynamic> json) {
     return Identity(
       walletAddress: json["wallet_address"] ?? "",
-      identityTxHash: json["identity_tx_hash"] ?? "",
+      identityTxHash: json["issue_identity_tx_hash"] ?? "",
       issuedAt: json["issued_at"] != null
           ? DateTime.parse(json["issued_at"])
           : null,

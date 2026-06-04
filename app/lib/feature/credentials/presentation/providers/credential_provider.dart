@@ -1,3 +1,4 @@
+import 'package:app/core/network/api_client.dart';
 import 'package:app/feature/credentials/data/datasources/credential_datasource.dart';
 import 'package:app/feature/credentials/data/repos_impl/credential_repo_impl.dart';
 import 'package:app/feature/credentials/domain/models/credential.dart';
@@ -29,7 +30,7 @@ class CredentialController
 }
 
 final credentialDatasourceProvider = Provider<CredentialDatasource>(
-  (ref) => CredentialDatasource(),
+  (ref) => CredentialDatasource(ref.watch(dioProvider)),
 );
 
 final credentialRepositoryProvider = Provider<CredentialRepo>(

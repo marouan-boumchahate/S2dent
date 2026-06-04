@@ -40,8 +40,10 @@ class Academic {
   factory Academic.fromJson(Map<String, dynamic> json) {
     return Academic(
       studentNumber: json["student_number"] ?? "",
-      currentLevel: json["current_level"] ?? "",
-      advisor: json["advisor"] ?? "",
+      currentLevel: json["current_level"] is int
+          ? 'Year ${json["current_level"]}'
+          : json["current_level"] ?? "",
+      advisor: json["advisor_name"] ?? "",
       enrollmentsStatus: enrollmentStatusFromJson(json["enrollment_status"]),
       enrollmentDate: json["enrollment_date"] != null
           ? DateTime.parse(json["enrollment_date"])
@@ -52,7 +54,7 @@ class Academic {
       actualGraduationDate: json["actual_graduation_date"] != null
           ? DateTime.parse(json["actual_graduation_date"])
           : null,
-      cgpa: (json["cgpa"] as num?)?.toDouble() ?? 0.0,
+      cgpa: double.tryParse(json["cgpa"]?.toString() ?? '') ?? 0.0,
     );
   }
 

@@ -29,7 +29,8 @@ class AppNotification {
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      eventId: json["event_id"] ?? "",
+      //match the name in the backend, not sure which one is actually in the backedn
+      eventId: (json["eventId"] ?? json["event_id"] ?? "").toString(),
       txHash: json["tx_hash"] ?? "",
       message: json["message"] ?? "",
       createdAt: json["created_at"] != null
