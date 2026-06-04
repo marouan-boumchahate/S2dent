@@ -9,14 +9,14 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const num = (max) => Math.floor(Math.random() * max) + 1;
 
 export const WALLETS = {
-  admin: {
-    address: '0x414d72aFC5bEeBC9FF42110f6BBD19570006c620',
-    privateKey: adminPrivateKey
-  },
   // admin: {
-  //   address: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266',
-  //   privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+  //   address: '0x414d72aFC5bEeBC9FF42110f6BBD19570006c620',
+  //   privateKey: adminPrivateKey
   // },
+  admin: {
+    address: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266',
+    privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+  },
   academy: {
     address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
     privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',

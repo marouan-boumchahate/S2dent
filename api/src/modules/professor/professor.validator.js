@@ -38,14 +38,14 @@ const createProfessorSchema = Joi.object({
 });
 
 const updateProfessorSchema = Joi.object({
-  bio: Joi.string().trim().optional(),
+  bio: Joi.string().trim().optional().allow(null, ''),
 }).min(1);
 
 const updateProfessorByAdminSchema = Joi.object({
-  rank: Joi.string().valid(...professorRanks).optional(),
-  employment_type: Joi.string().valid(...employmentTypes).optional(),
-  office_location: Joi.string().trim().max(255).optional(),
-  office_hours: Joi.string().trim().optional(),
+  rank: Joi.string().valid(...professorRanks).optional().allow(null, ''),
+  employment_type: Joi.string().valid(...employmentTypes).optional().allow(null, ''),
+  office_location: Joi.string().trim().max(255).optional().allow(null, ''),
+  office_hours: Joi.string().trim().optional().allow(null, ''),
 }).min(1);
 
 export { createProfessorSchema, updateProfessorSchema, updateProfessorByAdminSchema };

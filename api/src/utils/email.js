@@ -58,7 +58,7 @@ const logMailFailure = (recipient, error) => {
 const sendEmail = async ({ to, subject, message, html, text }) => {
   try {
     // During tests I don't want to send real emails; just log them and return.
-    if ((true) || (env.NODE_ENV === 'test')) {
+    if ((!env.PRODUCTION) || (env.NODE_ENV === 'test')) {
       console.log('\n[EMAIL - test mode]');
       console.log(`From: ${env.email.from}`);
       console.log(`To: ${to}`);
