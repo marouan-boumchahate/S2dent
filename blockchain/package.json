@@ -6,7 +6,7 @@
     "node": "npx hardhat node",
     "deploy:local": "npx hardhat ignition deploy ignition/modules/Credential.ts --network localhost",
     "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/Credential.ts --network sepolia",
-    "verify": "npx hardhat ignition deploy ignition/modules/Credential.ts --network sepolia --deployment-id test-version --verify",
+    "verify": "npx hardhat ignition deploy ignition/modules/Credential.ts --network sepolia --deployment-id s2dent-v1 --verify",
     "check:student": "npx hardhat run scripts/checkStudent.ts --network localhost",
     "check:professor": "npx hardhat run scripts/checkProfessor.ts --network localhost",
     "check:academy": "npx hardhat run scripts/checkAcademy.ts --network localhost",
