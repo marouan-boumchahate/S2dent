@@ -8,5 +8,12 @@ const signingDataController = async (req, res) => {
 
   return ok(res, result, 'Data signed successfully');
 }
+const signingDataStringController = async (req, res) => {
+  const { value, privateKey } = req.body;
 
-export { signingDataController };
+  const result = await signingDataService(value, privateKey);
+
+  return ok(res, result, 'Data signed successfully');
+}
+
+export { signingDataController, signingDataStringController };

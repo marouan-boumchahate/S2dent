@@ -162,7 +162,7 @@ const main = async () => {
   log('auth', 'admin authenticated');
   
   const academy = await seedAcademy(adminTokens.accessToken);
-
+  
   const departmentId = await createDepartment(
     departmentProfile(),
     academy.tokens.accessToken,

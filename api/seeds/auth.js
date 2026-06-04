@@ -16,6 +16,9 @@ export const authenticateAdmin = async ({ privateKey }) => {
 };
 
 export const authenticate = async ({ address, privateKey }) => {
+  console.log('Press a key to continue seeding...');
+  await new Promise((resolve) => process.stdin.once('data', resolve));
+
   const { data } = await get(`/auth/nonce?wallet_address=${address}`);
   const message = data.message;
 

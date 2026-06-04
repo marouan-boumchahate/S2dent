@@ -11,18 +11,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      blockchain:
-        condition: service_started
+      # blockchain:
+      #   condition: service_started
     networks:
       - s2dent-net
 
-  blockchain:
-    build:
-      context: ./blockchain
-    ports:
-      - "8545:8545"
-    networks:
-      - s2dent-net
+  # blockchain:
+  #   build:
+  #     context: ./blockchain
+  #   ports:
+  #     - "8545:8545"
+  #   networks:
+  #     - s2dent-net
 
   db:
     image: postgres:16-alpine
