@@ -15,6 +15,22 @@ services:
     networks:
       - s2dent-net
 
+  web:
+    build:
+      context: ./web
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL}
+    restart: always
+    ports:
+      - "4585:3000"
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - s2dent-net
+
   db:
     image: postgres:16-alpine
     restart: always
