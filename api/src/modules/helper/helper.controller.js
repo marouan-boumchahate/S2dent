@@ -1,4 +1,4 @@
-import { signingDataService } from './helper.service.js';
+import { signingDataService, signingDataStringService } from './helper.service.js';
 import { ok } from '../../utils/response.js';
 
 const signingDataController = async (req, res) => {
@@ -11,7 +11,7 @@ const signingDataController = async (req, res) => {
 const signingDataStringController = async (req, res) => {
   const { value, privateKey } = req.body;
 
-  const result = await signingDataService(value, privateKey);
+  const result = await signingDataStringService(value, privateKey);
 
   return ok(res, result, 'Data signed successfully');
 }
