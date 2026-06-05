@@ -7,10 +7,12 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.trailing,
     this.isDisabledBackButton = false,
+    this.color,
   });
 
   final Widget? trailing;
   final bool isDisabledBackButton;
+  final Color? color;
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -18,7 +20,7 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
         isDisabled: isDisabledBackButton,
       ),
       leadingWidth: 80,
-      backgroundColor: context.colors.onPrimary,
+      backgroundColor: color ?? context.colors.onPrimary,
       actions: [trailing ?? SizedBox()],
     );
   }

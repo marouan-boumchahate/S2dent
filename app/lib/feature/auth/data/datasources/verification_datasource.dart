@@ -7,10 +7,10 @@ class VerificationDatasource {
 
   Future<String> sendVerificationEmail(String email) async {
     final response = await _dio.post(
-      '/auth/otp/send',
-      data: {'email': email},
+      "/auth/otp/send",
+      data: {"email": email},
     );
-    return response.data['data']['message'] as String;
+    return response.data["data"]["message"] as String;
   }
 
   Future<String> requestIssuance(
@@ -19,14 +19,14 @@ class VerificationDatasource {
     String signedNonce,
   ) async {
     final response = await _dio.post(
-      '/identity/students/request-issuance',
-      data: {'email': email, 'otp': otp, 'signature': signedNonce},
+      "/identity/students/request-issuance",
+      data: {"email": email, "otp": otp, "signature": signedNonce},
     );
 
-    if (response.data['success'] != true) {
-      throw Exception('Issuance request failed');
+    if (response.data["success"] != true) {
+      throw Exception("Issuance request failed");
     }
 
-    return response.data['data']['wallet_address'] as String;
+    return response.data["data"]["wallet_address"] as String;
   }
 }

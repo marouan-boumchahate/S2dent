@@ -215,6 +215,55 @@ class MockApiInterceptor extends Interceptor {
       }));
     }
 
+    // ── Credential signature schema ───────────────────────────────────────
+    if (path.endsWith('/signature-schema')) {
+      return handler.resolve(_ok(options, {
+        'signature_schema': {
+          'domain': {
+            'name': 'S2dent',
+            'version': '1',
+            'chainId': 31337,
+            'verifyingContract': '0x1234567890abcdef1234567890abcdef12345678',
+          },
+          'types': {
+            'Credential': [
+              {'name': 'credentialIdHash', 'type': 'bytes32'},
+              {'name': 'title', 'type': 'string'},
+              {'name': 'code', 'type': 'string'},
+              {'name': 'credentialType', 'type': 'string'},
+              {'name': 'authorizerWalletAddress', 'type': 'address'},
+              {'name': 'authorizerName', 'type': 'string'},
+              {'name': 'issuerWalletAddress', 'type': 'address'},
+              {'name': 'studentWalletAddress', 'type': 'address'},
+              {'name': 'studentName', 'type': 'string'},
+              {'name': 'payloadHash', 'type': 'bytes32'},
+            ],
+          },
+          'message': {
+            'credentialIdHash': '0x8ac0f4e3d2c1b0a9988776655443322110ffeeddccbbaa998877665544332211',
+            'title': 'Bachelor of Computer Engineering',
+            'code': 'CRD_2605191',
+            'credentialType': 'degree',
+            'authorizerWalletAddress': '0x2f8B0d6c1bE7E3A0b0C2E4D5f6A7B8C9d0E1F2a3',
+            'authorizerName': 'Fenerbahce University',
+            'issuerWalletAddress': '0x2f8B0d6c1bE7E3A0b0C2E4D5f6A7B8C9d0E1F2a3',
+            'studentWalletAddress': '0x4b5C6D7e8F9A0b1C2D3E4F5A6B7C8D9e0F1a2b3C',
+            'studentName': 'Ousama Jamal',
+            'payloadHash': '0x8ac0f4e3d2c1b0a9988776655443322110ffeeddccbbaa998877665544332211',
+          },
+        },
+      }));
+    }
+
+    // ── Credential verifier token ──────────────────────────────────────────
+    if (path.endsWith('/token') && options.method == 'POST') {
+      return handler.resolve(Response(
+        requestOptions: options,
+        statusCode: 200,
+        data: {'success': true, 'data': 'mock_verifier_token_abc123xyz', 'message': 'OK'},
+      ));
+    }
+
     // ── Credential detail ─────────────────────────────────────────────────
     if (RegExp(r'^/credentials/[^/]+$').hasMatch(path)) {
       final id = path.split('/').last;

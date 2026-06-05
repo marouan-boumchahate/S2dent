@@ -22,6 +22,7 @@ class CustomBottomNav extends StatelessWidget {
   static const _items = [
     _NavData(Icons.home_outlined, Icons.home_rounded, 'Home'),
     _NavData(Icons.file_copy_outlined, Icons.file_copy, "Credentials"),
+    _NavData(Icons.qr_code_2, Icons.qr_code_2_outlined, "QR"),
     _NavData(Icons.person_outline, Icons.person, 'Profile'),
   ];
 
