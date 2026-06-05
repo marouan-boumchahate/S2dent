@@ -4,7 +4,7 @@
 S2dent is a blockchain-backed decentralized identity platform for educational institutions. The backend is Node.js + Express, persists operational data in PostgreSQL, and bridges to Ethereum smart contracts for identity issuance, revocation, and credential signing.
 
 ### Base URL
-- Production: `https://api.s2dent.io/api`
+- Production: `https://s2dent.tech/api`
 - Development: `http://localhost:3000/api`
 
 ### Auth mechanism

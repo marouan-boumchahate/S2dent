@@ -1,6 +1,8 @@
 import express from 'express'
 import { errorMiddleware } from './middlewares/error.middleware.js'
 import { globalLimiter } from './middlewares/rateLimit.middleware.js'
+import cors from 'cors'
+import { env } from '../src/config/env.js'
 
 import authRouter from './modules/auth/auth.routes.js'
 
@@ -25,6 +27,7 @@ const app = express()
 
 
 app.set('trust proxy', true); // fetching client IP from req.ip instead of the proxy's IP
+app.use(cors({ origin: env.ALLOWED_ORIGINS }));
 app.use(express.json())
 app.use('/api', globalLimiter)
 
