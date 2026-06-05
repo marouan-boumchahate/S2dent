@@ -1,4 +1,5 @@
-﻿import 'package:app/core/services/pk_storage.service.dart';
+﻿import 'package:app/core/navigation/shell_page_index_provider.dart';
+import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
@@ -91,12 +92,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void onTapScan() {
-    debugPrint("navigate to {scan} page");
-  }
-
-  void onTapGenerate() {
-    debugPrint("navigate to {generate qr} page");
+  void onTapQR() {
+    final shellPageIndexNotifier = ref.read(shellPageIndexProvider.notifier);
+    shellPageIndexNotifier.state = 2;
   }
 
   @override
@@ -206,18 +204,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             Expanded(
               child: QuickAction(
-                label: "Scan",
-                icon: Icons.document_scanner_outlined,
-                color: context.colors.secondary,
-                onTap: onTapScan,
-              ),
-            ),
-            Expanded(
-              child: QuickAction(
-                label: "Generate",
+                label: "QR",
                 icon: Icons.qr_code_2_outlined,
                 color: context.colors.primary,
-                onTap: onTapGenerate,
+                onTap: onTapQR,
               ),
             ),
           ],

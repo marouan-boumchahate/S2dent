@@ -8,10 +8,10 @@ class AuthDatasource {
 
   Future<String> getNonce(String walletAddress) async {
     final response = await _dio.get(
-      '/auth/nonce',
-      queryParameters: {'wallet_address': walletAddress},
+      "/auth/nonce",
+      queryParameters: {"wallet_address": walletAddress},
     );
-    return response.data['data']['message'] as String;
+    return response.data["data"]["message"] as String;
   }
 
   Future<AuthToken> verifySignature(
@@ -19,34 +19,34 @@ class AuthDatasource {
     String signature,
   ) async {
     final response = await _dio.post(
-      '/auth/verify',
-      data: {'wallet_address': walletAddress, 'signature': signature},
+      "/auth/verify",
+      data: {"wallet_address": walletAddress, "signature": signature},
     );
 
-    if (response.data['success'] != true) {
-      throw Exception('Authentication failed');
+    if (response.data["success"] != true) {
+      throw Exception("Authentication failed");
     }
 
-    return AuthToken.fromJson(response.data['data']);
+    return AuthToken.fromJson(response.data["data"]);
   }
 
   Future<AuthToken> refreshAccessToken(String refreshToken) async {
     final response = await _dio.post(
-      '/auth/refresh',
-      data: {'refresh_token': refreshToken},
+      "/auth/refresh",
+      data: {"refresh_token": refreshToken},
     );
 
-    if (response.data['success'] != true) {
-      throw Exception('Token refresh failed');
+    if (response.data["success"] != true) {
+      throw Exception("Token refresh failed");
     }
 
-    return AuthToken.fromJson(response.data['data']);
+    return AuthToken.fromJson(response.data["data"]);
   }
 
   Future<void> logout(String refreshToken) async {
     await _dio.delete(
-      '/auth/logout',
-      data: {'refresh_token': refreshToken},
+      "/auth/logout",
+      data: {"refresh_token": refreshToken},
     );
   }
 }

@@ -5,7 +5,7 @@ import 'package:pointycastle/export.dart';
 
 Map<String, dynamic> eciesDecrypt(
   String encryptedPayload,
-  String privateKeyHex,
+  String privateKey,
 ) {
   //parse comma seperated bytes string into a raw byte list
   final bytes = Uint8List.fromList(
@@ -14,7 +14,7 @@ Map<String, dynamic> eciesDecrypt(
 
   //strip 0x prefix if present and convert to big number
   final privKeyD = BigInt.parse(
-    privateKeyHex.startsWith('0x') ? privateKeyHex.substring(2) : privateKeyHex,
+    privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey,
     radix: 16,
   );
 

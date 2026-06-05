@@ -9,10 +9,10 @@ class AddressDataSource {
   final Dio _dio;
 
   Future<Student> getAddressInfo() async {
-    final response = await _dio.get('/addresses');
+    final response = await _dio.get("/addresses");
     return Student(
       address: Address.fromJson(
-        response.data['data']['address'] as Map<String, dynamic>,
+        response.data["data"]["address"] as Map<String, dynamic>,
       ),
       identity: null,
       department: null,
@@ -24,21 +24,21 @@ class AddressDataSource {
 
   Future<Student> updateAddressInfo(ProfileUpdateData data) async {
     final response = await _dio.put(
-      '/addresses',
+      "/addresses",
       data: {
-        'address_line1': data.addressLine1,
-        'address_line2': data.addressLine2,
-        'street': data.street,
-        'district': data.district,
-        'state': data.state,
-        'postal_code': data.postalCode,
-        'city': data.city,
-        'country': data.country,
+        "address_line1": data.addressLine1,
+        "address_line2": data.addressLine2,
+        "street": data.street,
+        "district": data.district,
+        "state": data.state,
+        "postal_code": data.postalCode,
+        "city": data.city,
+        "country": data.country,
       },
     );
     return Student(
       address: Address.fromJson(
-        response.data['data']['address'] as Map<String, dynamic>,
+        response.data["data"]["address"] as Map<String, dynamic>,
       ),
       identity: null,
       department: null,

@@ -8,10 +8,10 @@ class AcademicDataSource {
   final Dio _dio;
 
   Future<Student> getAcademicInfo() async {
-    final response = await _dio.get('/students/me');
+    final response = await _dio.get("/students/me");
     return Student(
       academic: Academic.fromJson(
-        response.data['data']['student'] as Map<String, dynamic>,
+        response.data["data"]["student"] as Map<String, dynamic>,
       ),
       address: null,
       identity: null,

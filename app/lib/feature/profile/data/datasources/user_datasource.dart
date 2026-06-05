@@ -9,9 +9,9 @@ class UserDataSource {
   final Dio _dio;
 
   Future<Student> getUserInfo() async {
-    final response = await _dio.get('/users/me');
+    final response = await _dio.get("/users/me");
     return Student(
-      user: User.fromJson(response.data['data']['user'] as Map<String, dynamic>),
+      user: User.fromJson(response.data["data"]["user"] as Map<String, dynamic>),
       address: null,
       identity: null,
       department: null,
@@ -22,14 +22,14 @@ class UserDataSource {
 
   Future<Student> updateUserInfo(ProfileUpdateData data) async {
     final response = await _dio.put(
-      '/users',
+      "/users",
       data: {
-        if (data.phone != null) 'phone': data.phone,
-        if (data.photoUrl != null) 'photo_url': data.photoUrl,
+        if (data.phone != null) "phone": data.phone,
+        if (data.photoUrl != null) "photo_url": data.photoUrl,
       },
     );
     return Student(
-      user: User.fromJson(response.data['data']['user'] as Map<String, dynamic>),
+      user: User.fromJson(response.data["data"]["user"] as Map<String, dynamic>),
       address: null,
       identity: null,
       department: null,

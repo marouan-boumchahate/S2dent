@@ -8,10 +8,10 @@ class IdentityDataSource {
   final Dio _dio;
 
   Future<Student> getIdentityInfo() async {
-    final response = await _dio.get('/identity/students/me');
+    final response = await _dio.get("/identity/students/me");
     return Student(
       identity: Identity.fromJson(
-        response.data['data'] as Map<String, dynamic>,
+        response.data["data"] as Map<String, dynamic>,
       ),
       address: null,
       department: null,

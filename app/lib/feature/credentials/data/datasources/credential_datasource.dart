@@ -11,8 +11,8 @@ class CredentialDatasource {
   void clearDetailCache() => _detailCache.clear();
 
   Future<List<CredentialItem>> getCredentials() async {
-    final response = await _dio.get('/credentials');
-    final list = response.data['data']['credentials'] as List;
+    final response = await _dio.get("/credentials");
+    final list = response.data["data"]["credentials"] as List;
     return list
         .map((item) => CredentialItem.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -21,9 +21,9 @@ class CredentialDatasource {
   Future<Credential> getCredentialById(String id) async {
     if (_detailCache.containsKey(id)) return _detailCache[id]!;
 
-    final response = await _dio.get('/credentials/$id');
+    final response = await _dio.get("/credentials/$id");
     final credential = Credential.fromJson(
-      response.data['data'] as Map<String, dynamic>,
+      response.data["data"] as Map<String, dynamic>,
     );
     _detailCache[id] = credential;
     return credential;

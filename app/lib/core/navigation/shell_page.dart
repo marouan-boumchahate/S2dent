@@ -1,33 +1,31 @@
-﻿import 'package:app/core/widgets/ui/navigation/custom_bottom_nav.dart';
+import 'package:app/core/navigation/shell_page_index_provider.dart';
+import 'package:app/core/widgets/ui/navigation/custom_bottom_nav.dart';
 import 'package:app/feature/credentials/presentation/pages/credential.dart';
 import 'package:app/feature/home/presentation/pages/home.dart';
 import 'package:app/feature/profile/presentation/pages/profile.dart';
+import 'package:app/feature/qr/presentation/pages/qr.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ShellPage extends StatefulWidget {
+class ShellPage extends ConsumerWidget {
   const ShellPage({super.key});
 
   @override
-  State<ShellPage> createState() => _ShellPageState();
-}
-
-class _ShellPageState extends State<ShellPage> {
-  int _currentIndex = 0;
-  final List<Widget> _tabs = [
-    HomePage(),
-    CredentialPage(),
-    ProfilePage(),
-  ];
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(shellPageIndexProvider);
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
+        index: currentIndex,
+        children: const [
+          HomePage(),
+          CredentialPage(),
+          QRPage(),
+          ProfilePage(),
+        ],
       ),
       bottomNavigationBar: CustomBottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        currentIndex: currentIndex,
+        onTap: (index) => ref.read(shellPageIndexProvider.notifier).state = index,
       ),
     );
   }
