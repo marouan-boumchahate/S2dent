@@ -13,7 +13,7 @@ The backend includes a **Pending Events** system. If a notification is generated
 ## 2. Connection Setup
 
 ### Endpoint
-- **URL:** The same base URL as your API (e.g., `https://api.s2dent.com`)
+- **URL:** The same base URL as your API (e.g., `https://s2dent.tech`)
 - **Transport:** `websocket` is preferred.
 
 ### Authentication (`join`)
@@ -31,7 +31,24 @@ After the socket connects, you **must** authenticate to start receiving messages
 
 ## 3. Listening for Events
 
-The main event you need to handle is `notification`.
+The main events you need to handle are `notification` and `auth_error`.
+
+### Event: `auth_error`
+This event is emitted by the server when authentication fails. **The server will disconnect the socket immediately after emitting this event**, so the client should treat it as a signal to re-authenticate.
+
+**Trigger Scenarios:**
+
+| Scenario | Message | When it fires |
+|---|---|---|
+| Invalid / malformed token | `"Authentication failed. Please reconnect with a valid token."` | Immediately during `join` if the token is not a string or fails verification. |
+| Token expired mid-session | `"Token expired. Please reconnect."` | Automatically when the JWT's `exp` time is reached (scheduled via `setTimeout` on successful `join`). |
+
+**Payload:** `message` (String) — A human-readable reason for the failure.
+
+**Recommended client handling:**
+1. Listen for `auth_error` right after connecting.
+2. On receipt, refresh the access token (or redirect to login).
+3. Reconnect and re-emit `join` with the new token.
 
 ### Event: `notification`
 This event is triggered for blockchain transaction updates.
@@ -72,3 +89,4 @@ If you do not acknowledge an event, it will remain in the "Pending" state in the
 1. **Room Logic:** You don't need to worry about rooms. The server handles this when you emit `join`.
 2. **Persistence:** If the app is closed, notifications are saved. They will burst through as soon as you connect and `join` again.
 3. **Mandatory ACK:** Never forget to emit `ack_event` with the `eventId` you just received. Without this, the server thinks you didn't get it.
+4. **Handle `auth_error`:** Always listen for the `auth_error` event. It fires when your token is invalid **or** when it expires mid-session. In both cases the server disconnects you, so your client must refresh the token and reconnect.
