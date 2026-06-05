@@ -67,11 +67,12 @@ export const initSocket = (httpServer) => {
                 decodedToken = await verifyAccessToken(token)
                 const msUntilExpiry = decodedToken.exp * 1000 - Date.now()
                 setTimeout(() => {
-                    socket.emit('error', 'Token expired. Please reconnect.')
+                    socket.emit('auth_error', 'Token expired. Please reconnect.')
                     socket.disconnect()
                 }, msUntilExpiry)
             } catch (error) {
-                socket.emit('error', 'Authentication failed. Please reconnect with a valid token.')
+                socket.emit('auth_error', 'Authentication failed. Please reconnect with a valid token.')
+                console.log('Socket authentication failed:', error.message)
                 return socket.disconnect()
             }
 
