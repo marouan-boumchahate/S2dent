@@ -72,8 +72,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
     return Scaffold(
-      backgroundColor: context.colors.onPrimary,
+      backgroundColor: context.colors.surface,
       appBar: AppBar(
+        flexibleSpace: Container(color: context.colors.surface),
         title: Text(
           "Settings",
           style: context.texts.titleLarge!.copyWith(

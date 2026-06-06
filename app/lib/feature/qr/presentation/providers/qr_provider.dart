@@ -65,3 +65,10 @@ final qrVerificationResultProvider =
     FutureProvider.family.autoDispose<VerificationResult, String>(
   (ref, token) => ref.watch(qrRepositoryProvider).getVerificationResult(token),
 );
+
+//this provider for showing the signature schema in the credential detials dialog
+final signatureSchemaProvider =
+    FutureProvider.family.autoDispose<Map<String, dynamic>, String>(
+  (ref, credentialId) =>
+      ref.watch(qrRepositoryProvider).getSignatureSchema(credentialId),
+);
