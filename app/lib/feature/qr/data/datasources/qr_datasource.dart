@@ -17,10 +17,13 @@ class QRDatasource {
     String credentialId,
     String studentAddress,
     String studentSignature,
+    int? expirationTimeInSeconds,
   ) async {
     final response = await _dio.post("/credentials/$credentialId/token", data: {
       "student_address": studentAddress,
       "student_signature": studentSignature,
+      if (expirationTimeInSeconds != null)
+        "expiration_time_in_seconds": expirationTimeInSeconds,
     });
     final token = response.data["data"] as String;
     return token;
