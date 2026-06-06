@@ -12,6 +12,7 @@ class FaqsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: Container(color: context.colors.surface),
         title: Text(
           "FAQs",
           style: context.texts.titleLarge!.copyWith(

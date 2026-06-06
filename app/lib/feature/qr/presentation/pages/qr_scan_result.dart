@@ -11,6 +11,7 @@ import 'package:app/feature/qr/presentation/widgets/verification_student_card.da
 import 'package:app/feature/qr/presentation/widgets/verification_validity_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 
 class QRScanResultPage extends ConsumerWidget {
   const QRScanResultPage({
@@ -27,13 +28,41 @@ class QRScanResultPage extends ConsumerWidget {
       appBar: CustomAppbar(color: context.colors.surface),
       body: verificationResult.when(
         data: (data) => _body(context, data),
-        error: (error, stackTrace) => Center(
-          child: Text("ERROR OCCURED: $error"),
-        ),
+        error: (error, stackTrace) => _expiredView(context),
         loading: () => Center(
           child: LoadingState(
             animationPath: "assets/animations/qr_scanning.json",
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _expiredView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Lottie.asset(
+              "assets/animations/error.json",
+              width: 120,
+              height: 120,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Invalid QR Code",
+              style: context.texts.titleLarge?.copyWith(color: AppColors.error),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "This QR code is invalid or has expired. Ask the student to generate a new one.",
+              textAlign: TextAlign.center,
+              style:
+                  context.texts.bodyMedium?.copyWith(color: AppColors.textHint),
+            ),
+          ],
         ),
       ),
     );
