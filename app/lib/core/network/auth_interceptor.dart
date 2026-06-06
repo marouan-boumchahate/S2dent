@@ -42,6 +42,12 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
+    //dont try to refresh if the caller explicitly opted out (e.g. verifier token requests)
+    if (err.requestOptions.extra['skipAuthRefresh'] == true) {
+      handler.next(err);
+      return;
+    }
+
     //dont try to refresh if the refresh request itself failed
     if (err.requestOptions.path.contains('/auth/refresh')) {
       await tokenStorage.clearTokens();

@@ -32,9 +32,10 @@ class QRDatasource {
   Future<VerificationResult> getVerificationResult(String token) async {
     final response = await _dio.get(
       "/credentials/verification",
-      options: Options(headers: {
-        'Authorization': 'Bearer $token',
-      }),
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+        extra: {'skipAuthRefresh': true},
+      ),
     );
     return VerificationResult.fromJson(response.data["data"]);
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
+import 'package:app/core/utils/dimensions.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
 import 'package:app/core/widgets/ui/loading.dart';
@@ -137,7 +138,7 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
           child: QrImageView(
             data: token,
             version: QrVersions.auto,
-            size: 280,
+            size: screenWidth(context) * 0.9,
             eyeStyle: QrEyeStyle(
               eyeShape: QrEyeShape.circle,
               color: context.colors.primary,

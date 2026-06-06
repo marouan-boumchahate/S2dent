@@ -12,7 +12,7 @@ class LoadingState extends StatelessWidget {
     return Center(
       child: Lottie.asset(
         animationPath ?? "assets/animations/box_loading.json",
-        width: 200,
+        width: animationPath != null ? 400 : 200,
       ),
     );
   }

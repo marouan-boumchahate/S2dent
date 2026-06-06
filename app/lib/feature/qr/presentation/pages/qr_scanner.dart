@@ -37,8 +37,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
         ),
       ),
     );
-    isScanned = false;
-    await _scannerController.start();
   }
 
   @override
