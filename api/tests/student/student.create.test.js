@@ -256,7 +256,7 @@ describe('POST /api/students', () => {
   before(async () => {
     ACADEMY_ID = await seedAcademy();
     DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID, rid: ACADEMY_ID });
   });
 
   beforeEach(async () => {
@@ -367,7 +367,6 @@ describe('POST /api/students', () => {
   it('returns 422 when each required field is missing', async () => {
     const requiredFields = [
       'user_id',
-      'academy_id',
       'department_id',
     ];
 
@@ -412,21 +411,7 @@ describe('POST /api/students', () => {
     assert.ok(field, 'errors should contain a user_id entry');
   });
 
-  it('returns 422 when academy_id is not a valid UUID', async () => {
-    const res = await request(app)
-      .post(endpoint)
-      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: USER_ID,
-        academy_id: 'not-a-uuid',
-        department_id: DEPARTMENT_ID,
-      });
 
-    assert.equal(res.status, 422);
-
-    const field = res.body.errors.find((e) => e.field === 'academy_id');
-    assert.ok(field, 'errors should contain an academy_id entry');
-  });
 
   it('returns 422 when department_id is not a valid UUID', async () => {
     const res = await request(app)

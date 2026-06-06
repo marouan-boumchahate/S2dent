@@ -7,9 +7,10 @@ import {
 import { created, ok } from '../../utils/response.js';
 
 const createStudentController = async (req, res) => {
+    const { rid: academy_id } = req.user;
+
     const payload = {
         user_id: req.body.user_id,
-        academy_id: req.body.academy_id,
         department_id: req.body.department_id,
         advisor_id: req.body.advisor_id,
         current_level: req.body.current_level,
@@ -18,7 +19,7 @@ const createStudentController = async (req, res) => {
         actual_graduation_date: req.body.actual_graduation_date
     };
 
-    const result = await createStudentService({ ...payload });
+    const result = await createStudentService({ ...payload, academy_id });
 
     return created(res, result, 'Student registered successfully');
 };

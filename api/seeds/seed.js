@@ -51,8 +51,7 @@ const seedAcademy = async (adminAccessToken) => {
 
   return { id, tokens };
 };
-
-const seedStudent = async ({ academyId, departmentId, academyToken, academyPrivateKey, advisorId }) => {
+const seedStudent = async ({ departmentId, academyToken, academyPrivateKey, advisorId }) => {
   const profile = userProfile();
   const userId = await createUser(profile, academyToken);
   log('user', `student → id=${userId}`);
@@ -63,7 +62,6 @@ const seedStudent = async ({ academyId, departmentId, academyToken, academyPriva
   const id = await createStudent(
     {
       user_id: userId,
-      academy_id: academyId,
       department_id: departmentId,
       advisor_id: advisorId,
       ...studentProfile(),
@@ -91,8 +89,7 @@ const seedStudent = async ({ academyId, departmentId, academyToken, academyPriva
 
   return { id, tokens };
 };
-
-const seedProfessor = async ({ academyId, departmentId, academyToken, academyPrivateKey }) => {
+const seedProfessor = async ({ departmentId, academyToken, academyPrivateKey }) => {
   const profile = userProfile();
   const userId = await createUser(profile, academyToken);
   log('user', `professor → id=${userId}`);
@@ -101,7 +98,7 @@ const seedProfessor = async ({ academyId, departmentId, academyToken, academyPri
   log('address', `created for professor=${userId}`);
 
   const id = await createProfessor(
-    { user_id: userId, academy_id: academyId, department_id: departmentId, ...professorProfile() },
+    { user_id: userId, department_id: departmentId, ...professorProfile() },
     academyToken,
   );
   log('professor', `created → id=${id}`);
@@ -125,7 +122,6 @@ const seedProfessor = async ({ academyId, departmentId, academyToken, academyPri
 
   return { id, tokens };
 };
-
 const seedCredentials = async ({ academyToken, professorToken }) => {
   log('credential', 'issuing academy enrollment credential');
   const enrollment = await fullCredentialIssuance({
@@ -170,7 +166,6 @@ const main = async () => {
   log('department', `created → id=${departmentId}`);
 
   const ctx = {
-    academyId: academy.id,
     departmentId,
     academyToken: academy.tokens.accessToken,
     academyPrivateKey: WALLETS.academy.privateKey,

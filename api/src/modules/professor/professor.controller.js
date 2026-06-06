@@ -8,9 +8,10 @@ import {
 } from './professor.service.js';
 
 const createProfessorController = async (req, res) => {
+    const { rid: academy_id } = req.user;
+
     const payload = {
         user_id: req.body.user_id,
-        academy_id: req.body.academy_id,
         department_id: req.body.department_id,
         title: req.body.title,
         rank: req.body.rank,
@@ -22,7 +23,7 @@ const createProfessorController = async (req, res) => {
         bio: req.body.bio
     };
 
-    const result = await createProfessorService({ ...payload });
+    const result = await createProfessorService({ ...payload, academy_id });
 
     return created(res, result, 'Professor registered successfully');
 };
