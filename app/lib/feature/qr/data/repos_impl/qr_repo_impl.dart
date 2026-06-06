@@ -1,4 +1,5 @@
 import 'package:app/feature/qr/data/datasources/qr_datasource.dart';
+import 'package:app/feature/qr/domain/models/verification_result.dart';
 import 'package:app/feature/qr/domain/repos/qr_repo.dart';
 
 class QRRepoImpl implements QRRepo {
@@ -18,5 +19,10 @@ class QRRepoImpl implements QRRepo {
       studentAddress,
       studentSignature,
     );
+  }
+
+  @override
+  Future<VerificationResult> getVerificationResult(String token) {
+    return _dataSource.getVerificationResult(token);
   }
 }

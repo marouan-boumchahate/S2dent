@@ -15,7 +15,7 @@ class AuthInterceptor extends Interceptor {
   final Dio dio;
   final void Function()? onSessionExpired;
 
-  // only one refresh in flight at a time; others wait for it
+  //only one refresh in flight at a time; others wait for it
   static Completer<String>? _refreshCompleter;
 
   @override
@@ -23,6 +23,11 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    //if the caller is the verifier, dont overwrite the sent token in the header
+    if (options.headers.containsKey('Authorization')) {
+      handler.next(options);
+      return;
+    }
     final accessToken = await tokenStorage.getAccessToken();
     if (accessToken != null) {
       options.headers['Authorization'] = 'Bearer $accessToken';
@@ -37,7 +42,7 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    // don't attempt refresh if the refresh request itself failed
+    //dont try to refresh if the refresh request itself failed
     if (err.requestOptions.path.contains('/auth/refresh')) {
       await tokenStorage.clearTokens();
       onSessionExpired?.call();
@@ -60,7 +65,7 @@ class AuthInterceptor extends Interceptor {
   }
 
   Future<String> _refreshOnce() async {
-    // if a refresh is already running, wait for it instead of starting another
+    //if a refresh is already running, wait instead of starting another
     if (_refreshCompleter != null) {
       return _refreshCompleter!.future;
     }
@@ -72,7 +77,8 @@ class AuthInterceptor extends Interceptor {
 
       final datasource = AuthDatasource(dio);
       final newToken = await datasource.refreshAccessToken(refreshToken);
-      await tokenStorage.saveTokens(newToken.accessToken, newToken.refreshToken);
+      await tokenStorage.saveTokens(
+          newToken.accessToken, newToken.refreshToken);
 
       _refreshCompleter!.complete(newToken.accessToken);
       return newToken.accessToken;

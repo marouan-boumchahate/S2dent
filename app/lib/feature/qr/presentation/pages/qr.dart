@@ -2,11 +2,14 @@ import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/qr/presentation/pages/qr_credential_picker.dart';
+import 'package:app/feature/qr/presentation/pages/qr_scanner.dart';
 import 'package:app/feature/qr/presentation/widgets/qr_action.dart';
 import 'package:flutter/material.dart';
 
 class QRPage extends StatelessWidget {
   const QRPage({super.key});
+
+  void ontap() {}
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +35,14 @@ class QRPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           QRAction(
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => QRScannerPage(),
+                ),
+              );
+            },
             label: "Scan",
             description: "Verify a credential by scanning the provided QR Code",
             icon: Icons.qr_code_scanner,
