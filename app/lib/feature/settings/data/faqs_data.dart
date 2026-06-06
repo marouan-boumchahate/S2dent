@@ -1,52 +1,62 @@
 const faqs = [
   (
-    question: "What is S2dent used for?",
+    question: "What is S2dent?",
     answer:
-        "S2dent is your student wallet. It helps you keep your academic identity, personal information, and digital credentials in one place so they are easier to access, manage, and present whenever you need them.",
+        "It's your academic wallet. Every credential your university gives you (degrees, certificates, transcripts, attendance records, all of it) lives here. You own it and you control it.",
   ),
   (
-    question: "Who controls and sees my credentials?",
+    question: "Why should I trust the credentials in my wallet?",
     answer:
-        "Once your credentials are issued, they are meant to stay under your control. Your information is personal to you, and only you should decide when to view it, use it, or present it to someone else.",
+        "Because they're on the blockchain. When your university issues a credential, it gets saved on-chain and signed. That means no one can fake it, edit it, or delete it. Anyone who checks it gets a real answer from the chain.",
   ),
   (
-    question: "What kind of credentials can appear in my wallet?",
+    question: "What's the Decrypt button for?",
     answer:
-        "Your wallet can have different types of academic credentials such as certificates, transcripts, enrollment records, achievements, attendance records, and even degree related documents depending on what has been issued to you.",
+        "The sensitive stuff in your credential (grades, GPA, scores, personal info) is encrypted. Only you can open it using your private key. We don't store it in plain text anywhere, that's on purpose. Tap Decrypt, enter your key, and it shows up just for you.",
   ),
   (
-    question: "Why do some credentials have different status?",
+    question: "What is a private key and why do I need one?",
     answer:
-        "Each credential can be either valid, expired, revoked, or unknown. This simply helps you understand the current state of that credential and whether it can still be trusted or used as expected.",
+        "Your private key is what proves you're you on the blockchain. In S2dent it's used to decrypt your credential data and to sign QR codes when you want someone to verify a credential. Keep it safe and don't share it with anyone. If you lose it, you lose access to your encrypted data.",
+  ),
+  (
+    question: "How does sharing a credential work?",
+    answer:
+        "You pick the credential you want to share and generate a QR code from it. The verifier scans it, it checks the blockchain, and they get a result. You're always the one doing it, nothing gets shared on its own.",
+  ),
+  (
+    question: "What is the Signature Schema?",
+    answer:
+        "It's the structure of the data your institution signed when the credential was issued. It's not sensitive at all, it's public by design. It basically shows that the right person signed the right thing on the right smart contract.",
+  ),
+  (
+    question: "What does it mean when a credential is revoked?",
+    answer:
+        "It means the institution that issued it cancelled it. They usually include a reason. The credential stays in your wallet so you can still see it, but anyone who tries to verify it will get a revoked result.",
+  ),
+  (
+    question: "What kind of credentials can I have?",
+    answer:
+        "Degrees, certificates, transcripts, enrollment records, attendance records, and achievements. Whatever your institution has officially issued to you will show up here.",
   ),
   (
     question: "Can I search or filter my credentials?",
     answer:
-        "Yes. As your wallet grows, searching, filtering, and sorting make it easier to find the exact credential you are looking for without having to scroll through everything manually.",
+        "Yeah. You can search by name, filter by status, and sort by date or name. Pretty useful once you have a few credentials in your wallet.",
   ),
   (
-    question: "What happens if I do not have any credentials yet?",
+    question: "My wallet is empty, is something wrong?",
     answer:
-        "That is completely fine. If no credentials have been issued to you yet, your wallet will simply appear empty until new credentials are added to your account.",
+        "Probably not. It just means your institution hasn't issued anything to your account yet. They'll show up on their own once they do.",
   ),
   (
-    question: "Why do I need to verify my student identity before signing in?",
+    question: "Who can actually see my credential data?",
     answer:
-        "Identity verification helps confirm that you are really the student connected to the account. It adds trust to the system and helps protect student records from being accessed by the wrong person.",
+        "Only you. The encrypted part of your credential can only be read with your private key. Even we can't see it. Verifiers only get what the blockchain confirms, not your actual data.",
   ),
   (
-    question: "Can I edit my profile information in the app?",
+    question: "Does dark mode change anything about my data?",
     answer:
-        "Yes. You can update parts of your profile such as personal details and address information so your account stays accurate and up to date.",
-  ),
-  (
-    question: "What does the QR scanner do?",
-    answer:
-        "The QR scanner is there to support credential-related actions. It can help the app read and process credential information quickly instead of making you enter everything by hand.",
-  ),
-  (
-    question: "Does dark mode affect how my data works?",
-    answer:
-        "No. Dark mode only changes how the app looks on your screen. It does not affect your credentials, your profile, or any of your data.",
+        "Nope, it's just how the app looks. Your credentials, private key, and everything else stay exactly the same.",
   ),
 ];
