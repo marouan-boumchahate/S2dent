@@ -328,7 +328,7 @@ describe('PUT /api/students/:id', () => {
   before(async () => {
     ACADEMY_ID = await seedAcademy();
     DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID, rid: ACADEMY_ID });
   });
 
   beforeEach(async () => {

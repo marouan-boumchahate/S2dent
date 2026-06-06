@@ -8,7 +8,6 @@ const ENROLLMENT_STATUSES = [
 
 const createStudentSchema = Joi.object({
   user_id: Joi.string().uuid().required(),
-  academy_id: Joi.string().uuid().required(),
   department_id: Joi.string().uuid().required(),
   advisor_id: Joi.string().uuid().required(),
 

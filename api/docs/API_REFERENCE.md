@@ -712,21 +712,19 @@ Side Effects:
  - Path Params: None
  - Query Params: None
  - Request Body:
-   - `user_id` | `string` | required | Existing user UUID.
-   - `academy_id` | `string` | required | Academy UUID that owns the professor.
-- `department_id` | `string` | required | Department UUID inside the academy.
-- `title` | `string` | required | Honorific or title.
-- `rank` | `string` | required | One of Assist. Prof, Assoc. Prof, Prof, Lecturer, Instructor.
-- `specialization` | `string` | optional | Academic specialization.
-- `hire_date` | `date` | optional | ISO date.
-- `employment_type` | `string` | optional | Defaults to full_time; one of full_time, part_time, adjunct, visiting, contract.
-- `office_location` | `string` | optional | Office location.
-- `office_hours` | `string` | optional | Office hours text.
-- `bio` | `string` | optional | Profile biography.
+    - `user_id` | `string` | required | Existing user UUID.
+    - `department_id` | `string` | required | Department UUID inside the academy.
+    - `title` | `string` | required | Honorific or title.
+    - `rank` | `string` | required | One of Assist. Prof, Assoc. Prof, Prof, Lecturer, Instructor.
+    - `specialization` | `string` | optional | Academic specialization.
+    - `hire_date` | `date` | optional | ISO date.
+    - `employment_type` | `string` | optional | Defaults to full_time; one of full_time, part_time, adjunct, visiting, contract.
+    - `office_location` | `string` | optional | Office location.
+    - `office_hours` | `string` | optional | Office hours text.
+    - `bio` | `string` | optional | Profile biography.
 ```json
 {
   "user_id": "2f9a4d1b-5e6c-4f7a-8a3f-9d0e1f2a3b4c",
-  "academy_id": "5d9f4ce2-6f43-4c0f-b9aa-0f3e2c0c3a12",
   "department_id": "b6f4c29e-6d63-4b70-99a1-2c9d1d1b9f21",
   "title": "Dr.",
   "rank": "Prof",
@@ -1014,7 +1012,6 @@ Side Effects:
  - Query Params: None
  - Request Body:
    - `user_id` | `string` | required | Existing user UUID.
-   - `academy_id` | `string` | required | Academy UUID that owns the student.
    - `department_id` | `string` | required | Department UUID inside the academy.
    - `advisor_id` | `string` | required | Professor UUID used as the advisor.
    - `enrollment_status` | `string` | optional | One of active, inactive, graduated.
@@ -1023,7 +1020,6 @@ Side Effects:
 ```json
 {
   "user_id": "4f8e1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
-  "academy_id": "5d9f4ce2-6f43-4c0f-b9aa-0f3e2c0c3a12",
   "department_id": "b6f4c29e-6d63-4b70-99a1-2c9d1d1b9f21",
   "advisor_id": "a96e27d4-90cf-47d5-8aa4-9d7b2cdd8d8a",
   "enrollment_status": "active",
@@ -1130,16 +1126,16 @@ Side Effects:
  - Path Params: None
  - Query Params: None
  - Request Body:
-   - `first_name` | `string` | required | First name.
-   - `middle_name` | `string` | optional | Middle name.
-- `last_name` | `string` | required | Last name.
-- `date_of_birth` | `date` | required | ISO date.
-- `gender` | `string` | required | One of male or female.
-- `nationality` | `string` | required | Nationality text.
-- `national_id` | `string` | required | National ID number.
-- `email` | `string` | required | Unique email address.
-- `phone` | `string` | optional | International phone number.
-- `photo_url` | `string` | optional | Profile photo URL.
+    - `first_name` | `string` | required | First name.
+    - `middle_name` | `string` | optional | Middle name.
+    - `last_name` | `string` | required | Last name.
+    - `date_of_birth` | `date` | required | ISO date.
+    - `gender` | `string` | required | One of male or female.
+    - `nationality` | `string` | required | Nationality text.
+    - `national_id` | `string` | required | National ID number.
+    - `email` | `string` | required | Unique email address.
+    - `phone` | `string` | optional | International phone number.
+    - `photo_url` | `string` | optional | Profile photo URL.
 ```json
 {
   "first_name": "Mariam",

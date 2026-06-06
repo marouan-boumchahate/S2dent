@@ -183,7 +183,7 @@ describe('POST /api/professors', () => {
   before(async () => {
     ACADEMY_ID = await seedAcademy();
     DEPARTMENT_ID = await seedDepartment(ACADEMY_ID);
-    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID });
+    ACADEMY_TOKEN = issueAccessToken({ uid: ACADEMY_ID, rid: ACADEMY_ID });
   });
 
   beforeEach(async () => {
@@ -246,10 +246,11 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
+      const badAcademyToken = issueAccessToken({ uid: '00000000-0000-0000-0000-000000000001', rid: '00000000-0000-0000-0000-000000000001' });
       const res = await request(app)
         .post('/api/professors')
-        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-        .send(validBody({ academy_id: '00000000-0000-0000-0000-000000000001' }));
+        .set('Authorization', `Bearer ${badAcademyToken}`)
+        .send(validBody());
 
       assert.equal(res.status, 404);
       assert.equal(res.body.code, 'ACADEMY_NOT_FOUND');
@@ -315,7 +316,7 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 422 when each required field is missing', async () => {
-        const requiredFields = ['user_id', 'academy_id', 'department_id', 'title', 'rank'];
+        const requiredFields = ['user_id', 'department_id', 'title', 'rank'];
 
         for (const field of requiredFields) {
             const body = validBody();
@@ -348,17 +349,7 @@ describe('POST /api/professors', () => {
         assert.ok(field, 'errors should contain a user_id entry');
     });
 
-    it('returns 422 when academy_id is not a valid UUID', async () => {
-        const res = await request(app)
-            .post('/api/professors')
-          .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-            .send(validBody({ academy_id: 'not-a-uuid' }));
 
-        assert.equal(res.status, 422);
-
-        const field = res.body.errors.find(e => e.field === 'academy_id');
-        assert.ok(field, 'errors should contain an academy_id entry');
-    });
 
     it('returns 422 when department_id is not a valid UUID', async () => {
         const res = await request(app)

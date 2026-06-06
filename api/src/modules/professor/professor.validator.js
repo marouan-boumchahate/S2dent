@@ -18,7 +18,6 @@ const employmentTypes = [
 
 const createProfessorSchema = Joi.object({
   user_id: Joi.string().uuid().required(),
-  academy_id: Joi.string().uuid().required(),
   department_id: Joi.string().uuid().required(),
 
   title: Joi.string().trim().max(100).required(),
