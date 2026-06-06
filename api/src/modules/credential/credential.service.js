@@ -810,7 +810,7 @@ const generateVerifierCredentialTokenService = async ({
     credential_id, 
     student_address,
     student_signature,
-    expirationTimeInSeconds
+    expirationTimeInSeconds = 300
 }) => {
     const credential = await fetchCredentialForVerificationService({
         credential_id,
@@ -830,8 +830,7 @@ const generateVerifierCredentialTokenService = async ({
         credential_id,
         student_address,
         student_signature,
-        role: 'verifier',
-        expirationTimeInSeconds
+        role: 'verifier'
     };
     const options = { accessExpiresIn: expirationTimeInSeconds };
 

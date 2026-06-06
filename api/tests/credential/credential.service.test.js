@@ -148,7 +148,7 @@ describe('credential.service.js verification helpers', function () {
     assert.equal(decoded.credential_id, credentialId);
     assert.equal(decoded.student_address, STUDENT_SIGNER.address);
     assert.equal(decoded.student_signature, studentSignature);
-    assert.equal(decoded.expirationTimeInSeconds, 180);
+    assert.equal(decoded.exp - decoded.iat, 180);
   });
 
   it('generateVerifierCredentialTokenService surfaces the underlying not found error', async () => {
