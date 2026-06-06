@@ -24,6 +24,14 @@ S2dent is a blockchain-backed decentralized identity platform for educational in
 - Verifier: internal credential-verification role used by credential verification endpoints.
 - The practical ordering enforced by the platform is admin > academy > professor > student.
 
+### Off-Chain Creation Workflow
+To register a new student or professor profile off-chain, the academy must follow a specific sequence of API calls:
+1. **Create the User**: Call `POST /api/users` to create the person-level user record. This returns the unique user UUID (`user_id`).
+2. **Create the User's Address**: Call `POST /api/addresses` using the `user_id` obtained in step 1 to register the physical address details for that user.
+3. **Create the Student or Professor Profile**:
+   - For students: Call `POST /api/students` passing the `user_id` and other student-specific details.
+   - For professors: Call `POST /api/professors` passing the `user_id` and other professor-specific details.
+
 ### Standard response envelope
 Successful responses use the same envelope everywhere:
 ```json
