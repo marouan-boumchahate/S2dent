@@ -4,7 +4,7 @@ import 'package:app/feature/role_selection/presentation/widgets/identity_button.
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/feature/auth/presentation/pages/login.dart';
-import 'package:app/feature/qr/presentation/pages/scanner.dart';
+import 'package:app/feature/qr/presentation/pages/qr_scanner.dart';
 import 'package:flutter/material.dart';
 
 class RoleSelectionPage extends StatefulWidget {
@@ -37,7 +37,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ScannerPage(),
+          builder: (context) => QRScannerPage(),
         ),
       );
     }
@@ -109,7 +109,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _imageContainer("assets/images/student.png", context.colors.secondary),
+          _imageContainer(
+              "assets/images/student.png", context.colors.secondary),
           DocumentContainer(),
           _imageContainer("assets/images/scan.png", context.colors.tertiary)
         ],

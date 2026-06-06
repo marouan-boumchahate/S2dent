@@ -3,6 +3,7 @@ import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/core/utils/eip712_sign.dart';
 import 'package:app/feature/qr/data/datasources/qr_datasource.dart';
 import 'package:app/feature/qr/data/repos_impl/qr_repo_impl.dart';
+import 'package:app/feature/qr/domain/models/verification_result.dart';
 import 'package:app/feature/qr/domain/repos/qr_repo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -56,4 +57,9 @@ final qrControllerProvider = StateNotifierProvider.family
     ref.watch(pkStorageServiceProvider),
     credentialId,
   ),
+);
+
+final qrVerificationResultProvider =
+    FutureProvider.family.autoDispose<VerificationResult, String>(
+  (ref, token) => ref.watch(qrRepositoryProvider).getVerificationResult(token),
 );

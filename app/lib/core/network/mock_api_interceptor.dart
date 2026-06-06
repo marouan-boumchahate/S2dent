@@ -264,6 +264,56 @@ class MockApiInterceptor extends Interceptor {
       ));
     }
 
+    // ── Credential verification (verifier token) ──────────────────────────
+    if (path == '/credentials/verification' && options.method == 'GET') {
+      return handler.resolve(_ok(options, {
+        'meta': {
+          'id': '4ed8fd80-536c-43e1-9104-2ffc5c3fd7ea',
+          'title': 'Bachelor of Computer Engineering',
+          'code': 'CRD_2605191',
+          'type': 'degree',
+          'description': 'Awarded upon successful completion of the program.',
+          'locale': null,
+          'issued_at': '2026-06-30T00:00:00.000Z',
+          'is_revoked': false,
+        },
+        'student': {
+          'address': '0x4b5C6D7e8F9A0b1C2D3E4F5A6B7C8D9e0F1a2b3C',
+          'name': 'Ousama Jamal',
+        },
+        'blockchain': {
+          'issue_tx_hash': '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1',
+          'revoke_tx_hash': null,
+          'revocation_reason': null,
+          'credential_index': 0,
+          'academy_address': '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+          'issuer_address': '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        },
+        'verification': {
+          'payload_hash': '0x9f22a60410f61124a9df3495200c6badf3ae4950088102f07288b6bee03212cf',
+          'issuer_signature': '0x3b9a97ed3b68f6d865c4f7afa0261c0b900bbc5aa26289587c37cd5fc58f87fb',
+          'student_signature': '0xa7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8',
+        },
+        'payload': {
+          'degree_title': 'Bachelor of Computer Engineering',
+          'degree_level': 'bachelor',
+          'major': 'Computer Engineering',
+          'program_code': 'CE-2022',
+          'faculty': 'Engineering and Architecture',
+          'department': 'Computer Engineering',
+          'graduation_date': '2026-06-30T00:00:00.000Z',
+          'gpa': 3.75,
+          'gpa_scale': 4.0,
+          'class_rank': 5,
+          'class_size': 120,
+          'honors': 'High Honor',
+          'total_credits_earned': 240,
+          'required_credits': 240,
+        },
+        'encryptedPayload': 'dummyEncryptedPayload001',
+      }, 'Credential fetched successfully for verification'));
+    }
+
     // ── Credential detail ─────────────────────────────────────────────────
     if (RegExp(r'^/credentials/[^/]+$').hasMatch(path)) {
       final id = path.split('/').last;

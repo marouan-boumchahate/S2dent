@@ -1,17 +1,17 @@
 ﻿import 'package:app/feature/qr/presentation/widgets/scanner_corners.dart';
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/feature/qr/presentation/pages/scan_result.dart';
+import 'package:app/feature/qr/presentation/pages/qr_scan_result.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-class ScannerPage extends StatefulWidget {
-  const ScannerPage({super.key});
+class QRScannerPage extends StatefulWidget {
+  const QRScannerPage({super.key});
 
   @override
-  State<ScannerPage> createState() => _ScannerPageState();
+  State<QRScannerPage> createState() => _QRScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> {
+class _QRScannerPageState extends State<QRScannerPage> {
   final _scannerController = MobileScannerController();
   bool isScanned = false;
 
@@ -29,10 +29,12 @@ class _ScannerPageState extends State<ScannerPage> {
     isScanned = true;
     await _scannerController.stop();
     if (!mounted) return;
-    await Navigator.push(
+    await Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => ScanResultPage(result: barcode!.rawValue!),
+        builder: (context) => QRScanResultPage(
+          result: barcode!.rawValue!,
+        ),
       ),
     );
     isScanned = false;

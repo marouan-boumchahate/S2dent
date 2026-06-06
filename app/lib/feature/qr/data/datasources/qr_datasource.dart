@@ -1,3 +1,4 @@
+import 'package:app/feature/qr/domain/models/verification_result.dart';
 import 'package:dio/dio.dart';
 
 class QRDatasource {
@@ -23,5 +24,15 @@ class QRDatasource {
     });
     final token = response.data["data"] as String;
     return token;
+  }
+
+  Future<VerificationResult> getVerificationResult(String token) async {
+    final response = await _dio.get(
+      "/credentials/verification",
+      options: Options(headers: {
+        'Authorization': 'Bearer $token',
+      }),
+    );
+    return VerificationResult.fromJson(response.data["data"]);
   }
 }

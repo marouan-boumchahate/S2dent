@@ -60,7 +60,9 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
           if (error.toString() == "NO PK FOUND") return const SizedBox.shrink();
           return Center(child: Text("ERROR OCCURED: $error"));
         },
-        loading: () => LoadingState(),
+        loading: () => LoadingState(
+          animationPath: "assets/animations/qr_scanning.json",
+        ),
       ),
     );
   }
