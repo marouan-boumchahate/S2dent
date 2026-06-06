@@ -169,6 +169,7 @@ const verifyCredentialTokenSchema = Joi.object({
         .messages({
           'string.pattern.base': 'student_signature must be a valid Ethereum signature (0x…)',
         }),
+    expiration_time_in_seconds: Joi.number().integer().min(300).max(259200).optional() // 5 min to 3 days
 });
 
 

@@ -12,6 +12,10 @@ import { isOwnerService } from '../../blockchain/s2dent.blockchain.js';
 import { recoverSigner, hash } from '../../utils/crypto.js';
 import { signTokens, verifyRefreshToken } from '../../utils/jwt.js';
 import { sendOtpEmail } from '../../utils/email.js';
+import { env } from '../../config/env.js';
+
+
+const isProduction = env.NODE_ENV === 'production' || env.NODE_ENV === 'test';
 
 
 // DTOs
@@ -328,11 +332,15 @@ const sendOtpService = async (email) => {
 
     const { id, role } = await getUserByEmail(email);
 
-    // const otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
-    // const message = `Sign this nonce to verify your identity: ${getNonce()}`;
-
-    const otp = "000000";
-    const message = 'Sign this nonce to verify your identity: Testing Nonce';
+    var otp, message;
+    if(isProduction) {
+        otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
+        message = `Sign this nonce to verify your identity: ${getNonce()}`;
+    }
+    else {
+        otp = "000000";
+        message = 'Sign this nonce to verify your identity: Testing Nonce';
+    }
 
     const cacheKey = otpKey(email, otp);
     const payload = { id, message, role };

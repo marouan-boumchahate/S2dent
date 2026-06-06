@@ -147,7 +147,7 @@ describe('POST /api/credentials/:id/token', function () {
     assert.equal(decoded.credential_id, credentialId);
     assert.equal(decoded.student_address, STUDENT_SIGNER.address);
     assert.equal(decoded.student_signature, studentSignature);
-    assert.equal(decoded.exp - decoded.iat, 900);
+    assert.equal(decoded.exp - decoded.iat, 300);
   });
 
   it('returns 403 for academy and professor callers', async () => {

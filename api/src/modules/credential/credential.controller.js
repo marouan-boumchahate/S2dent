@@ -72,12 +72,17 @@ const fetchCredentialForVerificationController = async (req, res, next) => {
 };
 const generateVerifierCredentialTokenController = async (req, res, next) => {
     const { id } = req.params;
-    const { student_address, student_signature } = req.body;
+    const { 
+        student_address, 
+        student_signature,
+        expiration_time_in_seconds
+    } = req.body;
 
     const result = await generateVerifierCredentialTokenService({
         credential_id: id,
         student_address,
-        student_signature
+        student_signature,
+        expirationTimeInSeconds: expiration_time_in_seconds
     });
 
     return ok(res, result, 'Verifier credential token generated successfully');

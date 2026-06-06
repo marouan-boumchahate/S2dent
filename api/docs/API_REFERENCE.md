@@ -2032,10 +2032,12 @@ Side Effects:
  - Request Body:
    - `student_address` | `string` | required | Student wallet address.
    - `student_signature` | `string` | required | Signature over the verification challenge.
+   - `expiration_time_in_seconds` | `integer` | optional | Expiration lifespan of the generated token in seconds. Min: `300` (5 minutes), Max: `259200` (3 days). Default: `300`.
 ```json
 {
   "student_address": "0x4b5C6D7e8F9A0b1C2D3E4F5A6B7C8D9e0F1a2b3C",
-  "student_signature": "0xa7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5"
+  "student_signature": "0xa7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5",
+  "expiration_time_in_seconds": 900
 }
 ```
 Success Response 2xx:
