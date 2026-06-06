@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
@@ -18,18 +20,67 @@ class QRGenerate extends ConsumerStatefulWidget {
     required this.title,
     required this.code,
     required this.type,
+    required this.expirationTimeInSeconds,
   });
 
   final String credentialId;
   final String title;
   final String code;
   final CredentialItemType type;
+  final int expirationTimeInSeconds;
 
   @override
   ConsumerState<QRGenerate> createState() => _QRGenerateState();
 }
 
 class _QRGenerateState extends ConsumerState<QRGenerate> {
+  Timer? _countdownTimer;
+  int? _secondsLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(qrControllerProvider(widget.credentialId).notifier)
+          .generate(expirationTimeInSeconds: widget.expirationTimeInSeconds);
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    setState(() => _secondsLeft = widget.expirationTimeInSeconds);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_secondsLeft! <= 0) {
+          timer.cancel();
+        } else {
+          _secondsLeft = _secondsLeft! - 1;
+        }
+      });
+    });
+  }
+
+  String _formatTime(int seconds) {
+    if (seconds <= 0) return "QR code expired";
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) return "${h}h ${m}m remaining";
+    if (m > 0) return "${m}m ${s}s remaining";
+    return "${s}s remaining";
+  }
+
   @override
   Widget build(BuildContext context) {
     final qrController = ref.watch(qrControllerProvider(widget.credentialId));
@@ -37,16 +88,25 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
       qrControllerProvider(widget.credentialId),
       (previous, next) {
         next.whenOrNull(
-          error: (error, stackTrace) {
+          data: (data) => _startCountdown(),
+          error: (error, stackTrace) async {
             if (error.toString() == "NO PK FOUND") {
-              showDialog(
+              bool pkSaved = false;
+              await showDialog(
                 context: context,
                 builder: (context) => PkSetupDialog(
-                  onSave: () => ref
-                      .read(qrControllerProvider(widget.credentialId).notifier)
-                      .generate(),
+                  onSave: () {
+                    pkSaved = true;
+                    ref
+                        .read(
+                            qrControllerProvider(widget.credentialId).notifier)
+                        .generate(
+                            expirationTimeInSeconds:
+                                widget.expirationTimeInSeconds);
+                  },
                 ),
               );
+              if (!pkSaved && context.mounted) Navigator.pop(context);
             }
           },
         );
@@ -72,7 +132,7 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
       children: [
         const SizedBox(height: 60),
         _headerSection(context),
-        const SizedBox(height: 32),
+        const SizedBox(height: 60),
         Center(
           child: QrImageView(
             data: token,
@@ -88,6 +148,18 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
             ),
           ),
         ),
+        const SizedBox(height: 40),
+        if (_secondsLeft != null)
+          Center(
+            child: Text(
+              _formatTime(_secondsLeft!),
+              style: context.texts.bodyLarge?.copyWith(
+                color: _secondsLeft! <= 60
+                    ? AppColors.error
+                    : context.colors.primary,
+              ),
+            ),
+          ),
         const SizedBox(height: 20),
         Center(
           child: Text(

@@ -10,15 +10,13 @@ import 'package:flutter_riverpod/legacy.dart';
 
 class QrController extends StateNotifier<AsyncValue<String?>> {
   QrController(this._repo, this._pkService, this._credentialId)
-      : super(const AsyncValue.loading()) {
-    generate();
-  }
+      : super(const AsyncValue.loading());
 
   final QRRepo _repo;
   final PKStorageService _pkService;
   final String _credentialId;
 
-  Future<void> generate() async {
+  Future<void> generate({int? expirationTimeInSeconds}) async {
     state = const AsyncValue.loading();
     try {
       final pk = await _pkService.getPK();
@@ -33,8 +31,12 @@ class QrController extends StateNotifier<AsyncValue<String?>> {
       }
       final schema = await _repo.getSignatureSchema(_credentialId);
       final signature = signEIP712(pk, schema);
-      final token =
-          await _repo.getVerifierToken(_credentialId, address, signature);
+      final token = await _repo.getVerifierToken(
+        _credentialId,
+        address,
+        signature,
+        expirationTimeInSeconds,
+      );
       state = AsyncValue.data(token);
     } catch (e, trace) {
       state = AsyncValue.error(e, trace);

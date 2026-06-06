@@ -13,11 +13,16 @@ class QRRepoImpl implements QRRepo {
 
   @override
   Future<String> getVerifierToken(
-      String credentialId, String studentAddress, String studentSignature) {
+    String credentialId,
+    String studentAddress,
+    String studentSignature,
+    int? expirationTimeInSeconds,
+  ) {
     return _dataSource.getVerifierToken(
       credentialId,
       studentAddress,
       studentSignature,
+      expirationTimeInSeconds,
     );
   }
 

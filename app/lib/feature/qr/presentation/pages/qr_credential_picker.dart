@@ -6,6 +6,7 @@ import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_card.dart';
 import 'package:app/feature/qr/presentation/pages/qr_generate.dart';
+import 'package:app/feature/qr/presentation/widgets/duration_picker_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -87,7 +88,12 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
           filtered.length,
           (index) => CredentialCard(
             credential: filtered[index],
-            onTap: () {
+            onTap: () async {
+              final duration = await showModalBottomSheet<int>(
+                context: context,
+                builder: (ctx) => const DurationPickerBottomSheet(),
+              );
+              if (duration == null || !context.mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -96,6 +102,7 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
                     title: filtered[index].title,
                     code: filtered[index].code,
                     type: filtered[index].type,
+                    expirationTimeInSeconds: duration,
                   ),
                 ),
               );
