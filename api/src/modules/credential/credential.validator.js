@@ -138,7 +138,7 @@ const payloadSchemas = {
 const createCredentialSchema = Joi.object({
     title: Joi.string().max(255).required(),
     credential_type: Joi.string().valid(...credentialTypes).required(),
-    description: Joi.string().optional(),
+    description: Joi.string().optional().allow(null, ''),
     student_address: Joi.string().pattern(ETH_ADDRESS).required()
         .messages({
           'string.pattern.base': 'student_wallet must be a valid Ethereum address (0x…)',
@@ -169,7 +169,7 @@ const verifyCredentialTokenSchema = Joi.object({
         .messages({
           'string.pattern.base': 'student_signature must be a valid Ethereum signature (0x…)',
         }),
-    expiration_time_in_seconds: Joi.number().integer().min(300).max(259200).optional() // 5 min to 3 days
+    expiration_time_in_seconds: Joi.number().integer().min(300).max(259200).optional().allow(null, '') // 5 min to 3 days
 });
 
 

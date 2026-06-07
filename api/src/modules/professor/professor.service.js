@@ -192,11 +192,11 @@ const updateProfessorInDB = async ({
   bio
 }) => await db.query(
   `UPDATE professors SET
-     rank = COALESCE($1, rank),
-     employment_type = COALESCE($2, employment_type),
-     office_location = COALESCE($3, office_location),
-     office_hours = COALESCE($4, office_hours),
-     bio = COALESCE($5, bio)
+     rank = $1,
+     employment_type = $2,
+     office_location = $3,
+     office_hours = $4,
+     bio = $5
    WHERE id = $6
    RETURNING id, user_id, academy_id, department_id, employee_number,
              title, rank, specialization, hire_date, employment_type,

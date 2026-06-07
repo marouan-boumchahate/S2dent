@@ -281,15 +281,15 @@ function AcademyProfileTab() {
 
       <SectionTitle>Blockchain identity</SectionTitle>
       <Card>
-        <SettingsRow label="Academy wallet address" sub="0xAdm1n...f4e3" action={<OutlineButton>Change</OutlineButton>} />
+        <SettingsRow label="Academy wallet address" sub="0xAdm1n...f4e3"/>
         <SettingsRow label="Identity role" sub="Issued role on-chain" action={<Badge variant="amber">academy</Badge>} />
         <SettingsRow label="Issue tx hash" sub="0xdeadbee...4f3a" action={<OutlineButton>View on explorer</OutlineButton>} />
       </Card>
 
       <SectionTitle>Network configuration</SectionTitle>
       <Card>
-        <SettingsRow label="Smart contract address" sub="0x414d72aFC5bEeBC9FF42110f6BBD19570006c620" action={<OutlineButton>Edit</OutlineButton>} />
-        <SettingsRow label="Network" sub="Ethereum mainnet" action={<OutlineButton>Change</OutlineButton>} />
+        <SettingsRow label="Smart contract address" sub="0x414d72aFC5bEeBC9FF42110f6BBD19570006c620" action={<OutlineButton>View on explorer</OutlineButton>} />
+        <SettingsRow label="Network" sub="Ethereum mainnet"/>
       </Card>
     </div>
   );

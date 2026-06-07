@@ -17,6 +17,7 @@ export default function CreateProfessorForm({
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ── Step 1: Personnel ─────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('');
@@ -55,18 +56,221 @@ export default function CreateProfessorForm({
     onStepChange(s);
   };
 
+  // ── Step 1 change handlers & validations ──────────────────────────────────
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 100));
+  };
+
+  const handleMiddleNameChange = (val: string) => {
+    setMiddleName(val.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 100));
+  };
+
+  const handleLastNameChange = (val: string) => {
+    setLastName(val.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 100));
+  };
+
+  const handleDateOfBirthChange = (val: string) => {
+    setDateOfBirth(val);
+    if (val) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy.dateOfBirth;
+        return copy;
+      });
+    }
+  };
+
+  const handleGenderChange = (val: string) => {
+    setGender(val);
+    if (val) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy.gender;
+        return copy;
+      });
+    }
+  };
+
+  const handleNationalityChange = (val: string) => {
+    setNationality(val.replace(/[^a-zA-ZÀ-ÿ\s-]/g, '').slice(0, 100));
+  };
+
+  const handleNationalIdChange = (val: string) => {
+    setNationalId(val.replace(/[^a-zA-Z0-9\s-]/g, '').slice(0, 100));
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val.trim().toLowerCase());
+  };
+
+  const handlePhoneChange = (val: string) => {
+    let cleaned = val.replace(/[^\d+]/g, '');
+    if (cleaned.startsWith('+')) {
+      cleaned = '+' + cleaned.slice(1).replace(/\+/g, '');
+    } else {
+      cleaned = cleaned.replace(/\+/g, '');
+    }
+    if (cleaned.length > 16) {
+      cleaned = cleaned.slice(0, 16);
+    }
+    setPhone(cleaned);
+  };
+
+  const handlePhotoUrlChange = (val: string) => {
+    setPhotoUrl(val.trim().slice(0, 500));
+  };
+
+  // ── Step 3 change handlers ────────────────────────────────────────────────
+  const handleTitleChange = (val: string) => {
+    setTitle(val.replace(/[^a-zA-ZÀ-ÿ\s.]/g, '').slice(0, 100));
+  };
+
+  const handleRankChange = (val: string) => {
+    setRank(val);
+    if (val) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy.rank;
+        return copy;
+      });
+    }
+  };
+
+  const handleEmploymentTypeChange = (val: string) => {
+    setEmploymentType(val);
+  };
+
+  const handleSpecializationChange = (val: string) => {
+    setSpecialization(val.slice(0, 255));
+  };
+
+  const handleHireDateChange = (val: string) => {
+    setHireDate(val);
+  };
+
+  const handleOfficeLocationChange = (val: string) => {
+    setOfficeLocation(val.slice(0, 255));
+  };
+
+  const handleOfficeHoursChange = (val: string) => {
+    setOfficeHours(val);
+  };
+
+  const handleBioChange = (val: string) => {
+    setBio(val);
+  };
+
+  const validateStep1 = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!firstName.trim()) newErrors.firstName = 'First name is required.';
+    if (!lastName.trim()) newErrors.lastName = 'Last name is required.';
+    if (!nationality.trim()) newErrors.nationality = 'Nationality is required.';
+    if (!nationalId.trim()) newErrors.nationalId = 'National ID is required.';
+
+    if (!dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required.';
+    } else {
+      const birthDate = new Date(dateOfBirth);
+      const today = new Date();
+      if (birthDate >= today) {
+        newErrors.dateOfBirth = 'Date of birth must be in the past.';
+      } else {
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          newErrors.dateOfBirth = 'Professor must be at least 18 years old.';
+        }
+      }
+    }
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address.';
+    }
+
+    if (phone) {
+      if (!/^\+?[1-9]\d{7,14}$/.test(phone)) {
+        newErrors.phone = 'Phone must be a valid international phone number (e.g. +905551234567, starting with 1-9 after optional + and having 8 to 15 digits total).';
+      }
+    }
+
+    if (photoUrl) {
+      if (photoUrl.length > 500) {
+        newErrors.photoUrl = 'Photo URL cannot exceed 500 characters.';
+      } else {
+        try {
+          new URL(photoUrl);
+        } catch (_) {
+          newErrors.photoUrl = 'Please enter a valid URL.';
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep3 = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!departmentId) newErrors.departmentId = 'Department is required.';
+    if (!title.trim()) {
+      newErrors.title = 'Title is required.';
+    } else if (title.length > 100) {
+      newErrors.title = 'Title cannot exceed 100 characters.';
+    }
+
+    const validRanks = ['Assist. Prof', 'Assoc. Prof', 'Prof', 'Lecturer', 'Instructor'];
+    if (!rank) {
+      newErrors.rank = 'Rank is required.';
+    } else if (!validRanks.includes(rank)) {
+      newErrors.rank = 'Invalid rank selection.';
+    }
+
+    const validEmpTypes = ['full_time', 'part_time', 'adjunct', 'visiting', 'contract'];
+    if (employmentType && !validEmpTypes.includes(employmentType)) {
+      newErrors.employmentType = 'Invalid employment type selection.';
+    }
+
+    if (specialization && specialization.length > 255) {
+      newErrors.specialization = 'Specialization cannot exceed 255 characters.';
+    }
+
+    if (officeLocation && officeLocation.length > 255) {
+      newErrors.officeLocation = 'Office location cannot exceed 255 characters.';
+    }
+
+    if (hireDate) {
+      const parsedDate = new Date(hireDate);
+      if (isNaN(parsedDate.getTime())) {
+        newErrors.hireDate = 'Please enter a valid hire date.';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // ── Step 1 submit ─────────────────────────────────────────────────────────
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
-    goTo(2);
+    if (validateStep1()) {
+      goTo(2);
+    }
   };
 
   // ── Step 3 submit: 3 sequential API calls per the Off-Chain Creation Workflow
   //   1. POST /api/users        → returns user_id
-  //   2. POST /api/addresses    → links address to user_id  (city + country required)
+ //   2. POST /api/addresses    → links address to user_id  (city + country required)
   //   3. POST /api/professors   → links professor to user_id + department_id
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateStep3()) return;
     if (loading) return;
     setLoading(true);
 
@@ -158,22 +362,35 @@ export default function CreateProfessorForm({
               <select
                 required
                 value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)}
-                className="w-full bg-surface border border-borderLine rounded-lg px-4 py-2.5 text-textLight focus:outline-none focus:border-mint"
+                onChange={(e) => {
+                  setDepartmentId(e.target.value);
+                  if (e.target.value) {
+                    setErrors(prev => {
+                      const copy = { ...prev };
+                      delete copy.departmentId;
+                      return copy;
+                    });
+                  }
+                }}
+                className={`w-full bg-surface border ${
+                  errors.departmentId ? 'border-red-500 focus:border-red-500' : 'border-borderLine focus:border-mint'
+                } rounded-lg px-4 py-2.5 text-textLight focus:outline-none`}
               >
                 <option value="">Select department…</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
+              {errors.departmentId && <p className="text-red-400 text-xs mt-1">{errors.departmentId}</p>}
             </div>
 
             <FormField
               label="Title (e.g. Dr.)"
               value={title}
-              onChange={setTitle}
+              onChange={handleTitleChange}
               required
               maxLength={100}
+              error={errors.title}
             />
           </div>
 
@@ -181,15 +398,17 @@ export default function CreateProfessorForm({
             <FormField
               label="Rank"
               value={rank}
-              onChange={setRank}
+              onChange={handleRankChange}
               required
               options={['', 'Assist. Prof', 'Assoc. Prof', 'Prof', 'Lecturer', 'Instructor']}
+              error={errors.rank}
             />
             <FormField
               label="Employment Type"
               value={employmentType}
-              onChange={setEmploymentType}
+              onChange={handleEmploymentTypeChange}
               options={['full_time', 'part_time', 'adjunct', 'visiting', 'contract']}
+              error={errors.employmentType}
             />
           </div>
 
@@ -197,15 +416,17 @@ export default function CreateProfessorForm({
             <FormField
               label="Specialization"
               value={specialization}
-              onChange={setSpecialization}
+              onChange={handleSpecializationChange}
               maxLength={255}
               placeholder="e.g. Artificial Intelligence"
+              error={errors.specialization}
             />
             <FormField
               label="Hire Date"
               isDate
               value={hireDate}
-              onChange={setHireDate}
+              onChange={handleHireDateChange}
+              error={errors.hireDate}
             />
           </div>
 
@@ -213,24 +434,27 @@ export default function CreateProfessorForm({
             <FormField
               label="Office Location"
               value={officeLocation}
-              onChange={setOfficeLocation}
+              onChange={handleOfficeLocationChange}
               maxLength={255}
               placeholder="e.g. Building A, Room 204"
+              error={errors.officeLocation}
             />
             <FormField
               label="Office Hours"
               value={officeHours}
-              onChange={setOfficeHours}
+              onChange={handleOfficeHoursChange}
               placeholder="e.g. Mon/Wed 14:00-16:00"
+              error={errors.officeHours}
             />
           </div>
 
           <FormField
             label="Bio"
             value={bio}
-            onChange={setBio}
+            onChange={handleBioChange}
             isTextarea
             placeholder="Short biography…"
+            error={errors.bio}
           />
         </div>
 
@@ -262,25 +486,25 @@ export default function CreateProfessorForm({
 
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FormField label="First Name" value={firstName} onChange={setFirstName} required maxLength={100} />
-          <FormField label="Middle Name" value={middleName} onChange={setMiddleName} maxLength={100} />
-          <FormField label="Last Name" value={lastName} onChange={setLastName} required maxLength={100} />
+          <FormField label="First Name" value={firstName} onChange={handleFirstNameChange} required maxLength={100} error={errors.firstName} />
+          <FormField label="Middle Name" value={middleName} onChange={handleMiddleNameChange} maxLength={100} error={errors.middleName} />
+          <FormField label="Last Name" value={lastName} onChange={handleLastNameChange} required maxLength={100} error={errors.lastName} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FormField label="Date of Birth" isDate value={dateOfBirth} onChange={setDateOfBirth} required />
-          <FormField label="Gender" value={gender} onChange={setGender} required options={['', 'male', 'female']} />
-          <FormField label="Nationality" value={nationality} onChange={setNationality} required maxLength={100} />
+          <FormField label="Date of Birth" isDate value={dateOfBirth} onChange={handleDateOfBirthChange} required error={errors.dateOfBirth} />
+          <FormField label="Gender" value={gender} onChange={handleGenderChange} required options={['', 'male', 'female']} error={errors.gender} />
+          <FormField label="Nationality" value={nationality} onChange={handleNationalityChange} required maxLength={100} error={errors.nationality} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <FormField label="National ID" value={nationalId} onChange={setNationalId} required maxLength={100} />
-          <FormField label="Email" type="email" value={email} onChange={(v) => setEmail(v.toLowerCase())} required />
+          <FormField label="National ID" value={nationalId} onChange={handleNationalIdChange} required maxLength={100} error={errors.nationalId} />
+          <FormField label="Email" type="email" value={email} onChange={handleEmailChange} required error={errors.email} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <FormField label="Phone (e.g. +905551234567)" type="tel" value={phone} onChange={setPhone} />
-          <FormField label="Photo URL" type="url" value={photoUrl} onChange={setPhotoUrl} />
+          <FormField label="Phone (e.g. +905551234567)" type="tel" value={phone} onChange={handlePhoneChange} error={errors.phone} />
+          <FormField label="Photo URL" type="url" value={photoUrl} onChange={handlePhotoUrlChange} error={errors.photoUrl} />
         </div>
       </div>
 
