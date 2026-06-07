@@ -271,34 +271,144 @@ export default function NewCredentialPage() {
   const [showReview, setShowReview] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   // dynamic payload state keyed by field types
   const [payload, setPayload] = useState<Record<string, string>>({});
-  const setPayloadField = (id: string, val: string) =>
-    setPayload(prev => ({ ...prev, [id]: val }));
+
+  const handleTitleChange = (val: string) => {
+    setTitle(val.slice(0, 255));
+  };
+
+  const handleStudentWalletChange = (val: string) => {
+    const cleaned = val.replace(/[^a-fA-F0-9xX]/g, '').slice(0, 42);
+    setStudentWallet(cleaned);
+    setStudentLookup(null);
+    setWalletError('');
+  };
+
+  const handlePayloadFieldChange = (field: FieldDef, val: string) => {
+    let sanitized = val;
+
+    if (field.type === 'number') {
+      if (['gpa', 'cumulative_gpa', 'final_score', 'passing_score', 'score'].includes(field.id)) {
+        sanitized = val.replace(/[^0-9.]/g, '');
+        const dots = sanitized.split('.');
+        if (dots.length > 2) {
+          sanitized = dots[0] + '.' + dots.slice(1).join('');
+        }
+      } else {
+        sanitized = val.replace(/[^0-9]/g, '');
+      }
+    } else if (field.id.includes('academic_year')) {
+      sanitized = val.replace(/[^0-9-]/g, '').slice(0, 9);
+    } else if (field.type === 'text') {
+      sanitized = val.slice(0, 255);
+    }
+
+    setPayload(prev => ({ ...prev, [field.id]: sanitized }));
+
+    if (sanitized.trim()) {
+      setFieldErrors(prev => {
+        const copy = { ...prev };
+        delete copy[field.id];
+        return copy;
+      });
+    }
+  };
 
   // reset payload when type changes
   const handleTypeChange = (val: string) => {
     setCredType(val);
     setPayload({});
+    setFieldErrors({});
+  };
+
+  const validateForm = (): boolean => {
+    const newFieldErrors: Record<string, string> = {};
+    setError('');
+
+    if (!title.trim()) {
+      newFieldErrors.title = 'Please enter a title.';
+    } else if (title.length > 255) {
+      newFieldErrors.title = 'Title cannot exceed 255 characters.';
+    }
+
+    if (!credType) {
+      setError('Please select a credential type.');
+      return false;
+    }
+
+    if (!studentWallet || !/^0x[a-fA-F0-9]{40}$/.test(studentWallet)) {
+      newFieldErrors.studentWallet = 'Student wallet address must be a valid Ethereum address (0x...).';
+    } else if (!studentLookup) {
+      newFieldErrors.studentWallet = 'Please enter a valid student wallet address and wait for lookup.';
+    }
+
+    const currentFields = PAYLOAD_FIELDS[credType] ?? [];
+
+    for (const f of currentFields) {
+      const val = payload[f.id] ?? '';
+
+      if (f.req && !val.trim()) {
+        newFieldErrors[f.id] = `${f.label} is required.`;
+        continue;
+      }
+
+      if (val) {
+        if (f.id.includes('academic_year') && !/^\d{4}-\d{4}$/.test(val)) {
+          newFieldErrors[f.id] = 'Must be in YYYY-YYYY format (e.g. 2025-2026).';
+          continue;
+        }
+
+        if (f.id === 'gpa' || f.id === 'cumulative_gpa') {
+          const scale = Number(payload['gpa_scale'] || 4.0);
+          const gpaNum = Number(val);
+          if (isNaN(gpaNum) || gpaNum < 0 || gpaNum > scale) {
+            newFieldErrors[f.id] = `GPA must be between 0 and the GPA scale (${scale}).`;
+            continue;
+          }
+        }
+
+        if (f.id === 'final_score' || f.id === 'passing_score') {
+          const scoreNum = Number(val);
+          if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+            newFieldErrors[f.id] = 'Score must be between 0 and 100.';
+            continue;
+          }
+        }
+
+        if (credType === 'Attendance') {
+          const total = Number(payload['total_sessions'] || 0);
+          if (f.id === 'attended_sessions') {
+            const attended = Number(val);
+            if (attended > total) {
+              newFieldErrors[f.id] = 'Attended sessions cannot exceed total sessions.';
+              continue;
+            }
+          }
+          if (f.id === 'excused_absences') {
+            const excused = Number(val);
+            if (excused > total) {
+              newFieldErrors[f.id] = 'Excused absences cannot exceed total sessions.';
+              continue;
+            }
+          }
+        }
+      }
+    }
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError('Please fix the errors in the fields.');
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = () => {
-    if (!title || !credType) {
-      setError(!credType ? 'Please select a credential type.' : 'Please enter a title.');
-      return;
-    }
-    if (!studentWallet || !/^0x[a-fA-F0-9]{40}$/.test(studentWallet)) {
-      setError('Student wallet address must be a valid Ethereum address (0x...).');
-      return;
-    }
-    if (!studentLookup) {
-      setError('Please enter a valid student wallet address and wait for lookup.');
-      return;
-    }
-    if (payload.academic_year && !/^\d{4}-\d{4}$/.test(payload.academic_year)) {
-      setError('Academic year must be in format: 2025-2026');
-      return;
-    }
+    if (!validateForm()) return;
     setError('');
     setShowReview(true);
   };
@@ -445,9 +555,11 @@ try {
             <FormField
               label="Title"
               value={title}
-              onChange={setTitle}
+              onChange={handleTitleChange}
               placeholder="e.g. Bachelor of Computer Science"
               required
+              maxLength={255}
+              error={fieldErrors.title}
             />
 
             {/* type only — code is auto-generated by API */}
@@ -469,9 +581,11 @@ try {
               <FormField
                 label="Student wallet address"
                 value={studentWallet}
-                onChange={(v) => { setStudentWallet(v); setStudentLookup(null); setWalletError(''); }}
+                onChange={handleStudentWalletChange}
                 placeholder="0x..."
                 required
+                maxLength={42}
+                error={fieldErrors.studentWallet}
               />
               {walletLookupLoading && (
                 <p className="text-xs text-textMuted mt-1">Looking up student…</p>
@@ -521,12 +635,13 @@ try {
                       key={f.id}
                       label={f.label + (f.req ? ' *' : '')}
                       value={payload[f.id] ?? ''}
-                      onChange={val => setPayloadField(f.id, val)}
+                      onChange={val => handlePayloadFieldChange(f, val)}
                       placeholder={f.ph}
                       type={f.type === 'date' || f.type === 'number' ? f.type : 'text'}
                       options={f.type === 'select' ? ['', ...(f.options ?? [])] : undefined}
                       isDate={f.type === 'date'}
                       required={f.req}
+                      error={fieldErrors[f.id]}
                     />
                   ))}
                 </div>

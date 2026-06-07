@@ -245,7 +245,10 @@ describe('PUT /api/professors/:id', () => {
     await teardownSeed();
   });
   it('returns 200 on partial update', async () => {
-    const updateBody = { rank: 'Prof' };
+    const updateBody = { 
+      rank: 'Prof',
+      employment_type: createProfessorDefaults.employment_type
+    };
 
     const res = await request(app)
       .put(`/api/professors/${PROFESSOR_ID}`)
@@ -259,10 +262,10 @@ describe('PUT /api/professors/:id', () => {
     const { professor } = res.body.data;
 
     assert.equal(professor.rank, updateBody.rank);
-    assert.equal(professor.bio, createProfessorDefaults.bio);
+    assert.equal(professor.bio, null);
     assert.equal(professor.employment_type, createProfessorDefaults.employment_type);
-    assert.equal(professor.office_location, createProfessorDefaults.office_location);
-    assert.equal(professor.office_hours, createProfessorDefaults.office_hours);
+    assert.equal(professor.office_location, null);
+    assert.equal(professor.office_hours, null);
     assert.equal(professor.title, createProfessorDefaults.title);
     assert.equal(professor.specialization, createProfessorDefaults.specialization);
   });
@@ -283,7 +286,7 @@ describe('PUT /api/professors/:id', () => {
     assert.equal(professor.employment_type, body.employment_type);
     assert.equal(professor.office_location, body.office_location);
     assert.equal(professor.office_hours, body.office_hours);
-    assert.equal(professor.bio, createProfessorDefaults.bio);
+    assert.equal(professor.bio, null);
   });
 
   it('returns 404 PROFESSOR_NOT_FOUND when professor does not exist', async () => {

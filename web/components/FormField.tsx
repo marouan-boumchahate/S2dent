@@ -15,6 +15,7 @@ interface FormFieldProps {
   isDate?: boolean;
   isTextarea?: boolean;
   disabled?: boolean; // New prop to lock down field interaction
+  error?: string;
 }
 
 export default function FormField({
@@ -28,9 +29,12 @@ export default function FormField({
   placeholder, 
   isDate, 
   isTextarea,
-  disabled = false // Defaulting to active
+  disabled = false, // Defaulting to active
+  error
 }: FormFieldProps) {
-  const baseClass = "w-full bg-navy p-3 rounded-lg border border-borderLine text-textLight focus:border-electric outline-none transition disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseClass = `w-full bg-navy p-3 rounded-lg border ${
+    error ? 'border-red-500 focus:border-red-500' : 'border-borderLine focus:border-electric'
+  } text-textLight outline-none transition disabled:opacity-50 disabled:cursor-not-allowed`;
 
   return (
     <div>
@@ -83,6 +87,7 @@ export default function FormField({
           disabled={disabled} // Disables typing inside typical inputs
         />
       )}
+      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
     </div>
   );
 }

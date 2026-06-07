@@ -19,15 +19,86 @@ function AddModal({ onConfirm, onCancel }: {
   const [faculty, setFaculty] = useState('');
   const [totalYears, setTotalYears] = useState('');
   const [description, setDescription] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!code.trim()) {
+      newErrors.code = 'Code is required.';
+    } else if (code.length > 50) {
+      newErrors.code = 'Code cannot exceed 50 characters.';
+    }
+
+    if (!name.trim()) {
+      newErrors.name = 'Name is required.';
+    } else if (name.length > 255) {
+      newErrors.name = 'Name cannot exceed 255 characters.';
+    }
+
+    if (!faculty.trim()) {
+      newErrors.faculty = 'Faculty is required.';
+    } else if (faculty.length > 255) {
+      newErrors.faculty = 'Faculty cannot exceed 255 characters.';
+    }
+
+    if (!totalYears) {
+      newErrors.totalYears = 'Total years is required.';
+    } else {
+      const yearsNum = parseInt(totalYears);
+      if (isNaN(yearsNum) || yearsNum < 1 || yearsNum > 10) {
+        newErrors.totalYears = 'Total years must be between 1 and 10.';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCodeChange = (val: string) => {
+    setCode(val.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 50));
+    setErrors(prev => {
+      const copy = { ...prev };
+      delete copy.code;
+      return copy;
+    });
+  };
+
+  const handleNameChange = (val: string) => {
+    setName(val.replace(/[^a-zA-ZÀ-ÿ\s.-]/g, '').slice(0, 255));
+    setErrors(prev => {
+      const copy = { ...prev };
+      delete copy.name;
+      return copy;
+    });
+  };
+
+  const handleFacultyChange = (val: string) => {
+    setFaculty(val.replace(/[^a-zA-ZÀ-ÿ\s.-]/g, '').slice(0, 255));
+    setErrors(prev => {
+      const copy = { ...prev };
+      delete copy.faculty;
+      return copy;
+    });
+  };
+
+  const handleTotalYearsChange = (val: string) => {
+    setTotalYears(val.replace(/[^0-9]/g, ''));
+    setErrors(prev => {
+      const copy = { ...prev };
+      delete copy.totalYears;
+      return copy;
+    });
+  };
 
   const handleSubmit = () => {
-    if (!code || !name || !faculty || !totalYears) return;
+    if (!validate()) return;
     onConfirm({
-      code: code.toUpperCase(),
-      name,
-      faculty,
+      code: code.trim().toUpperCase(),
+      name: name.trim(),
+      faculty: faculty.trim(),
       totalYears: parseInt(totalYears),
-      description,
+      description: description.trim(),
       status: 'Active',
     });
   };
@@ -40,10 +111,10 @@ function AddModal({ onConfirm, onCancel }: {
         <p className="text-gray-500 text-sm mb-6">New department will be saved off-chain.</p>
 
         <div className="space-y-4">
-          <FormField label="Code" value={code} onChange={setCode} placeholder="e.g. CS, MED" maxLength={20} required />
-          <FormField label="Name" value={name} onChange={setName} placeholder="e.g. Computer Science" maxLength={100} required />
-          <FormField label="Faculty" value={faculty} onChange={setFaculty} placeholder="e.g. Faculty of Engineering" maxLength={100} required />
-          <FormField label="Total years" value={totalYears} onChange={setTotalYears} type="number" placeholder="e.g. 4" required />
+          <FormField label="Code" value={code} onChange={handleCodeChange} placeholder="e.g. CS, MED" maxLength={50} required error={errors.code} />
+          <FormField label="Name" value={name} onChange={handleNameChange} placeholder="e.g. Computer Science" maxLength={255} required error={errors.name} />
+          <FormField label="Faculty" value={faculty} onChange={handleFacultyChange} placeholder="e.g. Faculty of Engineering" maxLength={255} required error={errors.faculty} />
+          <FormField label="Total years" value={totalYears} onChange={handleTotalYearsChange} type="number" placeholder="e.g. 4" required error={errors.totalYears} />
           <FormField label="Description" value={description} onChange={setDescription} placeholder="Optional description" isTextarea />
         </div>
 

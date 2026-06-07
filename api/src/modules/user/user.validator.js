@@ -9,7 +9,7 @@ const PHONE_REGEX = /^\+?[1-9]\d{7,14}$/;
 
 const createUserSchema = Joi.object({
   first_name: Joi.string().trim().max(100).required(),
-  middle_name: Joi.string().trim().max(100).optional(),
+  middle_name: Joi.string().trim().max(100).optional().allow(null, ''),
   last_name: Joi.string().trim().max(100).required(),
 
   date_of_birth: Joi.date().iso().required(),
@@ -21,12 +21,12 @@ const createUserSchema = Joi.object({
 
   national_id: Joi.string().trim().max(100).required(),
   email: Joi.string().email().lowercase().trim().required(),
-  phone: Joi.string().pattern(PHONE_REGEX).optional()
+  phone: Joi.string().pattern(PHONE_REGEX).optional().allow(null, '')
     .messages({
       'string.pattern.base': 'phone must be a valid international phone number',
     }),
 
-  photo_url: Joi.string().uri().trim().max(500).optional()
+  photo_url: Joi.string().uri().trim().max(500).optional().allow(null, '')
     .messages({
       'string.uri': 'photo_url must be a valid URL',
     })
