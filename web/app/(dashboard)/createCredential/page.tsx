@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { store } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
-import { createCredential } from '@/lib/api';
+import { BrowserProvider } from 'ethers';
+import { apiFetch, createCredential, fetchStudents } from '@/lib/api';
 
 // payload fields for different types
 type FieldDef = {
@@ -260,9 +261,10 @@ export default function NewCredentialPage() {
   // base fields
   const [title, setTitle] = useState('');
   const [credType, setCredType] = useState('');
-  const [code, setCode] = useState('');
   const [studentWallet, setStudentWallet] = useState('');
-  const [studentName, setStudentName] = useState('');
+  const [studentLookup, setStudentLookup] = useState<{ name: string } | null>(null);
+  const [walletLookupLoading, setWalletLookupLoading] = useState(false);
+  const [walletError, setWalletError] = useState('');
   const [locale, setLocale] = useState('English (en)');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -285,46 +287,117 @@ export default function NewCredentialPage() {
       setError(!credType ? 'Please select a credential type.' : 'Please enter a title.');
       return;
     }
+    if (!studentWallet || !/^0x[a-fA-F0-9]{40}$/.test(studentWallet)) {
+      setError('Student wallet address must be a valid Ethereum address (0x...).');
+      return;
+    }
+    if (!studentLookup) {
+      setError('Please enter a valid student wallet address and wait for lookup.');
+      return;
+    }
+    if (payload.academic_year && !/^\d{4}-\d{4}$/.test(payload.academic_year)) {
+      setError('Academic year must be in format: 2025-2026');
+      return;
+    }
     setError('');
     setShowReview(true);
   };
 
+  const handleWalletBlur = async () => {
+    if (!studentWallet || !/^0x[a-fA-F0-9]{40}$/.test(studentWallet)) {
+      setStudentLookup(null);
+      return;
+    }
+    setWalletLookupLoading(true);
+    setWalletError('');
+    try {
+      const students = await fetchStudents();
+      const match = students.find(s => s.wallet_address?.toLowerCase() === studentWallet.toLowerCase());
+      if (match) {
+        setStudentLookup({ name: match.name });
+        setWalletError('');
+      } else {
+        setStudentLookup(null);
+        setWalletError('No student found with this wallet address.');
+      }
+    } catch {
+      setWalletError('Failed to look up student.');
+    }
+    setWalletLookupLoading(false);
+  };
+
   const handleConfirmSign = async () => {
-    if (loading) return; // JS guard block clause to prevent duplicate processing flights
+    if (loading) return;
     setLoading(true);
 
-    try {
-      // Commit parameters seamlessly down to running Docker network setups
-      await createCredential({
-        title,
-        type: credType,
-        code,
-        student_wallet: studentWallet,
-        student_name: studentName,
-        locale,
-        description,
-        payload,
-      });
+try {
+      if (!window.ethereum) throw new Error("MetaMask is required");
 
-      store.addCredential({
-        title,
-        issuedTo: studentWallet,
-        studentName,
-        type: credType as any,
-        code,
-        locale,
-        description,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        payload,
-      });
+      // ====== أضف هذا الجزء هنا لإجبار المحفظة على التبديل للشبكة الصحيحة ======
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x7a69' }], // 0x7a69 هو المعرف 31337 الخاص بـ Localhost
+        });
+      } catch (switchError) {
+        console.warn("يرجى التأكد من إضافة شبكة Localhost في ميتاماسك", switchError);
+      }
+      // =========================================================================
 
+      // تأكد أن تعريف الـ provider يأتي **بعد** كود التبديل
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      // Build payload — convert number fields from string to number
+      const typedPayload: Record<string, any> = {};
+      const currentFields = PAYLOAD_FIELDS[credType] ?? [];
+      for (const field of currentFields) {
+        const val = payload[field.id];
+        if (val === undefined || val === '') continue;
+        typedPayload[field.id] = field.type === 'number' ? Number(val) : val;
+      }
+
+      const draftPayload: Record<string, any> = {
+        title,
+        credential_type: credType.toLowerCase(),
+        student_address: studentWallet,  // ← must be student_address, NOT student_wallet
+        payload: typedPayload,
+      };
+
+      // ✅ Only include description if non-empty
+      if (description.trim() !== '') {
+        draftPayload.description = description;
+      }
+
+      const draftData = await apiFetch<any>('/credentials', {
+        method: 'POST',
+        body: JSON.stringify(draftPayload)
+      });
+      // الكود الصحيح:
+      const credentialId = draftData.credential_id;
+      const signingData = draftData.signing_data; // استخراج الكائن كاملاً
+
+      // استخدام معيار EIP-712 للتوقيع بدلاً من التوقيع النصي العادي
+      const signature = await signer.signTypedData(
+        signingData.domain,
+        signingData.types,
+        signingData.message
+      );
+
+      await apiFetch<any>(`/credentials/${credentialId}/issue`, {
+        method: 'POST',
+        body: JSON.stringify({ signature })
+      });
+      // if apiFetch doesn't throw, it succeeded
+
+      // تمت العملية بنجاح!
       setShowReview(false);
       router.push('/credentials');
       router.refresh();
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Error issuing credential:', error);
-      alert('Failed to issue smart contract record. Verify node connectivity clusters.');
+      alert(`Failed to issue credential: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -336,7 +409,7 @@ export default function NewCredentialPage() {
     <>
       {showReview && (
         <ReviewModal
-          data={{ title, code, credType, studentName, studentWallet, payload }}
+          data={{ title, code: '', credType, studentName: studentLookup?.name ?? '', studentWallet, payload }}
           onConfirm={handleConfirmSign}
           onCancel={() => setShowReview(false)}
           loading={loading}
@@ -377,7 +450,7 @@ export default function NewCredentialPage() {
               required
             />
 
-            {/* type and code */}
+            {/* type only — code is auto-generated by API */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <FormField
@@ -389,28 +462,26 @@ export default function NewCredentialPage() {
                 />
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
               </div>
-              <FormField
-                label="Credential code"
-                value={code}
-                onChange={setCode}
-                placeholder="e.g. CRED-2025-001"
-              />
             </div>
 
-            {/* student wallet and name */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* student wallet — auto-resolves student name */}
+            <div onBlur={handleWalletBlur}>
               <FormField
                 label="Student wallet address"
                 value={studentWallet}
-                onChange={setStudentWallet}
+                onChange={(v) => { setStudentWallet(v); setStudentLookup(null); setWalletError(''); }}
                 placeholder="0x..."
+                required
               />
-              <FormField
-                label="Student name"
-                value={studentName}
-                onChange={setStudentName}
-                placeholder="e.g. Ahmed Hassan"
-              />
+              {walletLookupLoading && (
+                <p className="text-xs text-textMuted mt-1">Looking up student…</p>
+              )}
+              {studentLookup && (
+                <p className="text-xs text-mint mt-1 font-semibold">✓ {studentLookup.name}</p>
+              )}
+              {walletError && (
+                <p className="text-xs text-red-400 mt-1">{walletError}</p>
+              )}
             </div>
 
             {/* local */}

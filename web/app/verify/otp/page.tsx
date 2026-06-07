@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { verifyOtp, setTokens } from '@/lib/api';
+import { requestIdentityIssuance } from '@/lib/api';
 
 export default function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -27,23 +27,36 @@ export default function OtpPage() {
     if (code.length < 6 || loading) return;
     setLoading(true);
 
-    // Retrieve the pending verification target email cached from step one
     const email = localStorage.getItem('pending_verify_email') || '';
+    const nonceMessage = localStorage.getItem('pending_verify_nonce') || '';
 
     try {
-      const response = await verifyOtp({ email, code });
+      // Ask the wallet to sign the nonce message returned by POST /api/auth/otp/send
+      // window.ethereum is the standard EIP-1193 provider injected by MetaMask / any web3 wallet
+      const accounts: string[] = await (window as any).ethereum.request({
+        method: 'eth_requestAccounts',
+      });
 
-      // Save access and refresh keys directly to local browser memory allocations
-      if (response?.access_token && response?.refresh_token) {
-        setTokens(response.access_token, response.refresh_token);
-      }
+      const signature: string = await (window as any).ethereum.request({
+        method: 'personal_sign',
+        params: [nonceMessage, accounts[0]],
+      });
 
+      // POST /api/identity/students/request-issuance
+      // Body: { email, otp, signature }
+      // Success response: { success: true, data: { wallet_address: "0x..." } }
+      // This does NOT return tokens — it submits a blockchain identity issuance request.
+      await requestIdentityIssuance({ email, otp: code, signature });
+
+      // Clean up cached values
       localStorage.removeItem('pending_verify_email');
-      router.push('/students');
-      router.refresh();
+      localStorage.removeItem('pending_verify_nonce');
+
+      // Redirect to a confirmation/pending page — the identity issuance is processed asynchronously
+      router.push('/verify/pending');
     } catch (error) {
-      console.error('OTP Verification error:', error);
-      alert('Invalid code or session expired. Please verify container synchronization logs.');
+      console.error('Identity issuance request error:', error);
+      alert('Verification failed. Please check your code and try again.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +77,7 @@ export default function OtpPage() {
           />
         </div>
 
-        <h2 className="text-2xl font-bold text-textLight mb-2 text-center">A code have been sent to your email</h2>
+        <h2 className="text-2xl font-bold text-textLight mb-2 text-center">A code has been sent to your email</h2>
         <p className="text-textMuted mb-8 text-center">Enter the 6-digit code</p>
 
         <div className="flex gap-3 justify-center mb-8">
@@ -87,7 +100,7 @@ export default function OtpPage() {
           disabled={loading || otp.join('').length < 6}
           className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition disabled:opacity-50"
         >
-          {loading ? 'Validating Token...' : 'Verify'}
+          {loading ? 'Submitting Request...' : 'Verify'}
         </button>
       </form>
     </div>

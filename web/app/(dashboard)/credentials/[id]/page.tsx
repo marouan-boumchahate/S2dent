@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { store, Credential } from '@/lib/store';
-import { fetchCredentialById, revokeCredential, ApiCredentialDetail } from '@/lib/api';
+import { fetchCredentialById, revokeCredential } from '@/lib/api';
 
 // type config icons
 const TYPE_CONFIG: Record<string, { icon: string; color: string; border: string }> = {
@@ -59,7 +58,7 @@ function OnChainField({ label, value, full = false }: { label: string; value: st
   );
 }
 
-function StatusBadge({ status }: { status: Credential['status'] }) {
+function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     Verified: 'bg-mint/10 text-mint border-mint/30',
     Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
@@ -84,9 +83,8 @@ function RevokeModal({ title, onConfirm, onCancel }: {
 
   const handleConfirm = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
+    await onConfirm(reason);
     setLoading(false);
-    onConfirm(reason);
   };
 
   return (
@@ -136,22 +134,19 @@ export default function CredentialDetailPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [credential, setCredential] = useState<Credential | null>(null);
-  const [apiDetail, setApiDetail] = useState<ApiCredentialDetail | null>(null);
+  const [apiDetail, setApiDetail] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
 
   useEffect(() => {
-    const found = store.credentials.find(c => c.id === id);
-    if (found) {
-      setCredential({ ...found });
-    }
-    
+    setLoading(true);
     fetchCredentialById(id)
-      .then(setApiDetail)
-      .catch(() => {}) // degradable UI fallbacks handled smoothly
-  }, [id, router]);
+      .then((data) => setApiDetail(data))
+      .catch((err) => console.error("Failed to fetch credential details:", err))
+      .finally(() => setLoading(false));
+  }, [id]);
 
-  if (!credential) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-textMuted">Loading…</p>
@@ -159,43 +154,45 @@ export default function CredentialDetailPage() {
     );
   }
 
-  // Map status cleanly from contract data metrics if available
-  let displayStatus: Credential['status'] = credential.status;
-  if (apiDetail) {
-    displayStatus = apiDetail.meta.is_revoked ? 'Revoked' : 'Verified';
+  if (!apiDetail) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-textMuted">Credential not found.</p>
+      </div>
+    );
   }
 
+  // Map status cleanly from contract data metrics if available
+  const isRevoked = apiDetail.meta?.is_revoked;
+  const displayStatus = isRevoked ? 'Revoked' : 'Verified';
+
   // Format dynamic raw type to match frontend layout categories
-  const normalizedType = apiDetail?.meta.type 
-    ? (apiDetail.meta.type.charAt(0).toUpperCase() + apiDetail.meta.type.slice(1)) 
-    : credential.type;
+  const rawType = apiDetail.meta?.type || 'certificate';
+  const normalizedType = rawType.charAt(0).toUpperCase() + rawType.slice(1);
 
   const tc = TYPE_CONFIG[normalizedType] ?? TYPE_CONFIG.Certificate;
-  const isRevoked = displayStatus === 'Revoked';
 
-  // Read payload from running nodes or fall back to mock templates
-  const activePayload = apiDetail?.payload ?? credential.payload ?? {};
+  // Read payload from running nodes
+  const activePayload = apiDetail.payload ?? {};
   const payloadEntries = Object.entries(activePayload).filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '');
 
   const handleRevoke = async (reason: string) => {
     try {
       await revokeCredential(id, reason);
-    } catch {
-      // proceed with local update fallback if cluster responds slowly
+      // Update UI locally after successful server response
+      setApiDetail((prev: any) => prev ? { ...prev, meta: { ...prev.meta, is_revoked: true } } : null);
+      setShowRevokeModal(false);
+    } catch (error) {
+      console.error('Error revoking credential:', error);
+      alert('Failed to revoke credential. Verify node connectivity.');
     }
-    store.updateCredential(id, { status: 'Revoked' });
-    setCredential(prev => prev ? { ...prev, status: 'Revoked' } : prev);
-    if (apiDetail) {
-      setApiDetail(prev => prev ? { ...prev, meta: { ...prev.meta, is_revoked: true } } : null);
-    }
-    setShowRevokeModal(false);
   };
 
   return (
     <>
       {showRevokeModal && (
         <RevokeModal
-          title={apiDetail?.meta.title ?? credential.title}
+          title={apiDetail.meta?.title || 'Credential'}
           onConfirm={handleRevoke}
           onCancel={() => setShowRevokeModal(false)}
         />
@@ -223,24 +220,24 @@ export default function CredentialDetailPage() {
               <div className={`w-16 h-16 rounded-full ${tc.color} border-2 ${tc.border} flex items-center justify-center mb-3 text-2xl`}>
                 {tc.icon}
               </div>
-              <h2 className="text-textLight text-base font-bold leading-snug">{apiDetail?.meta.title ?? credential.title}</h2>
-              <p className="text-textMuted text-xs mt-0.5">{(apiDetail?.meta.id ?? credential.id).slice(0, 12).toUpperCase()}</p>
+              <h2 className="text-textLight text-base font-bold leading-snug">{apiDetail.meta?.title || '—'}</h2>
+              <p className="text-textMuted text-xs mt-0.5">{apiDetail.meta?.id?.slice(0, 12).toUpperCase() || '—'}</p>
               <div className="mt-2">
                 <StatusBadge status={displayStatus} />
               </div>
 
               <div className="w-full mt-5">
                 <InfoRow label="Type" value={normalizedType} />
-                <InfoRow label="Code" value={apiDetail?.meta.code ?? credential.code} mono />
-                <InfoRow label="Locale" value={apiDetail?.meta.locale ?? credential.locale  ?? 'en'} />
-                <InfoRow label="Issued to" value={apiDetail?.student.name ?? credential.studentName ?? '—'} />
-                <InfoRow label="Student address" value={apiDetail?.student.address ?? credential.issuedTo ?? '—'} mono />
-                <InfoRow label="Description" value={apiDetail?.meta.description ?? credential.description ?? '—'} />
+                <InfoRow label="Code" value={apiDetail.meta?.code || '—'} mono />
+                <InfoRow label="Locale" value={apiDetail.meta?.locale ?? 'en'} />
+                <InfoRow label="Issued to" value={apiDetail.student?.name ?? '—'} />
+                <InfoRow label="Student address" value={apiDetail.student?.address ?? '—'} mono />
+                <InfoRow label="Description" value={apiDetail.meta?.description ?? '—'} />
                 <InfoRow
                   label="Issued date"
                   value={
-                    (apiDetail?.meta.issued_at || credential.date)
-                      ? new Date(apiDetail?.meta.issued_at || credential.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    apiDetail.meta?.issued_at
+                      ? new Date(apiDetail.meta.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                       : '—'
                   }
                 />
@@ -270,13 +267,13 @@ export default function CredentialDetailPage() {
             <div className="bg-card border border-borderLine rounded-2xl p-6">
               <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">On-Chain Information</h3>
               <div className="grid grid-cols-2 gap-3">
-                <OnChainField label="TX Hash (Issue)" value={apiDetail?.blockchain.issue_tx_hash ?? '0xab12...ff3e'} />
-                <OnChainField label="Block" value={apiDetail?.blockchain.revoke_tx_hash ? 'Confirmed' : '#21,430,991'} />
-                <OnChainField label="Credential Index" value={apiDetail ? String(apiDetail.blockchain.credential_index) : '—'} />
-                <OnChainField label="Authorizer Wallet" value={apiDetail?.blockchain.academy_address ?? '0xAcademy...addr'} />
-                <OnChainField label="Issuer Wallet" value={apiDetail?.blockchain.issuer_address ?? '0xIssuer...addr'} full />
-                <OnChainField label="Payload Hash (SHA-256)" value={apiDetail?.verification.payload_hash ?? '—'} full />
-                <OnChainField label="Signature" value={apiDetail?.verification.issuer_signature ?? '—'} full />
+                <OnChainField label="TX Hash (Issue)" value={apiDetail.blockchain?.issue_tx_hash ?? '—'} />
+                <OnChainField label="Block" value={apiDetail.blockchain?.revoke_tx_hash ? 'Confirmed' : 'Pending'} />
+                <OnChainField label="Credential Index" value={apiDetail.blockchain ? String(apiDetail.blockchain.credential_index) : '—'} />
+                <OnChainField label="Authorizer Wallet" value={apiDetail.blockchain?.academy_address ?? '—'} />
+                <OnChainField label="Issuer Wallet" value={apiDetail.blockchain?.issuer_address ?? '—'} full />
+                <OnChainField label="Payload Hash (SHA-256)" value={apiDetail.verification?.payload_hash ?? '—'} full />
+                <OnChainField label="Signature" value={apiDetail.verification?.issuer_signature ?? '—'} full />
               </div>
             </div>
 

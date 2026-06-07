@@ -191,7 +191,7 @@ export default function DepartmentsPage() {
           faculty: d.faculty,
           totalYears: d.total_years,
           description: d.description,
-          status: d.status as 'Active' | 'Inactive',
+          status: (d.is_active ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
           createdAt: new Date().toISOString()
         }));
         setDepartments(mapped);
@@ -251,7 +251,7 @@ export default function DepartmentsPage() {
         faculty: data.faculty,
         total_years: data.totalYears,
         description: data.description || '',
-        status: data.status,
+        is_active: data.status === 'Active',
       });
     } catch {
       store.addDepartment(data);
@@ -379,7 +379,7 @@ export default function DepartmentsPage() {
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border
                             ${dept.status === 'Active'
                               ? 'bg-mint/10 text-mint border-mint/30'
-                              : 'bg-yellow-500/10 text-yellow-400 border-yellow-400/30'
+                              : 'bg-red-500/10 text-red-400 border-red-400/30'
                             }`}>
                             {dept.status}
                           </span>
@@ -388,13 +388,15 @@ export default function DepartmentsPage() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => setEditTarget(dept)}
-                              className="px-3 py-1 text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint rounded-lg transition"
+                              disabled={dept.status === 'Inactive'}
+                              className="px-3 py-1 text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-borderLine disabled:hover:text-textMuted"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => setDeleteTarget(dept)}
-                              className="px-3 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                              disabled={dept.status === 'Inactive'}
+                              className="px-3 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                             >
                               Delete
                             </button>
