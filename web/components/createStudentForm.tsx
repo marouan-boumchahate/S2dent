@@ -1,18 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Button from './Button';
 import FormField from './FormField';
 import AddressForm, { AddressData } from './AddressForm';
+import { createUser, createAddress, fetchDepartments, fetchProfessors, apiFetch, ApiDepartment, ApiProfessor } from '@/lib/api';
 
-import { store } from '@/lib/store';
-import { useRouter } from 'next/navigation';
-import { createStudent } from '@/lib/api';
-
-export default function CreateStudentForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
+export default function CreateStudentForm({
+  onClose,
+  onStepChange,
+}: {
+  onClose: () => void;
+  onStepChange: (step: number) => void;
+}) {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // ── Step 1: Personnel ─────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -23,100 +29,113 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [notes, setNotes] = useState('');
+  // NOTE: `notes` removed — POST /api/users does not accept it
 
+  // ── Step 2: Address ───────────────────────────────────────────────────────
   const [address, setAddress] = useState<Partial<AddressData>>({});
-  
-  const [department, setDepartment] = useState('');
-  const [currentLevel, setCurrentLevel] = useState('');
+
+  // ── Step 3: Student Info ──────────────────────────────────────────────────
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
+  const [professors, setProfessors] = useState<ApiProfessor[]>([]);
+  const [departmentId, setDepartmentId] = useState('');
   const [enrollmentStatus, setEnrollmentStatus] = useState('');
   const [enrollmentDate, setEnrollmentDate] = useState('');
   const [actualGraduationDate, setActualGraduationDate] = useState('');
-  const [adviserId, setAdviserId] = useState('');
+  const [advisorId, setAdvisorId] = useState('');
+  // NOTE: `current_level` removed — API auto-sets it to 1 on creation
+  // NOTE: `notes` removed — POST /api/students does not accept it
 
-  const router = useRouter();
+  // Fetch departments + professors for dropdowns
+  useEffect(() => {
+    fetchDepartments().then(setDepartments).catch(() => setDepartments([]));
+    fetchProfessors().then(setProfessors).catch(() => setProfessors([]));
+  }, []);
 
-  const professorOptions = ['', ...store.professors.map(p =>
-    [p.title, p.firstName, p.lastName].filter(Boolean).join(' ')
-  )];
-
-  const handleStep1Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(2);
-    onStepChange(2);
+  const goTo = (s: number) => {
+    setStep(s);
+    onStepChange(s);
   };
 
+  // ── Step 1 submit ─────────────────────────────────────────────────────────
+  const handleStep1Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    goTo(2);
+  };
+
+  // ── Step 3 submit: 3 sequential API calls per the Off-Chain Creation Workflow
+  //   1. POST /api/users        → returns user_id
+  //   2. POST /api/addresses    → links address to user_id (city + country required)
+  //   3. POST /api/students     → links student to user_id + department_id + advisor_id
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // JavaScript guard clause to block double-clicks
+    if (loading) return;
     setLoading(true);
 
     try {
-      // Send parameters as snake_case matching the backend schema
-      await createStudent({
+      // 1️⃣ POST /api/users
+      const user = await createUser({
         first_name: firstName,
-        middle_name: middleName,
+        middle_name: middleName || undefined,
         last_name: lastName,
         date_of_birth: dateOfBirth,
         gender,
         nationality,
         national_id: nationalId,
         email,
-        phone,
-        photo_url: photoUrl || null,
-        notes,
-        department,
-        current_level: currentLevel,
-        enrollment_status: enrollmentStatus || 'active',
-        enrollment_date: enrollmentDate || null,
-        actual_graduation_date: actualGraduationDate || null,
-        adviser_id: adviserId || null,
-        ...address, // Spreads address fields directly into the outgoing body request
+        phone: phone || undefined,
+        photo_url: photoUrl || undefined,
       });
 
-// Maintain local fallback synchronization
-      store.addStudent({
-        firstName,
-        middleName,
-        lastName,
-        dateOfBirth,
-        gender,
-        nationality,
-        nationalId,
-        email,
-        phone,
-        photoUrl,
-        notes,
-        department,
-        currentLevel,
-        enrollmentStatus,
-        enrollmentDate,
-        actualGraduationDate,
-        adviserId,
+      // 2️⃣ POST /api/addresses (city & country required per API spec)
+      await createAddress({
+        user_id: user.id,
+        city: (address as AddressData).city,
+        country: (address as AddressData).country,
+        address_line1: (address as AddressData).address_line1 || undefined,
+        address_line2: (address as AddressData).address_line2 || undefined,
+        street: (address as AddressData).street || undefined,
+        district: (address as AddressData).district || undefined,
+        state: (address as AddressData).state || undefined,
+        postal_code: (address as AddressData).postal_code || undefined,
+      });
+
+      // 3️⃣ POST /api/students
+      //    Required: user_id, department_id, advisor_id
+      //    Optional: enrollment_status, enrollment_date, actual_graduation_date
+      await apiFetch('/students', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: user.id,
+          department_id: departmentId,
+          advisor_id: advisorId,
+          enrollment_status: enrollmentStatus || undefined,
+          enrollment_date: enrollmentDate || undefined,
+          actual_graduation_date: actualGraduationDate || undefined,
+        }),
       });
 
       onClose();
       router.push('/students');
-      router.refresh();
-    } catch (error) {
-      console.error('Error submitting student form:', error);
-      alert('Failed to register student records. Please verify database container connection.');
+    } catch (error: any) {
+      console.error('Student creation failed:', error);
+      alert(error?.message || 'Failed to register student. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Step 2: Address form ──────────────────────────────────────────────────
   if (step === 2) {
     return (
       <AddressForm
         initialData={address}
-        onNext={(data) => { setAddress(data); setStep(3); onStepChange(3); }}
-        onBack={() => { setStep(1); onStepChange(1); }}
+        onNext={(data) => { setAddress(data); goTo(3); }}
+        onBack={() => goTo(1)}
       />
     );
   }
 
-  // here the step 3 and agian the step 2 in the address form
+  // ── Step 3: Student Info ──────────────────────────────────────────────────
   if (step === 3) {
     return (
       <form onSubmit={handleStep3Submit} className="flex flex-col h-full flex-1">
@@ -124,77 +143,81 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
 
         <div className="space-y-6">
 
-          {/* department, current level */}
+          {/* Department + Enrollment Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <FormField
-              label="Department"
-              value={department}
-              onChange={setDepartment}
-              required
-              options={['', 'Computer Science', 'Engineering', 'Mathematics', 'Physics', 'Business', 'Medicine', 'Computer Engineering']}
-            />
-            <FormField
-              label="Current Level (e.g. Year 2)"
-              value={currentLevel}
-              onChange={setCurrentLevel}
-              required
-              maxLength={20}
-            />
-          </div>
+            {/* Department dropdown — populated from GET /api/departments */}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-textMuted">
+                Department <span className="text-red-400">*</span>
+              </label>
+              <select
+                required
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className="w-full bg-surface border border-borderLine rounded-lg px-4 py-2.5 text-textLight focus:outline-none focus:border-mint"
+              >
+                <option value="">Select department…</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* enrollment status, enrollment date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Enrollment Status"
               value={enrollmentStatus}
               onChange={setEnrollmentStatus}
               options={['', 'active', 'inactive', 'graduated']}
             />
+          </div>
+
+          {/* Enrollment Date + Actual Graduation Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Enrollment Date"
               isDate
               value={enrollmentDate}
               onChange={setEnrollmentDate}
             />
-          </div>
-
-          {/* actual graduation date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               label="Actual Graduation Date"
               isDate
               value={actualGraduationDate}
               onChange={setActualGraduationDate}
             />
-            <FormField
-              label="Adviser"
-              value={adviserId}
-              onChange={setAdviserId}
-              options={professorOptions}
-            />
           </div>
 
-          {/* notes */}
-          <FormField
-            label="Notes"
-            value={notes}
-            onChange={setNotes}
-            isTextarea
-            placeholder="Any additional notes..."
-          />
+          {/* Advisor dropdown — populated from GET /api/professors */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-textMuted">
+              Advisor <span className="text-red-400">*</span>
+            </label>
+            <select
+              required
+              value={advisorId}
+              onChange={(e) => setAdvisorId(e.target.value)}
+              className="w-full bg-surface border border-borderLine rounded-lg px-4 py-2.5 text-textLight focus:outline-none focus:border-mint"
+            >
+              <option value="">Select advisor…</option>
+              {professors.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
         </div>
 
         <div className="mt-8 pb-4 flex gap-4">
           <button
             type="button"
             disabled={loading}
-            onClick={() => { setStep(2); onStepChange(2); }}
+            onClick={() => goTo(2)}
             className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold disabled:opacity-50"
           >
             ← Back
           </button>
           <Button
-            title={loading ? "Submitting..." : "Submit"}
+            title={loading ? 'Submitting…' : 'Submit'}
             onClick={() => { }}
             type="submit"
             className="w-full bg-mint font-bold"
@@ -204,7 +227,8 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
     );
   }
 
-  // this should be step 1 !!! the step 2 in the address form
+  // ── Step 1: Personnel ─────────────────────────────────────────────────────
+  // Notes field REMOVED — POST /api/users does not accept it
   return (
     <form onSubmit={handleStep1Submit} className="flex flex-col h-full flex-1">
       <h2 className="text-3xl font-bold text-textLight mb-8">Personnel Information</h2>
@@ -231,8 +255,6 @@ export default function CreateStudentForm({ onClose, onStepChange }: { onClose: 
           <FormField label="Phone (e.g. +905551234567)" type="tel" value={phone} onChange={setPhone} />
           <FormField label="Photo URL" type="url" value={photoUrl} onChange={setPhotoUrl} />
         </div>
-
-        <FormField label="Notes" value={notes} onChange={setNotes} isTextarea placeholder="Any additional notes..." />
       </div>
 
       <div className="mt-8 pb-4 flex gap-4">

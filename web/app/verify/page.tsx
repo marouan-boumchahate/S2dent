@@ -16,16 +16,22 @@ export default function VerifyPage() {
     setLoading(true);
 
     try {
-      // Trigger the backend node to generate and dispatch a multi-factor email token
-      await requestOtp(email.toLowerCase());
-      
-      // Store email locally so the subsequent OTP verification page knows who to validate
+      // POST /api/auth/otp/send — sends OTP email and returns a nonce message to sign
+      const response = await requestOtp(email.toLowerCase());
+
+      // Store email for the OTP page
       localStorage.setItem('pending_verify_email', email.toLowerCase());
-      
+
+      // Store the nonce message returned by the API so the OTP page can prompt the wallet to sign it
+      // Response shape: { success: true, data: { message: "Sign this nonce to verify your identity: <nonce>" } }
+      if (response?.data?.message) {
+        localStorage.setItem('pending_verify_nonce', response.data.message);
+      }
+
       router.push('/verify/otp');
     } catch (error) {
       console.error('OTP request error:', error);
-      alert('Verification request failed. Please confirm the database container is online.');
+      alert('Verification request failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -34,7 +40,7 @@ export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center">
       <form onSubmit={handleVerifySubmit} className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
-        
+
         {/* email png */}
         <div className="flex justify-center mb-4">
           <Image

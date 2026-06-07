@@ -4,40 +4,38 @@ import { useState, useEffect } from 'react';
 import { redirect, useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
-import { store, Professor } from '@/lib/store';
 import { fetchProfessors, ApiProfessor } from '@/lib/api';
-
-type ProfessorRow = Professor & { name: string };
 
 export default function ProfessorsPage() {
   const router = useRouter();
 
-  const [professors, setProfessors] = useState<Professor[]>([]);
-  const [apiProfessors, setApiProfessors] = useState<ApiProfessor[]>([]);
-  const [apiLoading, setApiLoading] = useState(true);
+  const [professors, setProfessors] = useState<ApiProfessor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setProfessors([...store.professors]);
+    setLoading(true);
     fetchProfessors()
-      .then(setApiProfessors)
-      .catch(() => { }) // silently fall back to store data
-      .finally(() => setApiLoading(false));
+      .then((data) => {
+        setProfessors(data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch professors:", err);
+        setError(err.message || 'Failed to connect to the backend API');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // searchFilter hook
-  // transform flattens the name fields so users can search names in one go.
-  const { filtered, handleSearch } = useSearchFilter<ProfessorRow>(
-    professors as ProfessorRow[],
-    (p) => ({
-      ...p,
-      name: [p.title, p.firstName, p.middleName, p.lastName].filter(Boolean).join(' '),
-    }),
+  const { filtered, handleSearch } = useSearchFilter<ApiProfessor>(
+    professors,
+    (p) => p // ApiProfessor already has a flat 'name' property
   );
 
   const total = professors.length;
   const departments = new Set(professors.map(p => p.department).filter(Boolean)).size;
-
-  const verified = apiProfessors.filter(p => p.last_transaction_status === 'verified').length;
+  const verified = professors.filter(p => p.last_transaction_status === 'verified').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -47,7 +45,7 @@ export default function ProfessorsPage() {
 
         {/* stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Professors" value={total} sub="+0 this month" subColor="text-purple-500" />
+          <StatCard label="Total Professors" value={total} sub={loading ? "..." : "+0 this month"} subColor="text-purple-500" />
           <StatCard label="Verified" value={verified} sub={total ? `${Math.round(verified / total * 100)}%` : '0%'} subColor="text-mint" />
           <StatCard label="Departments" value={departments} sub="active" subColor="text-orange-400" />
           <StatCard label="Certs Issued" value={0} sub="total" subColor="text-blue-400" />
@@ -58,7 +56,6 @@ export default function ProfessorsPage() {
           <div className="px-6 py-4 border-b border-borderLine flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-textMuted text-sm font-bold uppercase tracking-wider">
               All Professors
-
               {/* for filter */}
               {filtered.length !== professors.length && (
                 <span className="ml-2 text-mint normal-case font-normal">
@@ -76,18 +73,25 @@ export default function ProfessorsPage() {
                 { label: 'Name', value: 'name' },
                 { label: 'Email', value: 'email' },
                 { label: 'Department', value: 'department' },
-                { label: 'Rank', value: 'rank' },
-                { label: 'Status', value: 'status' },
+                { label: 'Status', value: 'last_transaction_status' },
               ]}
               onSearch={handleSearch}
             />
           </div>
 
-          {professors.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center min-h-48 py-12">
+               <p className="text-textMuted px-4 animate-pulse">Loading live professor data...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
+               <p className="text-red-500 font-medium px-4">Error: {error}</p>
+               <p className="text-textMuted text-sm">Please ensure the Docker API container is running.</p>
+            </div>
+          ) : professors.length === 0 ? (
             <div className="flex items-center justify-center min-h-48 py-12">
               <p className="text-textMuted px-4">No professors yet. Click <span className="text-mint font-bold">+ Add New</span> to create one.</p>
             </div>
-
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
               <p className="text-textMuted">No professors match your search.</p>
@@ -102,7 +106,6 @@ export default function ProfessorsPage() {
                     <th className="text-left px-6 py-3 text-textMuted text-sm font-semibold">Name</th>
                     <th className="text-left px-6 py-3 text-textMuted text-sm font-semibold">Email</th>
                     <th className="text-left px-6 py-3 text-textMuted text-sm font-semibold">Department</th>
-                    <th className="text-left px-6 py-3 text-textMuted text-sm font-semibold">Rank</th>
                     <th className="text-left px-6 py-3 text-textMuted text-sm font-semibold">Status</th>
                     <th className="px-6 py-3"></th>
                   </tr>
@@ -113,12 +116,8 @@ export default function ProfessorsPage() {
                       <td className="px-6 py-4 text-textLight font-medium">{p.name}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.email}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{p.department || '—'}</td>
-                      <td className="px-6 py-4 text-textMuted text-sm">{p.rank || '—'}</td>
                       <td className="px-6 py-4">
-                        <StatusBadge
-                          status={apiProfessors.find(a => a.id === p.id)?.last_transaction_status ?? 'pending'}
-                          loading={apiLoading}
-                        />
+                        <StatusBadge status={p.last_transaction_status ?? 'pending'} />
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -150,21 +149,14 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: { label: s
   );
 }
 
-// blockchain status will be set by API
-function StatusBadge({ status, loading = false }: {
-  status: 'pending' | 'failed' | 'verified';
-  loading?: boolean;
-}) {
-  if (loading) {
-    return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
-  }
+function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
     pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
     failed: 'bg-red-100 text-red-500 border border-red-200',
   };
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status] || map.pending}`}>
       {status}
     </span>
   );

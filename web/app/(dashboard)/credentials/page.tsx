@@ -3,15 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
-import { store, Credential } from '@/lib/store';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
 import { fetchCredentials, ApiCredential } from '@/lib/api';
 
-// helpers
-function getStudentName(studentId: string) {
-  const s = store.students.find(s => s.id === studentId);
-  return s ? [s.firstName, s.lastName].filter(Boolean).join(' ') : '—';
-}
 
 function TypeBadge({ type }: { type: Credential['type'] }) {
   const colors: Record<string, string> = {
@@ -29,12 +23,13 @@ function TypeBadge({ type }: { type: Credential['type'] }) {
   );
 }
 
-function StatusBadge({ status, loading = false }: { status: Credential['status']; loading?: boolean }) {
+function StatusBadge({ status, loading = false }: { status: string; loading?: boolean }) {
   if (loading) {
     return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
   }
   const colors: Record<string, string> = {
     Verified: 'bg-mint/10 text-mint border-mint/30',
+    Issued: 'bg-mint/10 text-mint border-mint/30',
     Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
     Failed: 'bg-red-400/10 text-red-400 border-red-400/30',
     Revoked: 'bg-red-400/10 text-red-400 border-red-400/30',
@@ -62,37 +57,25 @@ type CredentialRow = Credential & { studentName: string };
 
 export default function CredentialsPage() {
   const router = useRouter();
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [apiCredentials, setApiCredentials] = useState<ApiCredential[]>([]);
+  const [credentials, setCredentials] = useState<ApiCredential[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
 
   useEffect(() => {
-    setCredentials([...store.credentials]);
     fetchCredentials()
-      .then(setApiCredentials)
-      .catch(() => { }) // silently fall back to mock data store on connection delays
+      .then((data) => setCredentials(data))
+      .catch((err) => console.error('Failed to fetch credentials:', err))
       .finally(() => setApiLoading(false));
   }, []);
 
-  // flatten student name into each row so it's searchable
-  const { filtered, handleSearch } = useSearchFilter<CredentialRow>(
-    credentials as CredentialRow[],
-    (c) => ({
-      ...c,
-      studentName: getStudentName(c.issuedTo),
-    }),
+  const { filtered, handleSearch } = useSearchFilter<any>(
+    credentials as any,
+    (c) => c
   );
 
   const total = credentials.length;
-  const verified = apiCredentials.length > 0
-    ? apiCredentials.filter(c => c.status === 'verified').length
-    : credentials.filter(c => c.status === 'Verified').length;
-  const pending = apiCredentials.length > 0
-    ? apiCredentials.filter(c => c.status === 'pending').length
-    : credentials.filter(c => c.status === 'Pending').length;
-  const revoked = apiCredentials.length > 0
-    ? apiCredentials.filter(c => c.status === 'revoked' || c.is_revoked).length
-    : credentials.filter(c => c.status === 'Revoked').length;
+  const revoked = credentials.filter(c => c.is_revoked).length;
+  const pending = credentials.filter(c => c.status === 'pending').length;
+  const verified = credentials.filter(c => c.status === 'verified' && !c.is_revoked).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -130,7 +113,7 @@ export default function CredentialsPage() {
               placeholder="Search credentials by title, student, type…"
               filterKeys={[
                 { label: 'Title', value: 'title' },
-                { label: 'Student', value: 'studentName' },
+                { label: 'Student', value: 'student_name' }, // تم التعديل هنا
                 { label: 'Type', value: 'type' },
                 { label: 'Code', value: 'code' },
                 { label: 'Status', value: 'status' },
@@ -162,26 +145,20 @@ export default function CredentialsPage() {
                 </thead>
                 <tbody>
                   {filtered.map(cred => {
-                    const apiMatch = apiCredentials.find(c => c.id === cred.id);
-                    const displayCode = apiMatch ? apiMatch.code : cred.code;
-                    const displayDate = apiMatch ? apiMatch.issued_at : cred.date;
+                    let displayStatus: any = 'Pending';
+                    if (cred.is_revoked) displayStatus = 'Revoked';
+                    else displayStatus = 'Issued';
 
-                    let displayStatus: Credential['status'] = cred.status;
-                    if (apiMatch) {
-                      if (apiMatch.status === 'verified') displayStatus = 'Verified';
-                      else if (apiMatch.status === 'pending') displayStatus = 'Pending';
-                      else if (apiMatch.status === 'failed') displayStatus = 'Failed';
-                      else if (apiMatch.status === 'revoked' || apiMatch.is_revoked) displayStatus = 'Revoked';
-                    }
+                    const displayType = cred.type ? cred.type.charAt(0).toUpperCase() + cred.type.slice(1) : 'Certificate';
 
                     return (
                       <tr key={cred.id} className="border-b border-borderLine hover:bg-surface/50 transition">
                         <td className="px-6 py-4 text-textLight text-sm font-semibold">{cred.title}</td>
-                        <td className="px-6 py-4 text-textLight text-sm">{cred.studentName}</td>
-                        <td className="px-6 py-4"><TypeBadge type={cred.type} /></td>
-                        <td className="px-6 py-4 text-textMuted text-sm font-mono">{displayCode || '—'}</td>
+                        <td className="px-6 py-4 text-textLight text-sm">{cred.student_name || '—'}</td>
+                        <td className="px-6 py-4"><TypeBadge type={displayType as any} /></td>
+                        <td className="px-6 py-4 text-textMuted text-sm font-mono">{cred.code || '—'}</td>
                         <td className="px-6 py-4 text-textMuted text-sm">
-                          {displayDate ? new Date(displayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          {cred.issued_at ? new Date(cred.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-6 py-4">
                           <StatusBadge status={displayStatus} loading={apiLoading} />

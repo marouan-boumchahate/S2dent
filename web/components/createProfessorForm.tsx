@@ -1,18 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Button from './Button';
 import FormField from './FormField';
 import AddressForm, { AddressData } from './AddressForm';
+import { createUser, createAddress, fetchDepartments, apiFetch, ApiDepartment } from '@/lib/api';
 
-import { store } from '@/lib/store';
-import { useRouter } from 'next/navigation';
-import { createProfessor } from '@/lib/api';
-
-export default function CreateProfessorForm({ onClose, onStepChange }: { onClose: () => void, onStepChange: (step: number) => void }) {
+export default function CreateProfessorForm({
+  onClose,
+  onStepChange,
+}: {
+  onClose: () => void;
+  onStepChange: (step: number) => void;
+}) {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // ── Step 1: Personnel ─────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -23,11 +29,13 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [notes, setNotes] = useState('');
 
+  // ── Step 2: Address ───────────────────────────────────────────────────────
   const [address, setAddress] = useState<Partial<AddressData>>({});
 
-  const [department, setDepartment] = useState('');
+  // ── Step 3: Professor Info ────────────────────────────────────────────────
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
+  const [departmentId, setDepartmentId] = useState('');
   const [title, setTitle] = useState('');
   const [rank, setRank] = useState('');
   const [specialization, setSpecialization] = useState('');
@@ -37,90 +45,104 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
   const [officeHours, setOfficeHours] = useState('');
   const [bio, setBio] = useState('');
 
-  const router = useRouter();
+  // Fetch real departments from GET /api/departments (requires academy role ✓)
+  useEffect(() => {
+    fetchDepartments().then(setDepartments).catch(() => setDepartments([]));
+  }, []);
 
-  const handleStep1Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(2);
-    onStepChange(2);
+  const goTo = (s: number) => {
+    setStep(s);
+    onStepChange(s);
   };
 
+  // ── Step 1 submit ─────────────────────────────────────────────────────────
+  const handleStep1Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    goTo(2);
+  };
+
+  // ── Step 3 submit: 3 sequential API calls per the Off-Chain Creation Workflow
+  //   1. POST /api/users        → returns user_id
+  //   2. POST /api/addresses    → links address to user_id  (city + country required)
+  //   3. POST /api/professors   → links professor to user_id + department_id
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Safely blocks double-clicks in JS
+    if (loading) return;
     setLoading(true);
 
     try {
-      // Post directly to your Docker container database
-      await createProfessor({
+      // 1️⃣ POST /api/users
+      const user = await createUser({
         first_name: firstName,
-        middle_name: middleName,
+        middle_name: middleName || undefined,
         last_name: lastName,
-        date_of_birth: dateOfBirth,
-        gender,
+        date_of_birth: dateOfBirth,          // ISO date string e.g. "2000-01-15"
+        gender,                               // "male" | "female"
         nationality,
         national_id: nationalId,
         email,
-        phone,
-        photo_url: photoUrl || null,
-        notes,
-        department,
-        title,
-        rank,
-        specialization,
-        hire_date: hireDate || null,
-        employment_type: employmentType,
-        office_location: officeLocation,
-        office_hours: officeHours,
-        bio,
-        ...address, // Spreads address_line1, city, country, etc. directly into the database payload
+        phone: phone || undefined,
+        photo_url: photoUrl || undefined,
       });
 
-// Keep client-side store updated as a secondary fallback
-      store.addProfessor({
-        firstName,
-        middleName,
-        lastName,
-        dateOfBirth,
-        gender,
-        nationality,
-        nationalId,
-        email,
-        phone,
-        photoUrl,
-        notes,
-        department,
-        title,
-        rank,
-        specialization,
-        hireDate,
-        employmentType,
-        officeLocation,
-        officeHours,
-        bio,
+      // 2️⃣ POST /api/addresses  (city & country required per API spec)
+      await createAddress({
+        user_id: user.id,
+        city: (address as AddressData).city,
+        country: (address as AddressData).country,
+        address_line1: (address as AddressData).address_line1 || undefined,
+        address_line2: (address as AddressData).address_line2 || undefined,
+        street: (address as AddressData).street || undefined,
+        district: (address as AddressData).district || undefined,
+        state: (address as AddressData).state || undefined,
+        postal_code: (address as AddressData).postal_code || undefined,
       });
+
+
+      // 3️⃣ POST /api/professors
+      //    Required: user_id, department_id, title, rank
+      //    Optional: specialization, hire_date, employment_type, office_location, office_hours, bio
+      await apiFetch('/professors', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: user.id,
+          department_id: departmentId,
+          title,
+          rank,
+          specialization: specialization || undefined,
+          hire_date: hireDate || undefined,
+          employment_type: employmentType,
+          office_location: officeLocation || undefined,
+          office_hours: officeHours || undefined,
+          bio: bio || undefined,
+        }),
+      });
+
 
       onClose();
+      console.log('Professor created successfully');
       router.push('/professors');
-      router.refresh();
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Failed to register professor records. Please check database connectivity.');
+      console.log('Router pushed to /professors');
+    } catch (error: any) {
+      console.error('Professor creation failed:', error);
+      alert(error?.message || 'Failed to register professor. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Step 2: Address form ──────────────────────────────────────────────────
   if (step === 2) {
     return (
       <AddressForm
         initialData={address}
-        onNext={(data) => { setAddress(data); setStep(3); onStepChange(3); }}
-        onBack={() => { setStep(1); onStepChange(1); }}
+        onNext={(data) => { setAddress(data); goTo(3); }}
+        onBack={() => goTo(1)}
       />
     );
   }
 
+  // ── Step 3: Professor Info ────────────────────────────────────────────────
   if (step === 3) {
     return (
       <form onSubmit={handleStep3Submit} className="flex flex-col h-full flex-1">
@@ -128,13 +150,24 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
 
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <FormField
-              label="Department"
-              value={department}
-              onChange={setDepartment}
-              required
-              options={['', 'Nursing', 'Pharmacy', 'Economics', 'Marketing', 'Mathematics', 'Physics', 'Biology', 'History', 'Computer Engineering', 'Mechanical Engineering', 'Computer Science', 'Civil Engineering']}
-            />
+            {/* Department dropdown — populated from GET /api/departments */}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-textMuted">
+                Department <span className="text-red-400">*</span>
+              </label>
+              <select
+                required
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className="w-full bg-surface border border-borderLine rounded-lg px-4 py-2.5 text-textLight focus:outline-none focus:border-mint"
+              >
+                <option value="">Select department…</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
             <FormField
               label="Title (e.g. Dr.)"
               value={title}
@@ -197,7 +230,7 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
             value={bio}
             onChange={setBio}
             isTextarea
-            placeholder="Short biography..."
+            placeholder="Short biography…"
           />
         </div>
 
@@ -205,13 +238,13 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
           <button
             type="button"
             disabled={loading}
-            onClick={() => { setStep(2); onStepChange(2); }}
+            onClick={() => goTo(2)}
             className="w-full p-3 rounded-lg border border-borderLine text-textMuted hover:bg-surface transition font-bold disabled:opacity-50"
           >
             ← Back
           </button>
           <Button
-            title={loading ? "Submitting..." : "Submit"}
+            title={loading ? 'Submitting…' : 'Submit'}
             onClick={() => { }}
             type="submit"
             className="w-full bg-mint font-bold"
@@ -221,6 +254,8 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
     );
   }
 
+  // ── Step 1: Personnel ─────────────────────────────────────────────────────
+  // Notes field REMOVED — POST /api/users does not accept it
   return (
     <form onSubmit={handleStep1Submit} className="flex flex-col h-full flex-1">
       <h2 className="text-3xl font-bold text-textLight mb-8">Personnel Information</h2>
@@ -247,8 +282,6 @@ export default function CreateProfessorForm({ onClose, onStepChange }: { onClose
           <FormField label="Phone (e.g. +905551234567)" type="tel" value={phone} onChange={setPhone} />
           <FormField label="Photo URL" type="url" value={photoUrl} onChange={setPhotoUrl} />
         </div>
-
-        <FormField label="Notes" value={notes} onChange={setNotes} isTextarea placeholder="Any additional notes..." />
       </div>
 
       <div className="mt-8 pb-4 flex gap-4">

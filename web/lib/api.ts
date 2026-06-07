@@ -1,12 +1,14 @@
-// lib/api.ts
-// ضع هذا الملف في مجلد web/src/lib/
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // ---- Token helpers ----
 export function getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('access_token');
+}
+
+export function getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('refresh_token');
 }
 
 export function setTokens(access: string, refresh: string) {
@@ -17,6 +19,84 @@ export function setTokens(access: string, refresh: string) {
 export function clearTokens() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('userRole');
+}
+
+// ---- Core fetch wrapper (The Interceptor) ----
+export async function apiFetch<T>(
+    path: string,
+    options: RequestInit = {},
+): Promise<T> {
+    let token = getAccessToken();
+
+    // 1. Make the initial request
+    let res = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...options.headers,
+        },
+    });
+
+    // 2. Intercept 401 Unauthorized errors
+    if (res.status === 401) {
+        const refresh = getRefreshToken();
+        
+        // If we don't have a refresh token, log them out
+        if (!refresh) {
+            clearTokens();
+            if (typeof window !== 'undefined') window.location.href = '/';
+            throw new Error('Session expired. Please log in again.');
+        }
+
+        try {
+            // 3. Attempt to silently refresh the token
+            const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refresh }),
+            });
+
+            const refreshData = await refreshRes.json();
+
+            // 4. If refresh fails, kill the session
+            if (!refreshRes.ok || !refreshData.success) {
+                clearTokens();
+                if (typeof window !== 'undefined') window.location.href = '/';
+                throw new Error('Session completely expired.');
+            }
+
+            // 5. Save the new tokens!
+            token = refreshData.data.access_token;
+            setTokens(refreshData.data.access_token, refreshData.data.refresh_token);
+
+            // 6. Retry the exact same request with the new access token
+            res = await fetch(`${BASE_URL}${path}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    ...options.headers,
+                },
+            });
+            
+        } catch (error) {
+            clearTokens();
+            if (typeof window !== 'undefined') window.location.href = '/';
+            throw error;
+        }
+    }
+
+    const json = await res.json();
+
+    if (!res.ok || !json.success) {
+        console.log(`API error on ${path}:`, json);
+        throw new Error(json.message || `API error ${res.status} message: ${json.message || 'Unknown error'}`);
+    }
+
+    // The API Reference always wraps the actual data in a "data" object
+    return json.data as T;
 }
 
 // ---- Departments ----
@@ -27,7 +107,7 @@ export interface ApiDepartment {
     faculty: string;
     total_years: number;
     description: string;
-    status: string;
+    is_active: boolean;
 }
 
 export async function fetchDepartments(): Promise<ApiDepartment[]> {
@@ -55,33 +135,9 @@ export async function deleteDepartment(id: string): Promise<void> {
     await apiFetch(`/departments/${id}`, { method: 'DELETE' });
 }
 
-// ---- Core fetch wrapper ----
-async function apiFetch<T>(
-    path: string,
-    options: RequestInit = {},
-): Promise<T> {
-    const token = getAccessToken();
-
-    const res = await fetch(`${BASE_URL}${path}`, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...options.headers,
-        },
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-        throw new Error(json.message || `API error ${res.status}`);
-    }
-
-    return json.data as T;
-}
-
 // ---- Students ----
 export interface ApiStudent {
+    [key: string]: any; 
     id: string;
     wallet_address: string;
     name: string;
@@ -133,6 +189,7 @@ export async function updateStudent(
 
 // ---- Professors ----
 export interface ApiProfessor {
+    [key: string]: any; 
     id: string;
     wallet_address: string;
     name: string;
@@ -188,11 +245,17 @@ export async function updateProfessor(
 
 // ---- On-chain identity ----
 export interface OnChainStudent {
+    wallet_address: string;
     identity: {
-        wallet_address: string;
+        student_id_hash: string;
+        national_id_hash: string;
+        public_key: string;
+        signature: string;
         full_name: string;
-        department: string;
+        nationality: string;
         academy_name: string;
+        department: string;
+        country: string;
         enrollment_date: string;
     };
     status: {
@@ -206,6 +269,8 @@ export interface OnChainStudent {
 
 export async function fetchStudentOnChain(walletAddress: string): Promise<OnChainStudent> {
     const data = await apiFetch<OnChainStudent>(`/identity/students/${walletAddress}`);
+    // Ensure wallet_address is populated from the path if not in response
+    if (!data.wallet_address) data.wallet_address = walletAddress;
     return data;
 }
 
@@ -284,8 +349,7 @@ export interface ApiCredentialDetail {
 }
 
 export async function fetchCredentialById(id: string): Promise<ApiCredentialDetail> {
-  const data = await apiFetch<ApiCredentialDetail>(`/credentials/${id}`);
-  return data;
+  return await apiFetch<ApiCredentialDetail>(`/credentials/${id}`);
 }
 
 export async function revokeCredential(id: string, reason: string): Promise<void> {
@@ -316,23 +380,141 @@ export async function createCredential(payload: Record<string, any>): Promise<an
   });
 }
 
-export async function login(payload: Record<string, any>): Promise<any> {
-  return await apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function verifyOtp(payload: { email: string; code: string }): Promise<any> {
-  return await apiFetch('/auth/verify-otp', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function requestOtp(email: string): Promise<any> {
-  return await apiFetch('/auth/request-otp', {
+  return await apiFetch('/auth/otp/send', {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
+}
+
+// ---- Identity issuance ----
+export interface RequestIssuancePayload {
+  email: string;
+  otp: string;
+  signature: string;
+}
+
+export interface RequestIssuanceResponse {
+  wallet_address: string;
+}
+
+export async function requestIdentityIssuance(
+  payload: RequestIssuancePayload,
+): Promise<RequestIssuanceResponse> {
+  const data = await apiFetch<RequestIssuanceResponse>(
+    '/identity/students/request-issuance',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+  return data;
+}
+
+export async function fetchStudentByWallet(wallet: string): Promise<{ name: string; wallet_address: string } | null> {
+  try {
+    const data = await apiFetch<{ student: { name: string; wallet_address: string } }>(`/students/wallet/${wallet}`);
+    return data.student;
+  } catch {
+    return null;
+  }
+}
+
+// ---- Create User (Step 1 of professor creation) ----
+export async function createUser(payload: {
+  first_name: string;
+  middle_name?: string;
+  last_name: string;
+  date_of_birth: string;
+  gender: string;
+  nationality: string;
+  national_id: string;
+  email: string;
+  phone?: string;
+  photo_url?: string;
+}): Promise<{ id: string }> {
+  const data = await apiFetch<{ user: { id: string } }>('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.user;
+}
+
+// ---- Create Address (Step 2 of professor creation) ----
+export async function createAddress(payload: {
+  user_id: string;
+  city: string;
+  country: string;
+  address_line1?: string;
+  address_line2?: string;
+  street?: string;
+  district?: string;
+  state?: string;
+  postal_code?: string;
+}): Promise<void> {
+  await apiFetch('/addresses', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ---- Professor on-chain identity (by user_id) ----
+export interface ApiProfessorIdentity {
+  wallet_address: string;
+  identity: {
+    employee_id_hash: string;
+    national_id_hash: string;
+    public_key: string;
+    signature: string;
+    full_name: string;
+    rank: string;
+    employment_type: string;
+    hire_date: string;
+  };
+  status: {
+    issued_at: string;
+    issuer: string;
+    is_revoked: boolean;
+    revoked_at: string | null;
+    revoker: string | null;
+  };
+}
+
+export async function fetchProfessorIdentity(user_id: string): Promise<ApiProfessorIdentity | null> {
+  try {
+    return await apiFetch<ApiProfessorIdentity>(`/identity/professors/by-id/${user_id}`);
+  } catch {
+    return null; // no identity yet = pending
+  }
+}
+
+// ---- Fetch Academy by ID ----
+export async function fetchAcademyById(id: string): Promise<{ id: string; name: string; short_name: string }> {
+  const data = await apiFetch<{ academy: { id: string; name: string; short_name: string } }>(`/academies/${id}`);
+  return data.academy;
+}
+
+// ---- Fetch User by ID (full_name, photo_url, email, etc.) ----
+export interface ApiUser {
+  id: string;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  full_name: string;
+  date_of_birth: string;
+  gender: string;
+  nationality: string;
+  national_id: string;
+  email: string;
+  phone: string | null;
+  photo_url: string | null;
+}
+
+export async function fetchUserById(id: string): Promise<ApiUser | null> {
+  try {
+    const data = await apiFetch<{ user: ApiUser }>(`/users/${id}`);
+    return data.user;
+  } catch {
+    return null;
+  }
 }
