@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState } from 'react';
 import { BrowserProvider } from 'ethers';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
+import { fetchProfessorMe, fetchAcademyMe, clearTokens } from '@/lib/api';
 
 declare global {
   interface Window {
@@ -13,6 +16,7 @@ declare global {
 
 export default function LoginForm() {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const [role, setRole] = useState<'admin' | 'professor'>('admin');
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +27,11 @@ export default function LoginForm() {
     try {
       // 1. Check if a Web3 wallet (like MetaMask) is installed
       if (!window.ethereum) {
-        alert('Please install MetaMask to use the S2dent platform.');
+        showAlert({
+          type: 'error',
+          title: 'MetaMask Required',
+          message: 'Please install MetaMask to use the S2dent platform.'
+        });
         setLoading(false);
         return;
       }
@@ -66,6 +74,21 @@ export default function LoginForm() {
       localStorage.setItem('refresh_token', verifyData.data.refresh_token);
       localStorage.setItem('userRole', role);
 
+      try {
+        if (role === 'professor') {
+          await fetchProfessorMe();
+        } else {
+          await fetchAcademyMe();
+        }
+      } catch (err) {
+        clearTokens();
+        if (role === 'professor') {
+          throw new Error('You do not have a professor profile associated with this wallet. Please verify your selected role.');
+        } else {
+          throw new Error('You do not have an admin profile associated with this wallet. Please verify your selected role.');
+        }
+      }
+
       if (role === 'professor') {
         router.push('/credentials');
       } else {
@@ -76,7 +99,11 @@ export default function LoginForm() {
 
     } catch (error: any) {
       console.error('Login error:', error);
-      alert(`Authentication failed: ${error.message}`);
+      showAlert({
+        type: 'error',
+        title: 'Authentication Failed',
+        message: getFriendlyErrorMessage(error, 'Verification failed.')
+      });
     } finally {
       setLoading(false);
     }

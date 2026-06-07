@@ -309,7 +309,7 @@ describe('GET /api/identity/students/pending/:wallet_address/schema', function (
 
         assert.equal(domain.name, 'S2dent');
         assert.equal(domain.version, '1');
-        assert.equal(domain.chainId, 31337);
+        assert.equal(domain.chainId, 1);
         assert.equal(domain.verifyingContract, process.env.BLOCKCHAIN_DEPLOYED_CONTRACT_ADDRESS);
 
         const typeNames = types.StudentIdentity.map((field) => field.name);

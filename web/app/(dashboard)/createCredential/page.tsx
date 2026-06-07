@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { store } from '@/lib/store';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import { BrowserProvider } from 'ethers';
 import { apiFetch, createCredential, fetchStudents } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 // payload fields for different types
 type FieldDef = {
@@ -103,75 +105,55 @@ const TYPE_ICONS: Record<string, string> = {
 const CREDENTIAL_TYPES = ['Enrollment', 'Attendance', 'Degree', 'Certificate', 'Achievement', 'Transcript'];
 const LOCALES = ['English (en)', 'Arabic (ar)', 'French (fr)'];
 
+function highlightJson(data: any): string {
+  const json = JSON.stringify(data);
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, (match) => {
+      let style = 'color: #fbbf24;';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          style = 'color: #f8fafc; font-weight: 600;';
+        } else {
+          style = 'color: #34d399;';
+        }
+      } else if (/true|false/.test(match)) {
+        style = 'color: #a78bfa; font-weight: 600;';
+      } else if (/null/.test(match)) {
+        style = 'color: #64748b;';
+      }
+      return `<span style="${style}">${match}</span>`;
+    });
+}
+
 // review and sign modal
 function ReviewModal({
-  data,
+  signingData,
+  studentName,
   onConfirm,
   onCancel,
   loading,
 }: {
-  data: {
-    title: string;
-    code: string;
-    credType: string;
-    studentName: string;
-    studentWallet: string;
-    payload: Record<string, string>;
-  };
+  signingData: any;
+  studentName: string;
   onConfirm: () => void;
   onCancel: () => void;
   loading: boolean;
 }) {
   const [humanView, setHumanView] = useState(true);
 
-  // here using the EIP-712-style signing object as required and it will be conected to api and block chian to get the real data
-  const signingData = {
-    domain: {
-      name: 'S2dent',
-      version: '1',
-      chainId: 1,
-      verifyingContract: '0x414d72aFC5bEaBC9FF42110f6BBD19570006c620',
-    },
-    types: {
-      Credential: [
-        { name: 'credentialHash', type: 'bytes32' },
-        { name: 'title', type: 'string' },
-        { name: 'code', type: 'string' },
-        { name: 'credentialType', type: 'string' },
-        { name: 'authorizerWalletAddress', type: 'address' },
-        { name: 'authorizerName', type: 'string' },
-        { name: 'issuerWalletAddress', type: 'address' },
-        { name: 'studentWalletAddress', type: 'address' },
-        { name: 'studentName', type: 'string' },
-        { name: 'payloadHash', type: 'bytes32' },
-      ],
-    },
-    message: {
-      credentialHash: '0x' + Math.random().toString(16).slice(2).padEnd(64, '0'),
-      title: data.title,
-      code: data.code,
-      credentialType: data.credType.toLowerCase(),
-      authorizerWalletAddress: '0x414d72aFC5bEaBC9FF42110f6BBD19570006c620',
-      authorizerName: 'Fenerbahçe University',
-      issuerWalletAddress: '0xAdm1nIssuer000000000000000000000000f4e3',
-      studentWalletAddress: data.studentWallet || '',
-      studentName: data.studentName || '—',
-      payloadHash: '0x' + Math.random().toString(16).slice(2).padEnd(64, '0'),
-    },
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-        {/*header*/}
         <div className="px-6 pt-6 pb-4">
           <h3 className="text-gray-900 text-lg font-bold">Sign & Issue Credential</h3>
           <p className="text-gray-500 text-sm mt-0.5">Review the signing data before authorizing on-chain.</p>
         </div>
 
-        {/*warning*/}
         <div className="mx-6 mb-4 flex gap-3 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <span className="text-lg shrink-0">🔒</span>
           <p className="text-yellow-800 text-sm leading-relaxed">
@@ -179,7 +161,6 @@ function ReviewModal({
           </p>
         </div>
 
-        {/* toggle for viwe and details content */}
         <div className="mx-6 mb-4 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-3">
             <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Message to Sign</p>
@@ -192,7 +173,6 @@ function ReviewModal({
           </div>
 
           {humanView ? (
-            // human view section and details table            
             <div className="rounded-xl border border-gray-200 overflow-hidden">
               <div className="bg-blue-600 px-4 py-2">
                 <p className="text-white text-sm font-semibold">Credential details</p>
@@ -200,11 +180,11 @@ function ReviewModal({
               <table className="w-full">
                 <tbody>
                   {[
-                    ['Credential type', data.credType],
-                    ['Title / code', `${data.title} — ${data.code}`],
-                    ['Authorized by', 'Fenerbahçe University'],
-                    ['Student name', data.studentName || '—'],
-                    ['Student wallet', data.studentWallet || '—'],
+                    ['Credential type', signingData.message.credentialType],
+                    ['Title / code', `${signingData.message.title} — ${signingData.message.code}`],
+                    ['Authorized by', signingData.message.authorizerName],
+                    ['Student name', studentName || signingData.message.studentName || '—'],
+                    ['Student wallet', signingData.message.studentWalletAddress || '—'],
                     ['Payload hash', signingData.message.payloadHash.slice(0, 18) + '…'],
                   ].map(([label, value]) => (
                     <tr key={label} className="border-b border-gray-100 last:border-0">
@@ -216,23 +196,13 @@ function ReviewModal({
               </table>
             </div>
           ) : (
-            // actual view details and with same asked information form marouan flat string for esay look and i added a highlighted values i dont know if thay required or not but i think they will be good            
-            <div className="bg-gray-900 text-xs rounded-xl p-4 leading-relaxed break-all font-mono text-gray-300 overflow-y-auto max-h-48">
-              {'{ '}
-              {Object.entries(signingData.message).map(([k, v], i) => (
-                <span key={k}>
-                  <span className="text-white font-semibold">{k}</span>
-                  <span className="text-gray-400">: </span>
-                  <span className="text-cyan-400">{String(v)}</span>
-                  {i < Object.entries(signingData.message).length - 1 ? ' ' : ''}
-                </span>
-              ))}
-              {' }'}
-            </div>
+            <pre
+              className="bg-gray-900 text-xs rounded-xl p-4 leading-relaxed break-all font-mono text-gray-300 overflow-y-auto max-h-48 whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: highlightJson(signingData) }}
+            />
           )}
         </div>
 
-        {/* last step confirmation */}
         <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={onCancel}
@@ -257,6 +227,7 @@ function ReviewModal({
 // main page
 export default function NewCredentialPage() {
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   // base fields
   const [title, setTitle] = useState('');
@@ -270,11 +241,24 @@ export default function NewCredentialPage() {
   const [error, setError] = useState('');
   const [showReview, setShowReview] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [signingData, setSigningData] = useState<any>(null);
+  const [createdCredentialId, setCreatedCredentialId] = useState<string>('');
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // dynamic payload state keyed by field types
   const [payload, setPayload] = useState<Record<string, string>>({});
+  const [role, setRole] = useState<string>('admin');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userRole');
+    if (stored) {
+      setRole(stored);
+    }
+  }, []);
+
+  const allowedTypes = role === 'professor'
+    ? ['Attendance']
+    : ['Enrollment', 'Degree', 'Certificate', 'Achievement', 'Transcript'];
 
   const handleTitleChange = (val: string) => {
     setTitle(val.slice(0, 255));
@@ -407,10 +391,44 @@ export default function NewCredentialPage() {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
+    setLoading(true);
     setError('');
-    setShowReview(true);
+    try {
+      const typedPayload: Record<string, any> = {};
+      const currentFields = PAYLOAD_FIELDS[credType] ?? [];
+      for (const field of currentFields) {
+        const val = payload[field.id];
+        if (val === undefined || val === '') continue;
+        typedPayload[field.id] = field.type === 'number' ? Number(val) : val;
+      }
+      const draftPayload: Record<string, any> = {
+        title,
+        credential_type: credType.toLowerCase(),
+        student_address: studentWallet,
+        payload: typedPayload,
+      };
+      if (description.trim() !== '') {
+        draftPayload.description = description;
+      }
+      const draftData = await apiFetch<any>('/credentials', {
+        method: 'POST',
+        body: JSON.stringify(draftPayload)
+      });
+      setCreatedCredentialId(draftData.credential_id);
+      setSigningData(draftData.signing_data);
+      setShowReview(true);
+    } catch (error: any) {
+      console.error(error);
+      showAlert({
+        type: 'error',
+        title: 'Submission Failed',
+        message: getFriendlyErrorMessage(error, 'Failed to submit credential data.')
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleWalletBlur = async () => {
@@ -439,75 +457,44 @@ export default function NewCredentialPage() {
   const handleConfirmSign = async () => {
     if (loading) return;
     setLoading(true);
-
-try {
+    try {
       if (!window.ethereum) throw new Error("MetaMask is required");
-
-      // ====== أضف هذا الجزء هنا لإجبار المحفظة على التبديل للشبكة الصحيحة ======
       try {
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x7a69' }], // 0x7a69 هو المعرف 31337 الخاص بـ Localhost
+          params: [{ chainId: '0x7a69' }],
         });
       } catch (switchError) {
-        console.warn("يرجى التأكد من إضافة شبكة Localhost في ميتاماسك", switchError);
+        console.warn(switchError);
       }
-      // =========================================================================
-
-      // تأكد أن تعريف الـ provider يأتي **بعد** كود التبديل
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-
-      // Build payload — convert number fields from string to number
-      const typedPayload: Record<string, any> = {};
-      const currentFields = PAYLOAD_FIELDS[credType] ?? [];
-      for (const field of currentFields) {
-        const val = payload[field.id];
-        if (val === undefined || val === '') continue;
-        typedPayload[field.id] = field.type === 'number' ? Number(val) : val;
-      }
-
-      const draftPayload: Record<string, any> = {
-        title,
-        credential_type: credType.toLowerCase(),
-        student_address: studentWallet,  // ← must be student_address, NOT student_wallet
-        payload: typedPayload,
-      };
-
-      // ✅ Only include description if non-empty
-      if (description.trim() !== '') {
-        draftPayload.description = description;
-      }
-
-      const draftData = await apiFetch<any>('/credentials', {
-        method: 'POST',
-        body: JSON.stringify(draftPayload)
-      });
-      // الكود الصحيح:
-      const credentialId = draftData.credential_id;
-      const signingData = draftData.signing_data; // استخراج الكائن كاملاً
-
-      // استخدام معيار EIP-712 للتوقيع بدلاً من التوقيع النصي العادي
       const signature = await signer.signTypedData(
         signingData.domain,
         signingData.types,
         signingData.message
       );
-
-      await apiFetch<any>(`/credentials/${credentialId}/issue`, {
+      await apiFetch<any>(`/credentials/${createdCredentialId}/issue`, {
         method: 'POST',
         body: JSON.stringify({ signature })
       });
-      // if apiFetch doesn't throw, it succeeded
-
-      // تمت العملية بنجاح!
-      setShowReview(false);
-      router.push('/credentials');
-      router.refresh();
-
+      showAlert({
+        type: 'success',
+        title: 'Credential Issued',
+        message: 'The verifiable credential has been successfully signed and issued on-chain.',
+        onConfirm: () => {
+          setShowReview(false);
+          router.push('/credentials');
+          router.refresh();
+        }
+      });
     } catch (error: any) {
-      console.error('Error issuing credential:', error);
-      alert(`Failed to issue credential: ${error.message}`);
+      console.error(error);
+      showAlert({
+        type: 'error',
+        title: 'Issuance Failed',
+        message: getFriendlyErrorMessage(error, 'Failed to issue credential.')
+      });
     } finally {
       setLoading(false);
     }
@@ -517,9 +504,10 @@ try {
 
   return (
     <>
-      {showReview && (
+      {showReview && signingData && (
         <ReviewModal
-          data={{ title, code: '', credType, studentName: studentLookup?.name ?? '', studentWallet, payload }}
+          signingData={signingData}
+          studentName={studentLookup?.name ?? ''}
           onConfirm={handleConfirmSign}
           onCancel={() => setShowReview(false)}
           loading={loading}
@@ -569,7 +557,7 @@ try {
                   label="Credential type"
                   value={credType}
                   onChange={(v) => { handleTypeChange(v); setError(''); }}
-                  options={['', ...CREDENTIAL_TYPES]}
+                  options={['', ...allowedTypes]}
                   required
                 />
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
@@ -658,7 +646,7 @@ try {
               Cancel
             </button>
             <Button
-              title="Review & Sign"
+              title="Submit"
               onClick={handleSubmit}
               variant="primary"
               className="px-5 py-2 bg-mint text-navy rounded-xl font-semibold text-sm"

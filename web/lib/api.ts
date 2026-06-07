@@ -22,6 +22,30 @@ export function clearTokens() {
     localStorage.removeItem('userRole');
 }
 
+function getHttpFriendlyMessage(status: number, serverMsg?: string): string {
+    if (serverMsg && serverMsg.trim() !== '' && serverMsg.toLowerCase() !== 'unknown error') {
+        return serverMsg;
+    }
+
+    switch (status) {
+        case 400:
+            return "The request was invalid. Please check the information you entered.";
+        case 401:
+            return "Your session has expired. Please log in again.";
+        case 403:
+            return "You do not have permission to perform this action.";
+        case 404:
+            return "The requested information or resource could not be found in the system. Please verify details and try again.";
+        case 422:
+            return "The details you provided are invalid or already exist in the system. Please check your information and try again.";
+        default:
+            if (status >= 500) {
+                return "Something went wrong on the server side. Our system checks are running; please try again shortly.";
+            }
+            return "An unexpected server communication error occurred. Please try again.";
+    }
+}
+
 // ---- Core fetch wrapper (The Interceptor) ----
 export async function apiFetch<T>(
     path: string,
@@ -46,7 +70,7 @@ export async function apiFetch<T>(
         // If we don't have a refresh token, log them out
         if (!refresh) {
             clearTokens();
-            if (typeof window !== 'undefined') window.location.href = '/';
+            if (typeof window !== 'undefined') window.location.href = '/createLogin';
             throw new Error('Session expired. Please log in again.');
         }
 
@@ -63,7 +87,7 @@ export async function apiFetch<T>(
             // 4. If refresh fails, kill the session
             if (!refreshRes.ok || !refreshData.success) {
                 clearTokens();
-                if (typeof window !== 'undefined') window.location.href = '/';
+                if (typeof window !== 'undefined') window.location.href = '/createLogin';
                 throw new Error('Session completely expired.');
             }
 
@@ -83,7 +107,7 @@ export async function apiFetch<T>(
             
         } catch (error) {
             clearTokens();
-            if (typeof window !== 'undefined') window.location.href = '/';
+            if (typeof window !== 'undefined') window.location.href = '/createLogin';
             throw error;
         }
     }
@@ -92,7 +116,17 @@ export async function apiFetch<T>(
 
     if (!res.ok || !json.success) {
         console.log(`API error on ${path}:`, json);
-        throw new Error(json.message || `API error ${res.status} message: ${json.message || 'Unknown error'}`);
+        if (res.status === 403) {
+            if (
+                typeof window !== 'undefined' && 
+                window.location.pathname !== '/profile' && 
+                window.location.pathname !== '/createLogin' &&
+                window.location.pathname !== '/verify'
+            ) {
+                window.location.href = '/profile';
+            }
+        }
+        throw new Error(getHttpFriendlyMessage(res.status, json?.message));
     }
 
     // The API Reference always wraps the actual data in a "data" object

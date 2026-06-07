@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { apiFetch } from '@/lib/api';
 import { CheckCircle } from 'lucide-react';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 export default function OtpPage() {
+  const { showAlert } = useAlert();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -39,13 +42,23 @@ export default function OtpPage() {
 
     try {
       if (!window.ethereum) {
-        alert('Please install MetaMask to complete verification.');
+        showAlert({
+          type: 'error',
+          title: 'MetaMask Required',
+          message: 'Please install MetaMask to complete verification.'
+        });
         return;
       }
 
       if (!nonceMessage) {
-        alert('Session expired. Please restart the verification process.');
-        router.push('/verify');
+        showAlert({
+          type: 'error',
+          title: 'Session Expired',
+          message: 'Session expired. Please restart the verification process.',
+          onConfirm: () => {
+            router.push('/verify');
+          }
+        });
         return;
       }
 
@@ -69,7 +82,11 @@ export default function OtpPage() {
       setSuccess(true);
     } catch (error: any) {
       console.error('Identity issuance request error:', error);
-      alert(`Verification failed: ${error.message || 'Please check your code and try again.'}`);
+      showAlert({
+        type: 'error',
+        title: 'Verification Failed',
+        message: getFriendlyErrorMessage(error, 'Please check your code and try again.')
+      });
     } finally {
       setLoading(false);
     }

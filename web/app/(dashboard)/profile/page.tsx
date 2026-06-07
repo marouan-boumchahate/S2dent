@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { useLogo } from '@/lib/logoContext';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 import {
   fetchAcademyMe,
   fetchAcademyIdentityMe,
@@ -328,6 +330,12 @@ function ProfileHeader({
   const { logoUrl, setLogoUrl } = useLogo();
   const displayImage = color === 'mint' ? (imageSrc || logoUrl) : imageSrc;
 
+  const [headerImgSrc, setHeaderImgSrc] = useState(displayImage || (color === 'mint' ? '/logo.png' : '/professor.png'));
+
+  useEffect(() => {
+    setHeaderImgSrc(displayImage || (color === 'mint' ? '/logo.png' : '/professor.png'));
+  }, [displayImage, color]);
+
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -347,17 +355,17 @@ function ProfileHeader({
       {/* Avatar Container */}
       <label className={`shrink-0 relative rounded-full p-1 bg-gradient-to-tr ${ring} shadow-md transition-all duration-300 ${allowLogoUpload ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'}`}>
         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-navy flex items-center justify-center relative">
-          {displayImage && displayImage !== '/logo.png' ? (
-            <img 
-              src={displayImage} 
-              alt="profile" 
-              className="w-full h-full object-cover" 
-            />
-          ) : (
-            <div className={`w-full h-full flex items-center justify-center text-xl sm:text-2xl font-black bg-gradient-to-br ${color === 'mint' ? 'from-mint/10 to-mint/5' : 'from-violet-500/10 to-violet-500/5'}`}>
-              {initials}
-            </div>
-          )}
+          <img 
+            src={headerImgSrc} 
+            alt="profile" 
+            className="w-full h-full object-cover" 
+            onError={() => {
+              const fallback = color === 'mint' ? '/logo.png' : '/professor.png';
+              if (headerImgSrc !== fallback) {
+                setHeaderImgSrc(fallback);
+              }
+            }}
+          />
         </div>
 
         {allowLogoUpload && (
@@ -419,6 +427,7 @@ function AcademyProfileTab() {
   const [identity, setIdentity] = useState<any>(null);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const { setLogoUrl } = useLogo();
+  const { showAlert } = useAlert();
 
   const set = (key: keyof typeof draft) => (v: string) =>
     setDraft((d) => ({ ...d, [key]: v }));
@@ -469,8 +478,17 @@ function AcademyProfileTab() {
       });
       setData(draft);
       setEditing(false);
+      showAlert({
+        type: 'success',
+        title: 'Settings Saved',
+        message: 'Academy profile settings have been successfully updated.'
+      });
     } catch (err: any) {
-      alert(`Failed to save changes: ${err.message}`);
+      showAlert({
+        type: 'error',
+        title: 'Save Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to save settings.')
+      });
     }
   };
 
@@ -488,8 +506,17 @@ function AcademyProfileTab() {
       setDraft((d) => ({ ...d, logoUrl: url }));
       setData((d) => ({ ...d, logoUrl: url }));
       await updateAcademyMe({ logo_url: url });
+      showAlert({
+        type: 'success',
+        title: 'Logo Uploaded',
+        message: 'Academy logo has been successfully updated.'
+      });
     } catch (err: any) {
-      alert(`Logo upload failed: ${err.message}`);
+      showAlert({
+        type: 'error',
+        title: 'Upload Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to upload logo.')
+      });
     } finally {
       setUploadingImage(null);
     }
@@ -550,7 +577,17 @@ function AcademyProfileTab() {
 
       <SectionTitle>Network configuration</SectionTitle>
       <Card>
-        <SettingsRow label="Smart contract address" sub="0x414d72aFC5bEeBC9FF42110f6BBD19570006c620" action={<OutlineButton onClick={() => window.open('https://sepolia.etherscan.io/address/0x414d72aFC5bEeBC9FF42110f6BBD19570006c620', '_blank')}>View contract</OutlineButton>} />
+        <SettingsRow 
+          label="Smart contract address" 
+          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''} 
+          action={
+            <OutlineButton 
+              onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''}`, '_blank')}
+            >
+              View contract
+            </OutlineButton>
+          } 
+        />
         <SettingsRow label="Network" sub="Ethereum mainnet" />
       </Card>
     </div>
@@ -588,6 +625,7 @@ function ProfessorProfileTab() {
   const [identity, setIdentity] = useState<any>(null);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const { logoUrl, setLogoUrl } = useLogo();
+  const { showAlert } = useAlert();
 
   const set = (key: keyof typeof draft) => (v: string) =>
     setDraft((d) => ({ ...d, [key]: v }));
@@ -659,8 +697,17 @@ function ProfessorProfileTab() {
       await updateUserMe({ phone: draft.phone });
       setData(draft);
       setEditing(false);
+      showAlert({
+        type: 'success',
+        title: 'Settings Saved',
+        message: 'Professor profile settings have been successfully updated.'
+      });
     } catch (err: any) {
-      alert(`Failed to save changes: ${err.message}`);
+      showAlert({
+        type: 'error',
+        title: 'Save Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to save settings.')
+      });
     }
   };
 
@@ -677,8 +724,17 @@ function ProfessorProfileTab() {
       await updateUserMe({ photo_url: url });
       setData((prev) => ({ ...prev, photoUrl: url }));
       setDraft((prev) => ({ ...prev, photoUrl: url }));
+      showAlert({
+        type: 'success',
+        title: 'Photo Uploaded',
+        message: 'Profile photo has been successfully updated.'
+      });
     } catch (err: any) {
-      alert(`Photo upload failed: ${err.message}`);
+      showAlert({
+        type: 'error',
+        title: 'Upload Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to upload profile photo.')
+      });
     } finally {
       setUploadingImage(null);
     }
@@ -746,7 +802,17 @@ function ProfessorProfileTab() {
 
       <SectionTitle>Network configuration</SectionTitle>
       <Card>
-        <SettingsRow label="Smart contract address" sub="0x414d72aFC5bEeBC9FF42110f6BBD19570006c620" action={<OutlineButton onClick={() => window.open('https://sepolia.etherscan.io/address/0x414d72aFC5bEeBC9FF42110f6BBD19570006c620', '_blank')}>View contract</OutlineButton>} />
+        <SettingsRow 
+          label="Smart contract address" 
+          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''} 
+          action={
+            <OutlineButton 
+              onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''}`, '_blank')}
+            >
+              View contract
+            </OutlineButton>
+          } 
+        />
         <SettingsRow label="Network" sub="Ethereum mainnet" />
       </Card>
     </div>
@@ -755,7 +821,7 @@ function ProfessorProfileTab() {
 
 // Main root page framework
 
-export default function SettingsPage() {
+export default function ProfilePage() {
   const [role, setRole] = useState<Role>('admin');
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -781,7 +847,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full w-full">
-      <PageHeader title="Settings" />
+      <PageHeader title="Profile" />
 
       <div className="flex-1 overflow-y-auto w-full">
         {tabs.length > 1 && (

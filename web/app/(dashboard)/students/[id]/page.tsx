@@ -19,6 +19,8 @@ import {
   ApiProfessor,
   ApiUser,
 } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 // helpers
 function formatDate(dateStr?: string | null) {
@@ -167,6 +169,7 @@ function RevokeModal({ name, onConfirm, onCancel }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function StudentDetailPage() {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const params = useParams();
   const id = params?.id as string;
 
@@ -253,15 +256,46 @@ export default function StudentDetailPage() {
     try {
       await updateStudent(id, { cgpa: parseFloat(newCgpa), advisor_id: newAdviserId || undefined });
       setShowUpdateModal(false);
-      window.location.reload();
-    } catch (err) { console.error(err); }
+      showAlert({
+        type: 'success',
+        title: 'Student Updated',
+        message: 'The student records have been successfully updated.',
+        onConfirm: () => {
+          window.location.reload();
+        }
+      });
+    } catch (err: any) {
+      console.error(err);
+      setShowUpdateModal(false);
+      showAlert({
+        type: 'error',
+        title: 'Update Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to update student records.')
+      });
+    }
   };
 
   const handleRevoke = async (reason: string) => {
     try {
       if (walletAddress) await revokeStudentIdentity(walletAddress, reason);
-      router.push('/students');
-    } catch (err) { console.error(err); }
+      setShowRevokeModal(false);
+      showAlert({
+        type: 'success',
+        title: 'Identity Revoked',
+        message: 'The student blockchain identity has been successfully revoked.',
+        onConfirm: () => {
+          router.push('/students');
+        }
+      });
+    } catch (err: any) {
+      console.error(err);
+      setShowRevokeModal(false);
+      showAlert({
+        type: 'error',
+        title: 'Revocation Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to revoke student identity.')
+      });
+    }
   };
 
   const displayName = user?.full_name || student.student_number;
@@ -351,10 +385,18 @@ export default function StudentDetailPage() {
 
               {role === 'admin' && (
                 <div className="w-full mt-6 space-y-3">
-                  <Button title="Update Identity" onClick={() => setShowUpdateModal(true)}
-                    variant="primary" className="w-full bg-mint text-navy rounded-xl font-semibold text-sm" />
-                  <button onClick={() => setShowRevokeModal(true)}
-                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm">
+                  <Button 
+                    title="Update Identity" 
+                    onClick={() => setShowUpdateModal(true)}
+                    variant="primary" 
+                    className="w-full bg-mint text-navy rounded-xl font-semibold text-sm" 
+                    disabled={!!onChain?.status.is_revoked}
+                  />
+                  <button 
+                    onClick={() => setShowRevokeModal(true)}
+                    disabled={!!onChain?.status.is_revoked}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>

@@ -131,7 +131,7 @@ export default function StudentsPage() {
                       <td className="px-6 py-4 text-textMuted text-sm">{s.department || '—'}</td>
                       <td className="px-6 py-4 text-textMuted text-sm">{s.advisor_name || '—'}</td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={s.last_transaction_status ?? 'pending'} />
+                        <StatusBadge status={s.is_revoked ? 'revoked' : (s.last_transaction_status ?? 'pending')} />
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -165,11 +165,12 @@ function StatCard({ label, value, sub, subColor = 'text-textMuted' }: {
   );
 }
 
-function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' }) {
+function StatusBadge({ status }: { status: 'pending' | 'failed' | 'verified' | 'revoked' }) {
   const map = {
     verified: 'bg-green-100 text-green-600 border border-green-200',
     pending: 'bg-yellow-100 text-yellow-600 border border-yellow-200',
     failed: 'bg-red-100 text-red-500 border border-red-200',
+    revoked: 'bg-red-500/10 text-red-400 border border-red-500/30',
   };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${map[status] || map.pending}`}>

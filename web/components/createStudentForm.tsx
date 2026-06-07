@@ -6,6 +6,8 @@ import Button from './Button';
 import FormField from './FormField';
 import AddressForm, { AddressData } from './AddressForm';
 import { createUser, createAddress, fetchDepartments, fetchProfessors, apiFetch, ApiDepartment, ApiProfessor } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 export default function CreateStudentForm({
   onClose,
@@ -15,6 +17,7 @@ export default function CreateStudentForm({
   onStepChange: (step: number) => void;
 }) {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -301,11 +304,22 @@ export default function CreateStudentForm({
         }),
       });
 
-      onClose();
-      router.push('/students');
+      showAlert({
+        type: 'success',
+        title: 'Registration Successful',
+        message: `${firstName} ${lastName} has been successfully registered as a student.`,
+        onConfirm: () => {
+          onClose();
+          router.push('/students');
+        }
+      });
     } catch (error: any) {
       console.error('Student creation failed:', error);
-      alert(error?.message || 'Failed to register student. Please try again.');
+      showAlert({
+        type: 'error',
+        title: 'Registration Failed',
+        message: getFriendlyErrorMessage(error, 'Failed to register student. Please try again.')
+      });
     } finally {
       setLoading(false);
     }

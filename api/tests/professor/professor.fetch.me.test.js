@@ -81,7 +81,7 @@ describe('GET /api/professors/me', () => {
     assert.equal(res.body.code, 'FORBIDDEN');
   });
 
-  it('returns 404 when the professor identity is missing or revoked', async () => {
+  it('returns 404 when the professor identity is missing', async () => {
     const missingIdentity = await seedProfessor({
       academyId,
       departmentId,
@@ -98,7 +98,9 @@ describe('GET /api/professors/me', () => {
     assert.equal(missingRes.status, 404);
     assert.equal(missingRes.body.success, false);
     assert.equal(missingRes.body.code, 'PROFESSOR_NOT_FOUND');
+  });
 
+  it('returns 200 when the professor identity is revoked', async () => {
     const revoked = await seedProfessor({
       academyId,
       departmentId,
@@ -112,8 +114,8 @@ describe('GET /api/professors/me', () => {
       .get(`${endpoint}/me`)
       .set('Authorization', `Bearer ${revokedToken}`);
 
-    assert.equal(revokedRes.status, 404);
-    assert.equal(revokedRes.body.success, false);
-    assert.equal(revokedRes.body.code, 'PROFESSOR_NOT_FOUND');
+    assert.equal(revokedRes.status, 200);
+    assert.equal(revokedRes.body.success, true);
+    assert.equal(revokedRes.body.message, 'Professor profile retrieved successfully');
   });
 });

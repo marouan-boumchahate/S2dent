@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { requestOtp } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 export default function VerifyPage() {
+  const { showAlert } = useAlert();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -27,9 +30,13 @@ export default function VerifyPage() {
       }
 
       router.push('/verify/otp');
-    } catch (error) {
+    } catch (error: any) {
       console.error('OTP request error:', error);
-      alert('Verification request failed. Please try again.');
+      showAlert({
+        type: 'error',
+        title: 'Request Failed',
+        message: getFriendlyErrorMessage(error, 'Verification request failed. Please try again.')
+      });
     } finally {
       setLoading(false);
     }
