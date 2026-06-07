@@ -25,7 +25,7 @@ const createProfessorSchema = Joi.object({
     .valid(...professorRanks)
     .required(),
   specialization: Joi.string().trim().max(255).optional().allow(null, ''),
-  hire_date: Joi.date().iso().optional().allow(null, ''),
+  hire_date: Joi.date().iso().max('now').optional().allow(null, ''),
   employment_type: Joi.string()
     .valid(...employmentTypes)
     .default('full_time'),

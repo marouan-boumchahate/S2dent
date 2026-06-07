@@ -29,3 +29,19 @@ CREATE INDEX IF NOT EXISTS idx_students_user_id ON students(user_id);
 CREATE INDEX IF NOT EXISTS idx_students_academy_id ON students(academy_id);
 CREATE INDEX IF NOT EXISTS idx_students_department_id ON students(department_id);
 CREATE INDEX IF NOT EXISTS idx_students_student_number ON students(student_number);
+
+CREATE OR REPLACE FUNCTION check_student_enrollment_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.enrollment_date > CURRENT_DATE THEN
+        RAISE EXCEPTION 'enrollment_date cannot be in the future';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_students_enrollment_date ON students;
+CREATE TRIGGER trg_students_enrollment_date
+BEFORE INSERT OR UPDATE ON students
+FOR EACH ROW
+EXECUTE FUNCTION check_student_enrollment_date();

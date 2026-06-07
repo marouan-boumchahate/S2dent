@@ -54,3 +54,19 @@ CREATE INDEX IF NOT EXISTS idx_professors_department_id ON professors(department
 CREATE INDEX IF NOT EXISTS idx_professors_employee_num ON professors(employee_number);
 CREATE INDEX IF NOT EXISTS idx_professors_title ON professors(title);
 CREATE INDEX IF NOT EXISTS idx_professors_is_active ON professors(is_active);
+
+CREATE OR REPLACE FUNCTION check_professor_hire_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.hire_date > CURRENT_DATE THEN
+        RAISE EXCEPTION 'hire_date cannot be in the future';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_professors_hire_date ON professors;
+CREATE TRIGGER trg_professors_hire_date
+BEFORE INSERT OR UPDATE ON professors
+FOR EACH ROW
+EXECUTE FUNCTION check_professor_hire_date();

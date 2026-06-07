@@ -162,12 +162,6 @@ export default function IssueIdentitiesPage() {
         method: 'eth_requestAccounts',
       });
 
-      console.log('MetaMask account (signer):', accounts[0]);
-      console.log('Academy wallet in schema:', schema.message.academyWalletAddress);
-
-      // ✅ FIX 1: Ensure MetaMask is on the same chainId the schema was built for.
-      // If the chains differ, the domain separator won't match and the backend
-      // will recover a different signer → INVALID_SIGNATURE.
       const expectedChainId = `0x${schema.domain.chainId.toString(16)}`;
       const currentChainId: string = await window.ethereum.request({ method: 'eth_chainId' });
 
@@ -185,27 +179,17 @@ export default function IssueIdentitiesPage() {
         }
       }
 
-      // ✅ FIX 2: Strip EIP712Domain from types — MetaMask derives the domain
-      // separator itself from the `domain` object. Passing EIP712Domain inside
-      // `types` causes a double-encoding mismatch with how the backend hashes it.
-      const { EIP712Domain: _, ...typesWithoutDomain } = schema.types as any;
-      const primaryType = Object.keys(schema.types)[0];
-
-      const typedData = {
-        domain: schema.domain,
-        types: typesWithoutDomain,
-        primaryType,
-        message: schema.message,
-      };
-
-      console.log('Full typed data sent to MetaMask:', JSON.stringify(typedData, null, 2));
-
-      const signature: string = await window.ethereum.request({
-        method: 'eth_signTypedData_v4',
-        params: [schema.message.academyWalletAddress as string, JSON.stringify(typedData)],
-      });
-
       const { ethers } = await import('ethers');
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const { EIP712Domain: _, ...typesWithoutDomain } = schema.types as any;
+
+      const signature = await signer.signTypedData(
+        schema.domain,
+        typesWithoutDomain,
+        schema.message,
+      );
 
       const recovered = ethers.verifyTypedData(
         schema.domain,
@@ -214,20 +198,12 @@ export default function IssueIdentitiesPage() {
         signature,
       );
 
-      console.log('Frontend recovered address:', recovered);
-      console.log('Expected academy address:', schema.message.academyWalletAddress);
-
-      // POST to the correct issue endpoint with the real signature
       if (signTarget.role === 'Professor') {
         await issueProfessorIdentity(signTarget.walletAddress, signature);
       } else {
         await issueStudentIdentity(signTarget.walletAddress, signature);
       }
 
-      // ✅ FIX 3: Remove the row instead of setting status to 'pending'.
-      // fetchWaitingIdentities only returns truly-waiting users, so issued ones
-      // won't reappear on reload. Keeping them as 'pending' caused the row to
-      // vanish when the list was rebuilt from a fresh fetch.
       setIdentities((prev) => prev.filter((i) => i.id !== signTarget.id));
       setStats((prev) => ({ ...prev, waiting: Math.max(0, prev.waiting - 1) }));
 

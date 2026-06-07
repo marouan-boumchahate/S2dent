@@ -446,6 +446,27 @@ describe('POST /api/students', () => {
     assert.ok(field, 'errors should contain an actual_graduation_date entry');
   });
 
+  it('returns 422 when enrollment_date is in the future', async () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 5);
+    const enrollment_date = futureDate.toISOString().split('T')[0];
+
+    const res = await request(app)
+      .post(endpoint)
+      .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+      .send({
+        user_id: USER_ID,
+        academy_id: ACADEMY_ID,
+        department_id: DEPARTMENT_ID,
+        advisor_id: ADVISOR_ID,
+        enrollment_date,
+      });
+
+    assert.equal(res.status, 422);
+    const field = res.body.errors.find((e) => e.field === 'enrollment_date');
+    assert.ok(field, 'errors should contain an enrollment_date entry');
+  });
+
   it('returns 500 when the database throws unexpectedly', async () => {
     sinon.stub(db, 'query').rejects(new Error('DB connection lost'));
 

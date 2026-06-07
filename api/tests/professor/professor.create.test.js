@@ -387,6 +387,21 @@ describe('POST /api/professors', () => {
         assert.ok(field, 'errors should contain an employment_type entry');
     });
 
+    it('returns 422 when hire_date is in the future', async () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 5);
+        const hire_date = futureDate.toISOString().split('T')[0];
+
+        const res = await request(app)
+            .post('/api/professors')
+            .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+            .send(validBody({ hire_date }));
+
+        assert.equal(res.status, 422);
+        const field = res.body.errors.find(e => e.field === 'hire_date');
+        assert.ok(field, 'errors should contain a hire_date entry');
+    });
+
     it('returns 500 when the database throws unexpectedly', async () => {
         sinon.stub(db, 'query').rejects(new Error('DB connection lost'));
 

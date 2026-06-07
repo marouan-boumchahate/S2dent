@@ -12,7 +12,7 @@ const createStudentSchema = Joi.object({
   advisor_id: Joi.string().uuid().required(),
 
   enrollment_status: Joi.string().valid(...ENROLLMENT_STATUSES).optional().allow(null, ''),
-  enrollment_date: Joi.date().iso().optional().allow(null, ''),
+  enrollment_date: Joi.date().iso().max('now').optional().allow(null, ''),
   actual_graduation_date: Joi.date().iso().optional().allow(null, ''),
 });
 
