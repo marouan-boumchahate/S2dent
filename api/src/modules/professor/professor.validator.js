@@ -24,16 +24,16 @@ const createProfessorSchema = Joi.object({
   rank: Joi.string()
     .valid(...professorRanks)
     .required(),
-  specialization: Joi.string().trim().max(255).optional(),
-  hire_date: Joi.date().iso().optional(),
+  specialization: Joi.string().trim().max(255).optional().allow(null, ''),
+  hire_date: Joi.date().iso().optional().allow(null, ''),
   employment_type: Joi.string()
     .valid(...employmentTypes)
     .default('full_time'),
 
-  office_location: Joi.string().trim().max(255).optional(),
-  office_hours: Joi.string().trim().optional(),
+  office_location: Joi.string().trim().max(255).optional().allow(null, ''),
+  office_hours: Joi.string().trim().optional().allow(null, ''),
 
-  bio: Joi.string().trim().optional()
+  bio: Joi.string().trim().optional().allow(null, '')
 });
 
 const updateProfessorSchema = Joi.object({

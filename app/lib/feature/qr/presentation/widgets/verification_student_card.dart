@@ -14,10 +14,6 @@ class VerificationStudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final address = data.verificationStudent.studentAddress;
-    final truncatedAddress = address.length > 12
-        ? '${address.substring(0, 6)}...${address.substring(address.length - 4)}'
-        : address;
     final color = data.verificationMeta.isRevoked
         ? AppColors.error
         : context.colors.primary;
@@ -25,10 +21,6 @@ class VerificationStudentCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8.0, top: 8),
-          child: Text("STUDENT"),
-        ),
         Padding(
           padding: const EdgeInsets.all(8),
           child: Container(
@@ -49,8 +41,7 @@ class VerificationStudentCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: color.withAlpha(60),
                       ),
-                      child:
-                          Icon(Icons.person_outline, color: color, size: 20),
+                      child: Icon(Icons.person_outline, color: color, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -65,12 +56,14 @@ class VerificationStudentCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Divider(thickness: 2),
                 const SizedBox(height: 8),
-                VerificationInfoRow(label: 'WALLET', value: truncatedAddress),
+                VerificationInfoRow(
+                  label: 'WALLET',
+                  value: data.verificationStudent.studentAddress,
+                ),
                 const SizedBox(height: 8),
                 VerificationInfoRow(
                   label: 'TX HASH',
-                  value:
-                      '${data.verificationBlockchain.issueTxHash.substring(0, 10)}...',
+                  value: data.verificationBlockchain.issueTxHash,
                 ),
               ],
             ),

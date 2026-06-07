@@ -461,6 +461,7 @@ export async function createAddress(payload: {
 // ---- Professor on-chain identity (by user_id) ----
 export interface ApiProfessorIdentity {
   wallet_address: string;
+  issue_identity_tx_hash?: string | null;
   identity: {
     employee_id_hash: string;
     national_id_hash: string;
@@ -574,4 +575,135 @@ export interface WaitingIdentity {
 export async function fetchWaitingIdentities(): Promise<WaitingIdentity[]> {
   const data = await apiFetch<WaitingIdentity[]>('/identities/waiting');
   return data;
+}
+// ---- Settings / Authenticated Profile Fetchers ----
+
+export interface ApiAcademyDetail {
+  id: string;
+  serial_number: string;
+  email: string;
+  name: string;
+  short_name: string;
+  type: string;
+  description: string;
+  website: string;
+  logo_url: string;
+  phone: string;
+  legal_name: string;
+  registration_number: string;
+  tax_id: string;
+  billing_email: string;
+}
+
+export interface ApiAcademyIdentity {
+  wallet_address: string;
+  identity: {
+    academy_id_hash: string;
+    public_key: string;
+    name: string;
+    short_name: string;
+    academy_type: string;
+  };
+  proofs: {
+    legal_name: string;
+    registration_number: string;
+    tax_id: string;
+    billing_email: string;
+  };
+  cert: {
+    fingerprint: string;
+    certificate: string;
+    chain: string;
+    issued_at: string;
+    expires_at: string;
+  };
+  status: {
+    issued_at: string;
+    issuer: string;
+    is_revoked: boolean;
+    revoked_at: string | null;
+    revoker: string | null;
+    revoke_reason: string | null;
+  };
+}
+
+export async function fetchAcademyMe(): Promise<ApiAcademyDetail> {
+  const data = await apiFetch<{ academy: ApiAcademyDetail }>('/academies/me');
+  return data.academy;
+}
+
+export async function fetchAcademyIdentityMe(): Promise<ApiAcademyIdentity | null> {
+  try {
+    return await apiFetch<ApiAcademyIdentity>('/identity/academies/me');
+  } catch {
+    return null;
+  }
+}
+
+export async function updateAcademyMe(payload: {
+  description?: string;
+  website?: string;
+  logo_url?: string;
+  phone?: string;
+}): Promise<ApiAcademyDetail> {
+  const data = await apiFetch<{ academy: ApiAcademyDetail }>('/academies/me', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return data.academy;
+}
+
+export async function fetchProfessorMe(): Promise<ApiProfessorDetail> {
+  const data = await apiFetch<{ professor: ApiProfessorDetail }>('/professors/me');
+  return data.professor;
+}
+
+export async function fetchUserMe(): Promise<ApiUser> {
+  const data = await apiFetch<{ user: ApiUser }>('/users/me');
+  return data.user;
+}
+
+export async function fetchProfessorIdentityMe(): Promise<ApiProfessorIdentity | null> {
+  try {
+    return await apiFetch<ApiProfessorIdentity>('/identity/professors/me');
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchMyDepartment(): Promise<ApiDepartment> {
+  const data = await apiFetch<{ department: ApiDepartment }>('/departments/me');
+  return data.department;
+}
+
+export async function updateUserMe(payload: { phone?: string; photo_url?: string }): Promise<ApiUser> {
+  const data = await apiFetch<{ user: ApiUser }>('/users', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return data.user;
+}
+
+export async function uploadMedia(file: File): Promise<string> {
+  const token = getAccessToken();
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch(`${BASE_URL}/media/upload`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Image upload failed');
+  }
+  return json.data.url;
+}
+
+export async function fetchAcademySummary(): Promise<any> {
+  return await apiFetch<any>('/academies/summary');
 }

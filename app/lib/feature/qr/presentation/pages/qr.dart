@@ -1,19 +1,23 @@
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
+import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/feature/qr/presentation/pages/qr_credential_picker.dart';
 import 'package:app/feature/qr/presentation/pages/qr_scanner.dart';
 import 'package:app/feature/qr/presentation/widgets/qr_action.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class QRPage extends StatelessWidget {
+class QRPage extends ConsumerWidget {
   const QRPage({super.key});
 
   void ontap() {}
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final image = ref.watch(logoImageProvider);
     return MainLayout(
+      backgroundImage: image,
       children: [
         _headerSection(context),
         _body(context),
