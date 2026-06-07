@@ -6,6 +6,8 @@ import Button from './Button';
 import FormField from './FormField';
 import AddressForm, { AddressData } from './AddressForm';
 import { createUser, createAddress, fetchDepartments, apiFetch, ApiDepartment } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 export default function CreateProfessorForm({
   onClose,
@@ -15,6 +17,7 @@ export default function CreateProfessorForm({
   onStepChange: (step: number) => void;
 }) {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -322,14 +325,22 @@ export default function CreateProfessorForm({
         }),
       });
 
-
-      onClose();
-      console.log('Professor created successfully');
-      router.push('/professors');
-      console.log('Router pushed to /professors');
+      showAlert({
+        type: 'success',
+        title: 'Registration Successful',
+        message: `${title} ${firstName} ${lastName} has been successfully registered as a professor.`,
+        onConfirm: () => {
+          onClose();
+          router.push('/professors');
+        }
+      });
     } catch (error: any) {
       console.error('Professor creation failed:', error);
-      alert(error?.message || 'Failed to register professor. Please try again.');
+      showAlert({
+        type: 'error',
+        title: 'Registration Failed',
+        message: getFriendlyErrorMessage(error, 'Failed to register professor. Please try again.')
+      });
     } finally {
       setLoading(false);
     }

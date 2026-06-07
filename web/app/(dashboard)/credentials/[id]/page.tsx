@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { fetchCredentialById, revokeCredential } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 // type config icons
 const TYPE_CONFIG: Record<string, { icon: string; color: string; border: string }> = {
@@ -131,6 +133,7 @@ function RevokeModal({ title, onConfirm, onCancel }: {
 // main page
 export default function CredentialDetailPage() {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const params = useParams();
   const id = params?.id as string;
 
@@ -179,12 +182,23 @@ export default function CredentialDetailPage() {
   const handleRevoke = async (reason: string) => {
     try {
       await revokeCredential(id, reason);
-      // Update UI locally after successful server response
-      setApiDetail((prev: any) => prev ? { ...prev, meta: { ...prev.meta, is_revoked: true } } : null);
-      setShowRevokeModal(false);
+      
+      showAlert({
+        type: 'success',
+        title: 'Revocation Successful',
+        message: 'The credential has been successfully revoked on-chain.',
+        onConfirm: () => {
+          setApiDetail((prev: any) => prev ? { ...prev, meta: { ...prev.meta, is_revoked: true } } : null);
+          setShowRevokeModal(false);
+        }
+      });
     } catch (error) {
       console.error('Error revoking credential:', error);
-      alert('Failed to revoke credential. Verify node connectivity.');
+      showAlert({
+        type: 'error',
+        title: 'Revocation Failed',
+        message: getFriendlyErrorMessage(error, 'Failed to revoke credential. Verify node connectivity.')
+      });
     }
   };
 
@@ -268,7 +282,6 @@ export default function CredentialDetailPage() {
               <h3 className="text-textMuted text-xs font-bold uppercase tracking-widest mb-4">On-Chain Information</h3>
               <div className="grid grid-cols-2 gap-3">
                 <OnChainField label="TX Hash (Issue)" value={apiDetail.blockchain?.issue_tx_hash ?? '—'} />
-                <OnChainField label="Block" value={apiDetail.blockchain?.revoke_tx_hash ? 'Confirmed' : 'Pending'} />
                 <OnChainField label="Credential Index" value={apiDetail.blockchain ? String(apiDetail.blockchain.credential_index) : '—'} />
                 <OnChainField label="Authorizer Wallet" value={apiDetail.blockchain?.academy_address ?? '—'} />
                 <OnChainField label="Issuer Wallet" value={apiDetail.blockchain?.issuer_address ?? '—'} full />

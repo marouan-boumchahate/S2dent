@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useLogo } from '@/lib/logoContext';
 import SidebarItems from './sidebarItems'; // Clean child component link integration
-import { clearTokens, fetchAcademyMe, fetchAcademySummary } from '@/lib/api'; // Security patch to wipe active JWT sessions on logout
+import { clearTokens, fetchAcademyMe, fetchAcademySummary, fetchProfessorMe } from '@/lib/api'; // Security patch to wipe active JWT sessions on logout
 
 const ADMIN_GROUPS = [
   { label: 'Students', href: '/students', icon: '/student_1.png' },
@@ -12,28 +12,33 @@ const ADMIN_GROUPS = [
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
   { label: 'Departments', href: '/departments', icon: '/corporation.png' },
   { label: 'Issue identity', href: '/issueidentities', icon: '/certificate.png' },
-  { label: 'Settings', href: '/settings', icon: '/setting_1.png' },
+  { label: 'Profile', href: '/profile', icon: '/setting_1.png' },
 ];
 
 const PROFESSOR_GROUPS = [
   { label: 'Students', href: '/students', icon: '/student_1.png' },
   { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
-  { label: 'Settings', href: '/settings', icon: '/setting.png' },
+  { label: 'Profile', href: '/profile', icon: '/setting.png' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [role, setRole] = useState<'admin' | 'professor'>('admin');
+  const [role, setRole] = useState<'admin' | 'professor' | null>(null);
   const { logoUrl, setLogoUrl } = useLogo();
+  const [imgSrc, setImgSrc] = useState(logoUrl || '/logo.png');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isFetchingLogo, setIsFetchingLogo] = useState(true);
   const [academyName, setAcademyName] = useState('S2dent');
 
   useEffect(() => {
+    setImgSrc(logoUrl || '/logo.png');
+  }, [logoUrl]);
+
+  useEffect(() => {
     const stored = localStorage.getItem('userRole') as 'admin' | 'professor' | null;
-    if (stored) setRole(stored);
+    setRole(stored || 'admin');
 
     setIsFetchingLogo(true);
     if (stored === 'admin') {
@@ -49,14 +54,15 @@ export default function Sidebar() {
           }
         })
         .catch(() => {
-          setLogoUrl('/logo.png');
+          clearTokens();
+          router.push('/createLogin');
         })
         .finally(() => {
           setIsFetchingLogo(false);
         });
     } else if (stored === 'professor') {
-      fetchAcademySummary()
-        .then((academy) => {
+      Promise.all([fetchProfessorMe(), fetchAcademySummary()])
+        .then(([_, academy]) => {
           if (academy.name) {
             setAcademyName(academy.name);
           }
@@ -67,7 +73,8 @@ export default function Sidebar() {
           }
         })
         .catch(() => {
-          setLogoUrl('/logo.png');
+          clearTokens();
+          router.push('/createLogin');
         })
         .finally(() => {
           setIsFetchingLogo(false);
@@ -75,11 +82,11 @@ export default function Sidebar() {
     } else {
       setIsFetchingLogo(false);
     }
-  }, [setLogoUrl]);
+  }, [setLogoUrl, router]);
 
   useEffect(() => {
     setImageLoaded(false);
-  }, [logoUrl]);
+  }, [imgSrc]);
 
   const handleSignOut = () => {
     localStorage.removeItem('userRole');
@@ -87,8 +94,8 @@ export default function Sidebar() {
     router.push('/createLogin');
   };
 
-  const groups = role === 'professor' ? PROFESSOR_GROUPS : ADMIN_GROUPS;
-  const roleLabel = role === 'professor' ? 'Professor' : 'Admin';
+  const groups = role === null ? [] : (role === 'professor' ? PROFESSOR_GROUPS : ADMIN_GROUPS);
+  const roleLabel = role === null ? 'Loading...' : (role === 'professor' ? 'Professor' : 'Admin');
 
   return (
     <>
@@ -137,12 +144,17 @@ export default function Sidebar() {
             )}
             {!isFetchingLogo && (
               <Image
-                src={logoUrl}
+                src={imgSrc || '/logo.png'}
                 alt="University Logo"
                 width={96}
                 height={96}
                 className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  if (imgSrc !== '/logo.png') {
+                    setImgSrc('/logo.png');
+                  }
+                }}
                 unoptimized
               />
             )}

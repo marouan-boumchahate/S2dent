@@ -271,7 +271,6 @@ const getProfessorFromDB = async (professor_id) => {
     JOIN identities i ON p.user_id = i.user_id AND i.role = 'professor'
     WHERE p.id = $1
       AND i.issued_at IS NOT NULL
-      AND i.revoked_at IS NULL
     LIMIT 1
   `, [professor_id]);
 

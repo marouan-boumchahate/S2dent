@@ -12,6 +12,8 @@ import {
   issueStudentIdentity,
   IdentitySchema,
 } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 // Types
 type IdentityStatus = 'waiting' | 'pending';
@@ -71,6 +73,7 @@ function StatCard({ label, value, sub, subColor }: {
 // Page
 
 export default function IssueIdentitiesPage() {
+  const { showAlert } = useAlert();
   const [identities, setIdentities] = useState<PendingIdentity[]>([]);
   const [stats, setStats] = useState({ waiting: 0, noWallet: 0, issued: 0, revoked: 0 });
   const [signTarget, setSignTarget] = useState<PendingIdentity | null>(null);
@@ -154,7 +157,11 @@ export default function IssueIdentitiesPage() {
 
     try {
       if (!window.ethereum) {
-        alert('Please install MetaMask to issue identities.');
+        showAlert({
+          type: 'error',
+          title: 'MetaMask Required',
+          message: 'Please install MetaMask to issue identities.'
+        });
         return;
       }
 
@@ -172,9 +179,11 @@ export default function IssueIdentitiesPage() {
             params: [{ chainId: expectedChainId }],
           });
         } catch (switchErr: any) {
-          alert(
-            `Wrong network. Please switch MetaMask to chainId ${schema.domain.chainId} and try again.`,
-          );
+          showAlert({
+            type: 'error',
+            title: 'Wrong Network',
+            message: `Wrong network. Please switch MetaMask to chainId ${schema.domain.chainId} and try again.`
+          });
           return;
         }
       }
@@ -207,8 +216,18 @@ export default function IssueIdentitiesPage() {
       setIdentities((prev) => prev.filter((i) => i.id !== signTarget.id));
       setStats((prev) => ({ ...prev, waiting: Math.max(0, prev.waiting - 1) }));
 
+      showAlert({
+        type: 'success',
+        title: 'Identity Issued',
+        message: `Identity for ${signTarget.name} has been successfully issued on-chain.`
+      });
+
     } catch (err: any) {
-      alert(`Failed to issue identity: ${err.message || 'Unknown error'}`);
+      showAlert({
+        type: 'error',
+        title: 'Issuance Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to issue identity.')
+      });
     } finally {
       setSigningLoading(false);
       setSignTarget(null);
@@ -279,7 +298,7 @@ export default function IssueIdentitiesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
             </svg>
             <p className="text-textMuted text-sm">
-              Showing users who have connected a wallet but haven&apos;t been issued a blockchain identity yet.
+              Students and Professors who have connected a wallet but haven&apos;t been issued a blockchain identity yet.
             </p>
           </div>
 

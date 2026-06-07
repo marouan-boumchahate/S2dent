@@ -248,7 +248,7 @@ const getProfessorWalletByUserId = async (userId) => {
     return identity.wallet_address
 }
 const getProfessorIdentitySigningData = (professor) => {
-    const chainId = blockchainConfig.chainId || 31337;
+    const chainId = blockchainConfig.chainId;
     const verifyingContract = blockchainConfig.deployedContractAddress;
 
     const {

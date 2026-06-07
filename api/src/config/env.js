@@ -1,4 +1,5 @@
 import dotenv from 'dotenv'
+import { ChainstackProvider } from 'ethers'
 
 dotenv.config({
   path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
@@ -53,6 +54,7 @@ export const env = {
     rpcUrl: process.env.BLOCKCHAIN_RPC_URL,
     platformPrivateKey: process.env.BLOCKCHAIN_PLATFORM_PRIVATE_KEY,
     deployedContractAddress: process.env.BLOCKCHAIN_DEPLOYED_CONTRACT_ADDRESS,
+    chainId: Number(process.env.BLOCKCHAIN_CHAIN_ID || 1),
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,

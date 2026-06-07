@@ -240,7 +240,7 @@ const updateCredential = async (credentialId, data) => {
     );
 };
 const getCredentialSigningData = (credential) => {
-    const chainId = blockchainConfig.chainId || 31337;
+    const chainId = blockchainConfig.chainId;
     const verifyingContract = blockchainConfig.deployedContractAddress;
 
     const {

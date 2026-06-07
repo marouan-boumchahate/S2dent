@@ -16,6 +16,8 @@ import {
   ApiDepartment,
   ApiUser,
 } from '@/lib/api';
+import { useAlert } from '@/components/AlertContext';
+import { getFriendlyErrorMessage } from '@/lib/utils';
 
 // helpers
 function formatDate(dateStr?: string | null) {
@@ -129,6 +131,7 @@ function RevokeModal({ name, onConfirm, onCancel }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProfessorDetailPage() {
   const router = useRouter();
+  const { showAlert } = useAlert();
   const params = useParams();
   const id = params?.id as string;
 
@@ -198,19 +201,54 @@ export default function ProfessorDetailPage() {
   const handleUpdate = async (rank: string, emp: string, loc: string, hours: string) => {
     try {
       await updateProfessor(id, {
-        rank: rank || undefined, employment_type: emp || undefined,
-        office_location: loc || undefined, office_hours: hours || undefined,
+        rank: rank || undefined,
+        employment_type: emp || undefined,
+        office_location: loc || undefined,
+        office_hours: hours || undefined,
       });
       setShowUpdateModal(false);
-      window.location.reload();
-    } catch (err) { console.error(err); }
+      showAlert({
+        type: 'success',
+        title: 'Professor Updated',
+        message: 'The professor records have been successfully updated.',
+        onConfirm: () => {
+          window.location.reload();
+        }
+      });
+    } catch (err: any) {
+      console.error(err);
+      setShowUpdateModal(false);
+      showAlert({
+        type: 'error',
+        title: 'Update Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to update professor records.')
+      });
+    }
   };
 
   const handleRevoke = async (reason: string) => {
     try {
-      if (onChain?.wallet_address) await revokeProfessorIdentity(onChain.wallet_address, reason);
-      router.push('/professors');
-    } catch (err) { console.error(err); }
+      if (onChain?.wallet_address) {
+        await revokeProfessorIdentity(onChain.wallet_address, reason);
+      }
+      setShowRevokeModal(false);
+      showAlert({
+        type: 'success',
+        title: 'Identity Revoked',
+        message: 'The professor blockchain identity has been successfully revoked.',
+        onConfirm: () => {
+          router.push('/professors');
+        }
+      });
+    } catch (err: any) {
+      console.error(err);
+      setShowRevokeModal(false);
+      showAlert({
+        type: 'error',
+        title: 'Revocation Failed',
+        message: getFriendlyErrorMessage(err, 'Failed to revoke professor identity.')
+      });
+    }
   };
 
   const displayName = user?.full_name
@@ -293,10 +331,18 @@ export default function ProfessorDetailPage() {
 
               {role === 'admin' && (
                 <div className="w-full mt-6 space-y-3">
-                  <Button title="Update Details" onClick={() => setShowUpdateModal(true)}
-                    variant="primary" className="w-full bg-mint text-navy rounded-xl font-semibold text-sm" />
-                  <button onClick={() => setShowRevokeModal(true)}
-                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm">
+                  <Button 
+                    title="Update Details" 
+                    onClick={() => setShowUpdateModal(true)}
+                    variant="primary" 
+                    className="w-full bg-mint text-navy rounded-xl font-semibold text-sm" 
+                    disabled={!!onChain?.status?.is_revoked}
+                  />
+                  <button 
+                    onClick={() => setShowRevokeModal(true)}
+                    disabled={!!onChain?.status?.is_revoked}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
