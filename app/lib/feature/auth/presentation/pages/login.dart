@@ -1,6 +1,7 @@
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/navigation/shell_page.dart';
+import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
@@ -100,9 +101,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
     });
 
-    final icon = Theme.brightnessOf(context) == Brightness.dark
-        ? "assets/logos/s2dent_dark.png"
-        : "assets/logos/s2dent_light.png";
+    final icon = ref.watch(logoImageProvider);
     return AuthLayout(
       children: [
         _headerSection(context, icon),

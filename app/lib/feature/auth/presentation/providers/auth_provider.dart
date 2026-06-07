@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/core/navigation/shell_page_index_provider.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
@@ -129,6 +130,7 @@ final authControllerProvider =
     pkStorage: ref.watch(pkStorageServiceProvider),
     appKitModal: ref.watch(appKitModalProvider),
     onLogout: () {
+      ref.read(shellPageIndexProvider.notifier).state = 0;
       ref.read(appKitModalProvider.notifier).state = null;
       ref.read(notificationRepoProvider).disconnect();
     },

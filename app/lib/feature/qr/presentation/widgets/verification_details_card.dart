@@ -1,4 +1,5 @@
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/utils/date_formatter.dart';
 import 'package:app/feature/qr/presentation/widgets/verification_info_row.dart';
 import 'package:flutter/material.dart';
 
@@ -9,6 +10,13 @@ class VerificationDetailsCard extends StatelessWidget {
   });
 
   final Map<String, dynamic> payload;
+
+  //foramts the value if its date
+  String _valueFormatter(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) return dateFormatter(parsed);
+    return value;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,15 +42,20 @@ class VerificationDetailsCard extends StatelessWidget {
             const SizedBox(height: 12),
             const Divider(thickness: 2),
             const SizedBox(height: 8),
-            ...payload.entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: VerificationInfoRow(
-                  label: e.key.replaceAll('_', ' ').toUpperCase(),
-                  value: e.value?.toString() ?? '—',
+            ...payload.entries
+                .where(
+                  (element) => element.value is! int,
+                )
+                .map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: VerificationInfoRow(
+                      label: e.key.replaceAll('_', ' ').toUpperCase(),
+                      //incase its a date, format it (otherwise return the same value)
+                      value: _valueFormatter(e.value),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ],
         ),
       ),

@@ -8,25 +8,44 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString("themeMode") ?? "light";
+  final initialTheme = ThemeNotifier.fromString(savedTheme);
   runApp(
     DevicePreview(
       enabled: false,
-      builder: (context) => const ProviderScope(
-        child: MyApp(),
+      builder: (context) => ProviderScope(
+        overrides: [
+          themeProvider.overrideWith((ref) => ThemeNotifier(initialTheme)),
+        ],
+        child: const MyApp(),
       ),
     ),
   );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/logos/s2dent_dark.png'), context);
+    precacheImage(const AssetImage('assets/logos/s2dent_light.png'), context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
     final session = ref.watch(hasSessionProvider);
 
