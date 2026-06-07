@@ -16,16 +16,14 @@ export default function VerifyPage() {
     setLoading(true);
 
     try {
-      // POST /api/auth/otp/send — sends OTP email and returns a nonce message to sign
+      // POST /api/auth/otp/send — email only, backend determines role automatically
+      // apiFetch unwraps json.data, so response = { message: "Sign this nonce..." }
       const response = await requestOtp(email.toLowerCase());
 
-      // Store email for the OTP page
       localStorage.setItem('pending_verify_email', email.toLowerCase());
 
-      // Store the nonce message returned by the API so the OTP page can prompt the wallet to sign it
-      // Response shape: { success: true, data: { message: "Sign this nonce to verify your identity: <nonce>" } }
-      if (response?.data?.message) {
-        localStorage.setItem('pending_verify_nonce', response.data.message);
+      if (response?.message) {
+        localStorage.setItem('pending_verify_nonce', response.message);
       }
 
       router.push('/verify/otp');
@@ -41,7 +39,6 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-navy flex items-center justify-center">
       <form onSubmit={handleVerifySubmit} className="w-full max-w-md bg-card p-8 rounded-3xl shadow-xl border border-borderLine">
 
-        {/* email png */}
         <div className="flex justify-center mb-4">
           <Image
             src="/email_light.png"
@@ -53,7 +50,7 @@ export default function VerifyPage() {
         </div>
 
         <h2 className="text-2xl font-bold text-textLight mb-2 text-center">Verify your identity</h2>
-        <p className="text-textMuted mb-8 text-center">Enter your email</p>
+        <p className="text-textMuted mb-8 text-center">Enter your email to receive a verification code</p>
 
         <div className="space-y-4">
           <div>

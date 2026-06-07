@@ -518,3 +518,60 @@ export async function fetchUserById(id: string): Promise<ApiUser | null> {
     return null;
   }
 }
+// ---- Identity schema fetch (Step 1 before issuing) ----
+export interface IdentitySchema {
+  domain: {
+    name: string;
+    version: string;
+    chainId: number;
+    verifyingContract: string;
+  };
+  types: Record<string, { name: string; type: string }[]>;
+  message: Record<string, string>;
+}
+
+export async function fetchProfessorIdentitySchema(walletAddress: string): Promise<IdentitySchema> {
+  return await apiFetch<IdentitySchema>(
+    `/identity/professors/pending/${walletAddress}/schema`
+  );
+}
+
+export async function fetchStudentIdentitySchema(walletAddress: string): Promise<IdentitySchema> {
+  return await apiFetch<IdentitySchema>(
+    `/identity/students/pending/${walletAddress}/schema`
+  );
+}
+
+// ---- Issue identity (Step 2 after signing schema) ----
+export async function issueProfessorIdentity(
+  professorAddress: string,
+  signature: string,
+): Promise<void> {
+  await apiFetch('/identity/professors/issue', {
+    method: 'POST',
+    body: JSON.stringify({ professor_address: professorAddress, signature }),
+  });
+}
+
+export async function issueStudentIdentity(
+  studentAddress: string,
+  signature: string,
+): Promise<void> {
+  await apiFetch('/identity/students/issue', {
+    method: 'POST',
+    body: JSON.stringify({ student_address: studentAddress, signature }),
+  });
+}
+// ---- Waiting identities (pending issuance list) ----
+export interface WaitingIdentity {
+  wallet_address: string;
+  role: 'student' | 'professor';
+  full_name: string;
+  email: string;
+  status: 'waiting';
+}
+
+export async function fetchWaitingIdentities(): Promise<WaitingIdentity[]> {
+  const data = await apiFetch<WaitingIdentity[]>('/identities/waiting');
+  return data;
+}

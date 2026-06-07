@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import SignAndIssueModal, { SignAndIssueData } from '@/components/SignAndIssueModal';
 import SearchFilter, { useSearchFilter } from '@/components/SearchFilter';
-import { fetchStudents, fetchProfessors, ApiStudent, ApiProfessor } from '@/lib/api';
+import {
+  fetchWaitingIdentities,
+  fetchProfessorIdentitySchema,
+  fetchStudentIdentitySchema,
+  issueProfessorIdentity,
+  issueStudentIdentity,
+  IdentitySchema,
+} from '@/lib/api';
 
 // Types
 type IdentityStatus = 'waiting' | 'pending';
@@ -20,7 +27,7 @@ interface PendingIdentity {
 
 type IdentityRow = PendingIdentity & { [key: string]: unknown };
 
-//subcomponents
+// Subcomponents
 
 function RoleBadge({ role }: { role: PendingIdentity['role'] }) {
   const cls =
@@ -61,111 +68,220 @@ function StatCard({ label, value, sub, subColor }: {
   );
 }
 
-
-
 // Page
 
 export default function IssueIdentitiesPage() {
   const [identities, setIdentities] = useState<PendingIdentity[]>([]);
   const [stats, setStats] = useState({ waiting: 0, noWallet: 0, issued: 0, revoked: 0 });
   const [signTarget, setSignTarget] = useState<PendingIdentity | null>(null);
+  const [signData, setSignData] = useState<SignAndIssueData | null>(null);
+  const [schema, setSchema] = useState<IdentitySchema | null>(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [signingLoading, setSigningLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetchStudents().catch(() => [] as ApiStudent[]),
-      fetchProfessors().catch(() => [] as ApiProfessor[])
-    ]).then(([students, professors]) => {
-      let waiting = 0, noWallet = 0, issued = 0, revoked = 0;
-      const pendingList: PendingIdentity[] = [];
-
-      const processUser = (u: ApiStudent | ApiProfessor, role: 'Student' | 'Professor') => {
-        if (u.is_revoked) { revoked++; return; }
-        if (u.last_transaction_status === 'verified') { issued++; return; }
-        if (!u.wallet_address) { noWallet++; return; }
-
-        const status: IdentityStatus = u.last_transaction_status === 'pending' ? 'pending' : 'waiting';
-        if (status === 'waiting') waiting++;
-
-        pendingList.push({
-          id: u.id,
-          name: u.name,
-          role,
+    fetchWaitingIdentities()
+      .then((list) => {
+        const pendingList: PendingIdentity[] = list.map((u) => ({
+          id: u.wallet_address,
+          name: u.full_name,
+          role: u.role === 'professor' ? 'Professor' : 'Student',
           email: u.email,
           walletAddress: u.wallet_address,
-          status
-        });
-      };
+          status: 'waiting' as IdentityStatus,
+        }));
 
-      students.forEach(s => processUser(s, 'Student'));
-      professors.forEach(p => processUser(p, 'Professor'));
-
-      setStats({ waiting, noWallet, issued, revoked });
-      setIdentities(pendingList);
-    });
+        setStats((prev) => ({ ...prev, waiting: pendingList.length }));
+        setIdentities(pendingList);
+      })
+      .catch(() => setIdentities([]));
   }, []);
 
   const { filtered, handleSearch } = useSearchFilter<IdentityRow>(
     identities as IdentityRow[],
-    (i) => i
+    (i) => i,
   );
 
-  const buildSignData = (identity: PendingIdentity): SignAndIssueData => ({
-    credentialType: identity.role,
-    title: identity.name,
-    code: identity.role === 'Student' ? 'STU' : 'PRF',
-    authorizedBy: 'Fenerbahçe University',
-    studentName: identity.name,
-    studentWallet: identity.walletAddress,
-    payloadHash: '0x' + Math.random().toString(16).slice(2, 18) + '...',
-  });
-
-  const handleIssueClick = (identity: PendingIdentity) => {
+  // Step 1: fetch the EIP-712 schema from the API, then open the modal with real data
+  const handleIssueClick = async (identity: PendingIdentity) => {
     if (identity.status !== 'waiting') return;
-    setSignTarget(identity);
+    setSchemaLoading(true);
+    setSchemaError(null);
+
+    try {
+      const fetchSchema = identity.role === 'Professor'
+        ? fetchProfessorIdentitySchema
+        : fetchStudentIdentitySchema;
+
+      const fetchedSchema = await fetchSchema(identity.walletAddress);
+      setSchema(fetchedSchema);
+
+      const msg = fetchedSchema.message;
+
+      // Build the SignAndIssueData from the real schema message
+      const built: SignAndIssueData = {
+        credentialType: identity.role,
+        title: identity.name,
+        code: identity.role === 'Student' ? 'STU' : 'PRF',
+        authorizedBy: msg.academyName || '—',
+        authorizerWalletAddress: msg.academyWalletAddress,
+        studentName: msg.fullName || identity.name,
+        studentWallet: identity.walletAddress,
+        payloadHash: identity.role === 'Professor'
+          ? (msg.professorIdHash || '—')
+          : (msg.studentIdHash || '—'),
+        nationalIdHash: msg.nationalIdHash,
+        publicKey: msg.publicKey,
+        hireDate: msg.hireDate,
+        enrollmentDate: msg.enrollmentDate,
+        department: msg.department,
+      };
+
+      setSignTarget(identity);
+      setSignData(built);
+    } catch (err: any) {
+      setSchemaError(err.message || 'Failed to load signing schema. Please try again.');
+    } finally {
+      setSchemaLoading(false);
+    }
   };
 
+  // Step 2: ensure correct chain, sign the EIP-712 typed data, then POST to issue endpoint
   const handleSignConfirm = async () => {
-    if (!signTarget) return;
+    if (!signTarget || !schema) return;
     setSigningLoading(true);
 
     try {
-      const endpoint = signTarget.role === 'Student'
-        ? '/identity/students/issue'
-        : '/identity/professors/issue';
+      if (!window.ethereum) {
+        alert('Please install MetaMask to issue identities.');
+        return;
+      }
 
-      const token = localStorage.getItem('access_token');
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-
-      await fetch(`${baseUrl}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          [`${signTarget.role.toLowerCase()}_address`]: signTarget.walletAddress
-        })
+      const accounts: string[] = await window.ethereum.request({
+        method: 'eth_requestAccounts',
       });
-    } catch {
-      // Proceed with local UI update even if API call fails
+
+      console.log('MetaMask account (signer):', accounts[0]);
+      console.log('Academy wallet in schema:', schema.message.academyWalletAddress);
+
+      // ✅ FIX 1: Ensure MetaMask is on the same chainId the schema was built for.
+      // If the chains differ, the domain separator won't match and the backend
+      // will recover a different signer → INVALID_SIGNATURE.
+      const expectedChainId = `0x${schema.domain.chainId.toString(16)}`;
+      const currentChainId: string = await window.ethereum.request({ method: 'eth_chainId' });
+
+      if (currentChainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: expectedChainId }],
+          });
+        } catch (switchErr: any) {
+          alert(
+            `Wrong network. Please switch MetaMask to chainId ${schema.domain.chainId} and try again.`,
+          );
+          return;
+        }
+      }
+
+      // ✅ FIX 2: Strip EIP712Domain from types — MetaMask derives the domain
+      // separator itself from the `domain` object. Passing EIP712Domain inside
+      // `types` causes a double-encoding mismatch with how the backend hashes it.
+      const { EIP712Domain: _, ...typesWithoutDomain } = schema.types as any;
+      const primaryType = Object.keys(schema.types)[0];
+
+      const typedData = {
+        domain: schema.domain,
+        types: typesWithoutDomain,
+        primaryType,
+        message: schema.message,
+      };
+
+      console.log('Full typed data sent to MetaMask:', JSON.stringify(typedData, null, 2));
+
+      const signature: string = await window.ethereum.request({
+        method: 'eth_signTypedData_v4',
+        params: [schema.message.academyWalletAddress as string, JSON.stringify(typedData)],
+      });
+
+      const { ethers } = await import('ethers');
+
+      const recovered = ethers.verifyTypedData(
+        schema.domain,
+        typesWithoutDomain,
+        schema.message,
+        signature,
+      );
+
+      console.log('Frontend recovered address:', recovered);
+      console.log('Expected academy address:', schema.message.academyWalletAddress);
+
+      // POST to the correct issue endpoint with the real signature
+      if (signTarget.role === 'Professor') {
+        await issueProfessorIdentity(signTarget.walletAddress, signature);
+      } else {
+        await issueStudentIdentity(signTarget.walletAddress, signature);
+      }
+
+      // ✅ FIX 3: Remove the row instead of setting status to 'pending'.
+      // fetchWaitingIdentities only returns truly-waiting users, so issued ones
+      // won't reappear on reload. Keeping them as 'pending' caused the row to
+      // vanish when the list was rebuilt from a fresh fetch.
+      setIdentities((prev) => prev.filter((i) => i.id !== signTarget.id));
+      setStats((prev) => ({ ...prev, waiting: Math.max(0, prev.waiting - 1) }));
+
+    } catch (err: any) {
+      alert(`Failed to issue identity: ${err.message || 'Unknown error'}`);
+    } finally {
+      setSigningLoading(false);
+      setSignTarget(null);
+      setSignData(null);
+      setSchema(null);
     }
+  };
 
-    setSigningLoading(false);
+  const handleCancel = () => {
     setSignTarget(null);
-
-    setIdentities((prev) =>
-      prev.map((i) => (i.id === signTarget.id ? { ...i, status: 'pending' } : i))
-    );
+    setSignData(null);
+    setSchema(null);
+    setSchemaError(null);
   };
 
   return (
     <>
-      {signTarget && (
+      {/* Schema loading overlay */}
+      {schemaLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-card border border-borderLine rounded-2xl px-8 py-6 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-mint border-t-transparent rounded-full animate-spin" />
+            <p className="text-textMuted text-sm">Loading signing schema…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Schema error */}
+      {schemaError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-card border border-red-500/30 rounded-2xl px-8 py-6 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <p className="text-red-400 font-semibold">Failed to load schema</p>
+            <p className="text-textMuted text-sm">{schemaError}</p>
+            <button
+              onClick={() => setSchemaError(null)}
+              className="w-full py-2 rounded-lg bg-surface border border-borderLine text-textMuted hover:text-textLight transition text-sm font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sign modal — only opens after schema is successfully fetched */}
+      {signTarget && signData && (
         <SignAndIssueModal
-          data={buildSignData(signTarget)}
+          data={signData}
           onConfirm={handleSignConfirm}
-          onCancel={() => setSignTarget(null)}
+          onCancel={handleCancel}
           loading={signingLoading}
         />
       )}
@@ -175,7 +291,6 @@ export default function IssueIdentitiesPage() {
 
         <div className="p-6 space-y-6">
 
-          {/* stat cards later will be taakes the api for data !!!!!!!! */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Pending issuance" value={stats.waiting} sub="wallet connected" subColor="text-yellow-400" />
             <StatCard label="No wallet yet" value={stats.noWallet} sub="awaiting" />
@@ -183,7 +298,6 @@ export default function IssueIdentitiesPage() {
             <StatCard label="Revoked" value={stats.revoked} sub="flagged" subColor="text-red-400" />
           </div>
 
-          {/* banner message*/}
           <div className="flex items-center gap-3 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-3">
             <svg className="w-4 h-4 text-yellow-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
@@ -193,13 +307,10 @@ export default function IssueIdentitiesPage() {
             </p>
           </div>
 
-          {/* table */}
           <div className="bg-card border border-borderLine rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-borderLine">
               <h3 className="text-textMuted text-sm font-bold uppercase tracking-widest">
                 Pending identity issuance
-
-                {/* for filter */}
                 {filtered.length !== identities.length && (
                   <span className="ml-2 text-mint normal-case font-normal">
                     — {filtered.length} result{filtered.length !== 1 ? 's' : ''}
@@ -208,7 +319,6 @@ export default function IssueIdentitiesPage() {
               </h3>
             </div>
 
-            {/* SearchFilter */}
             <div className="px-6 py-4 border-b border-borderLine">
               <SearchFilter
                 placeholder="Search by name, email, role…"
@@ -226,7 +336,6 @@ export default function IssueIdentitiesPage() {
               <div className="flex items-center justify-center min-h-48 py-12">
                 <p className="text-textMuted text-sm">No pending identities. All users have been issued.</p>
               </div>
-
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-48 py-12 gap-2">
                 <p className="text-textMuted">No identities match your search.</p>
@@ -245,7 +354,7 @@ export default function IssueIdentitiesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(identity => (
+                    {filtered.map((identity) => (
                       <tr key={identity.id} className="border-b border-borderLine last:border-0 hover:bg-surface/50 transition">
                         <td className="px-6 py-4 text-textLight text-sm font-semibold">{identity.name}</td>
                         <td className="px-6 py-4"><RoleBadge role={identity.role} /></td>
@@ -255,11 +364,11 @@ export default function IssueIdentitiesPage() {
                         <td className="px-6 py-4">
                           <button
                             onClick={() => handleIssueClick(identity)}
-                            disabled={identity.status === 'pending'}
+                            disabled={identity.status === 'pending' || schemaLoading}
                             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition
                               ${identity.status === 'pending'
                                 ? 'bg-surface text-textMuted border border-borderLine cursor-not-allowed'
-                                : 'bg-mint text-navy hover:opacity-90'
+                                : 'bg-mint text-navy hover:opacity-90 disabled:opacity-50'
                               }`}
                           >
                             {identity.status === 'pending' ? 'Processing…' : 'Issue identity'}
