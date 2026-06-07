@@ -1,4 +1,5 @@
 import 'package:app/core/extensions/context_extensions.dart';
+import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
@@ -120,13 +121,13 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
   @override
   Widget build(BuildContext context) {
     final credentialsData = ref.watch(credentialControllerProvider);
-
+    final image = ref.watch(logoImageProvider);
     return credentialsData.when(
       data: (data) {
         if (data.isEmpty) {
           return _emptyBody();
         } else {
-          return _body(data);
+          return _body(data, image);
         }
       },
       error: (error, stackTrace) => Center(
@@ -136,12 +137,13 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     );
   }
 
-  Widget _body(List<CredentialItem> data) {
+  Widget _body(List<CredentialItem> data, String image) {
     final filtered = _applyFilters(data);
     return RefreshIndicator(
       onRefresh: () =>
           ref.read(credentialControllerProvider.notifier).loadCredentials(),
       child: MainLayout(
+        backgroundImage: image,
         children: [
           _HeaderSection(
             searchController: _searchController,
