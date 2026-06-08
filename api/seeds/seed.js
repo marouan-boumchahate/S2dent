@@ -76,18 +76,18 @@ const seedStudent = async ({ departmentId, academyToken, academyPrivateKey, advi
   });
   log('identity', `requested for student=${studentRequest.wallet_address}`);
 
-  // await finalizeIdentity('student', {
-  //   walletAddress: studentRequest.wallet_address,
-  //   academyToken,
-  //   academyPrivateKey,
-  // });
-  // log('identity', `issued for student=${studentRequest.wallet_address}`);
+  await finalizeIdentity('student', {
+     walletAddress: studentRequest.wallet_address,
+     academyToken,
+     academyPrivateKey,
+  });
+  log('identity', `issued for student=${studentRequest.wallet_address}`);
 
-  // await wait(1500);
-  // const tokens = await authenticate(WALLETS.student);
-  // log('auth', 'student authenticated');
+  await wait(1500);
+  const tokens = await authenticate(WALLETS.student);
+  log('auth', 'student authenticated');
 
-  // return { id, tokens };
+  return { id, tokens };
 };
 const seedProfessor = async ({ departmentId, academyToken, academyPrivateKey }) => {
   const profile = userProfile();
@@ -172,16 +172,16 @@ const main = async () => {
   };
   const professor = await seedProfessor(ctx);
   const student = await seedStudent({ ...ctx, advisorId: professor.id });
-  // const credentials = await seedCredentials({
-  //   academyToken: academy.tokens.accessToken,
-  //   professorToken: professor.tokens.accessToken,
-  // });
+  const credentials = await seedCredentials({
+     academyToken: academy.tokens.accessToken,
+     professorToken: professor.tokens.accessToken,
+  });
   
   printTokens('admin', adminTokens);
   printTokens('academy', academy.tokens);
   printTokens('professor', professor.tokens);
-  // printTokens('student', student.tokens);
-  // log('credential', `completed ${Object.keys(credentials).length} credential issuances`);
+  printTokens('student', student.tokens);
+  log('credential', `completed ${Object.keys(credentials).length} credential issuances`);
 };
 
 main().catch((e) => {
