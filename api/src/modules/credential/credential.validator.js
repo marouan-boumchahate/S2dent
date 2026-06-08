@@ -65,7 +65,6 @@ const payloadSchemas = {
     enrollment: Joi.object({
         course_name: Joi.string().required(),
         course_code: Joi.string().required(),
-        academic_year: Joi.string().pattern(/^\d{4}-\d{4}$/).required(),
         semester: Joi.string().valid(...semesters).required(),
         enrollment_date: Joi.date().iso().required()
     }),
