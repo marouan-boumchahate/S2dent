@@ -1,8 +1,8 @@
 import Joi from 'joi';
 
 const createAddressSchema = Joi.object({
-  user_id: Joi.string().uuid().optional().allow(null, ''),
-  academy_id: Joi.string().uuid().optional().allow(null, ''),
+  user_id: Joi.string().uuid().optional(),
+  academy_id: Joi.string().uuid().optional(),
   address_line1: Joi.string().trim().max(255).optional().allow(null, ''),
   address_line2: Joi.string().trim().max(255).optional().allow(null, ''),
   street: Joi.string().trim().max(255).optional().allow(null, ''),
@@ -13,7 +13,7 @@ const createAddressSchema = Joi.object({
   country: Joi.string().trim().max(100).required(),
   latitude: Joi.number().min(-90).max(90).optional().allow(null, ''),
   longitude: Joi.number().min(-180).max(180).optional().allow(null, ''),
-});
+}).xor('user_id', 'academy_id');
 
 const updateAddressSchema = Joi.object({
   address_line1: Joi.string().trim().max(255).optional().allow(null, ''),
