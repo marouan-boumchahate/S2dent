@@ -4,6 +4,7 @@ import 'package:app/core/theme/app_color.dart';
 import 'package:app/core/utils/date_formatter.dart';
 import 'package:app/core/utils/dimensions.dart';
 import 'package:app/core/utils/ecies_decrypt.dart';
+import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/feature/credentials/domain/models/credential.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
@@ -70,7 +71,7 @@ class _CredentialDetailsDialogState
     } catch (e) {
       setState(() => _isDecrypting = false);
       if (!mounted) return;
-      showAlertDialog(context, e.toString(), type: AlertType.error);
+      showAlertDialog(context, errorMessage(e), type: AlertType.error);
     }
   }
 

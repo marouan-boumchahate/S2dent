@@ -1,5 +1,6 @@
 ﻿import 'package:app/core/navigation/shell_page_index_provider.dart';
 import 'package:app/core/services/pk_storage.service.dart';
+import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/loading.dart';
@@ -114,7 +115,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         ],
       ),
       error: (error, stackTrace) => Center(
-        child: Text(error.toString()),
+        child: Text(errorMessage(error)),
       ),
       loading: () => const Center(
         child: LoadingState(),

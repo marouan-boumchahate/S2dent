@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/core/network/api_client.dart';
+import 'package:app/core/utils/error_message.dart';
 import 'package:app/feature/auth/data/datasources/verification_datasource.dart';
 import 'package:app/feature/auth/data/repos_impl/verification_repo_impl.dart';
 import 'package:app/feature/auth/domain/repos/verification_repo.dart';
@@ -62,7 +63,7 @@ class VerificationController extends StateNotifier<VerificationState> {
       _nonce = nonce;
       state = state.copyWith(isLoading: false, emailSent: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: errorMessage(e));
     }
   }
 
@@ -109,7 +110,7 @@ class VerificationController extends StateNotifier<VerificationState> {
         walletAddress: walletAddress,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: errorMessage(e));
     }
   }
 }

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeNotifier extends StateNotifier<ThemeMode> {
-  ThemeNotifier([ThemeMode initial = ThemeMode.light]) : super(initial);
+  ThemeNotifier([super.initial = ThemeMode.light]);
 
   void setTheme(ThemeMode theme) async {
     state = theme;
