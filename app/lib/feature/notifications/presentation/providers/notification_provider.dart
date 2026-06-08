@@ -34,7 +34,21 @@ class NotificationController extends Notifier<List<AppNotification>> {
     );
     ref.onDispose(subscription.cancel);
 
-    //FOR DEBUGGING AND TEST ONLY TODO:REMOVE IT AFTER PRODUYCTION
+    final authErrorSub = repo.authErrorStream.listen((_) {
+      final dio = ref.read(dioProvider);
+      final tokenStorage = ref.read(tokenStorageServiceProvider);
+      dio
+          .get('/helper/health')
+          .then((_) {},
+              onError: (_) {}) // ping may fail in mock/offline; still reconnect
+          .whenComplete(() {
+        tokenStorage.getAccessToken().then((token) {
+          if (token != null) repo.connect(token);
+        });
+      });
+    });
+    ref.onDispose(authErrorSub.cancel);
+
     if (AppConfig.useMockApi) {
       return [
         AppNotification(

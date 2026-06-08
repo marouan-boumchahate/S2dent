@@ -8,7 +8,10 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 class NotificationDatasource {
   io.Socket? _socket;
   final _streamController = StreamController<AppNotification>.broadcast();
+  final _authErrorController = StreamController<String>.broadcast();
+
   Stream<AppNotification> get notificationStream => _streamController.stream;
+  Stream<String> get authErrorStream => _authErrorController.stream;
 
   void connect(String accessToken) {
     //disconnect if there is already an existing connection (on refreshToken)
@@ -26,7 +29,7 @@ class NotificationDatasource {
     //send accessToken to authenticate
     _socket!.onConnect((data) => _socket!.emit("join", accessToken));
 
-    //listener for notifiactions
+    //listener for notifications
     _socket!.on(
       "notification",
       (data) {
@@ -44,6 +47,15 @@ class NotificationDatasource {
         }
       },
     );
+
+    // server emits this when token is invalid or expires mid-session,
+    // then disconnects immediately — signal the provider to refresh & reconnect
+    _socket!.on("auth_error", (data) {
+      debugPrint("Socket auth_error: $data");
+      _socket = null;
+      _authErrorController.add(data?.toString() ?? "auth_error");
+    });
+
     //finally connect
     _socket!.connect();
   }
@@ -56,5 +68,7 @@ class NotificationDatasource {
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
+    if (!_streamController.isClosed) _streamController.close();
+    if (!_authErrorController.isClosed) _authErrorController.close();
   }
 }

@@ -91,7 +91,13 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
       state = AsyncValue.data(token);
       onLogin?.call(token.accessToken);
     } catch (e, trace) {
-      state = AsyncValue.error(e, trace);
+      await getAppKitModal()?.disconnect();
+      // user consciously rejected the wallet prompt — reset silently, no error dialog
+      if (e is ReownAppKitModalException) {
+        state = const AsyncValue.data(null);
+      } else {
+        state = AsyncValue.error(e, trace);
+      }
     }
   }
 

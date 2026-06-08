@@ -2,6 +2,7 @@ import 'package:app/core/config/app_config.dart';
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
+import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';
@@ -81,10 +82,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen(authControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, stackTrace) {
-          final message = error is ReownAppKitModalException
-              ? error.message.toString()
-              : error.toString();
-          showAlertDialog(context, message, type: AlertType.error);
+          showAlertDialog(context, errorMessage(error), type: AlertType.error);
         },
       );
     });
