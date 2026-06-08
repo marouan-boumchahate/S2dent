@@ -34,9 +34,6 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
 
   List<CredentialItem> _filtered(List<CredentialItem> credentials) {
     return credentials.where((credential) {
-      //exclude the revoked ones
-      if (credential.isRevoked) return false;
-
       return _searchController.text.isEmpty ||
           credential.title
               .toLowerCase()
@@ -75,6 +72,12 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
           decoration: InputDecoration(
             hintText: "Search credentials...",
             prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.blueGrey.withAlpha(160)),
@@ -84,6 +87,10 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
         ),
         const SizedBox(height: 8),
         const Divider(thickness: 2),
+        if (data.isEmpty)
+          _emptyBody("You have no credentials yet!")
+        else if (filtered.isEmpty)
+          _emptyBody("No credentials match your search"),
         ...List.generate(
           filtered.length,
           (index) => CredentialCard(
@@ -110,6 +117,21 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _emptyBody(String message) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.45,
+      child: Center(
+        child: Text(
+          message,
+          style: context.texts.titleLarge!.copyWith(
+            color: context.colors.primary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }

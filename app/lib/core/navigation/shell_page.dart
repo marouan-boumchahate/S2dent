@@ -14,6 +14,8 @@ class ShellPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(shellPageIndexProvider);
     return Scaffold(
+      //prevent the image from moving upwards
+      resizeToAvoidBottomInset: false,
       body: IndexedStack(
         index: currentIndex,
         children: const [
@@ -25,7 +27,8 @@ class ShellPage extends ConsumerWidget {
       ),
       bottomNavigationBar: CustomBottomNav(
         currentIndex: currentIndex,
-        onTap: (index) => ref.read(shellPageIndexProvider.notifier).state = index,
+        onTap: (index) =>
+            ref.read(shellPageIndexProvider.notifier).state = index,
       ),
     );
   }
