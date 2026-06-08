@@ -1,6 +1,5 @@
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/extensions/context_extensions.dart';
-import 'package:app/core/navigation/shell_page.dart';
 import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
@@ -81,17 +80,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.listen(authControllerProvider, (previous, next) {
       next.whenOrNull(
-        data: (token) {
-          if (token != null) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ShellPage(),
-              ),
-              (route) => false,
-            );
-          }
-        },
         error: (error, stackTrace) {
           final message = error is ReownAppKitModalException
               ? error.message.toString()
