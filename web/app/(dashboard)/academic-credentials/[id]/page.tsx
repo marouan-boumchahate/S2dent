@@ -62,10 +62,10 @@ function OnChainField({ label, value, full = false }: { label: string; value: st
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    Verified: 'bg-mint/10 text-mint border-mint/30',
-    Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
-    Failed: 'bg-red-400/10 text-red-400 border-red-400/30',
-    Revoked: 'bg-red-400/10 text-red-400 border-red-400/30',
+    Verified: 'bg-mint/10 text-mint border border-mint/20',
+    Pending: 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20',
+    Failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
+    Revoked: 'bg-red-500/10 text-red-400 border border-red-500/20',
   };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${map[status] ?? map.Pending}`}>
@@ -216,13 +216,13 @@ export default function CredentialDetailPage() {
 
         {/* back nav */}
         <button
-          onClick={() => router.push('/credentials')}
+          onClick={() => router.push('/academic-credentials')}
           className="flex items-center gap-2 text-textMuted hover:text-textLight transition text-sm mb-6 w-fit"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Credentials
+          Back to Academic Credentials
         </button>
 
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">

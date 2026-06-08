@@ -90,9 +90,9 @@ export default function LoginForm() {
       }
 
       if (role === 'professor') {
-        router.push('/credentials');
+        router.push('/academic-credentials');
       } else {
-        router.push('/students');
+        router.push('/enrolled-students');
       }
 
       router.refresh();

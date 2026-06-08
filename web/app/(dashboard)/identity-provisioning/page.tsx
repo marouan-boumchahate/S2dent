@@ -34,8 +34,8 @@ type IdentityRow = PendingIdentity & { [key: string]: unknown };
 function RoleBadge({ role }: { role: PendingIdentity['role'] }) {
   const cls =
     role === 'Student'
-      ? 'bg-mint/10 text-mint border-mint/30'
-      : 'bg-purple-400/10 text-purple-400 border-purple-400/30';
+      ? 'bg-mint/10 text-mint border-mint/20'
+      : 'bg-purple-500/10 text-purple-400 border-purple-500/20';
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
       {role}
@@ -46,13 +46,13 @@ function RoleBadge({ role }: { role: PendingIdentity['role'] }) {
 function StatusBadge({ status }: { status: IdentityStatus }) {
   if (status === 'pending') {
     return (
-      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-yellow-400/10 text-yellow-400 border-yellow-400/30">
+      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
         Pending
       </span>
     );
   }
   return (
-    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-blue-400/10 text-blue-400 border-blue-400/30">
+    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-blue-500/10 text-blue-400 border-blue-500/20">
       Waiting
     </span>
   );
@@ -283,15 +283,15 @@ export default function IssueIdentitiesPage() {
       )}
 
       <div className="flex flex-col h-full">
-        <PageHeader title="Issue identities" />
+        <PageHeader title="Identity Provisioning" />
 
         <div className="p-6 space-y-6">
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Pending issuance" value={stats.waiting} sub="wallet connected" subColor="text-yellow-400" />
-            <StatCard label="No wallet yet" value={stats.noWallet} sub="awaiting" />
-            <StatCard label="Already issued" value={stats.issued} sub="on-chain" subColor="text-mint" />
-            <StatCard label="Revoked" value={stats.revoked} sub="flagged" subColor="text-red-400" />
+            <StatCard label="Awaiting Provisioning" value={stats.waiting} sub="wallet connected" subColor="text-yellow-400" />
+            <StatCard label="Awaiting Wallet Connection" value={stats.noWallet} sub="awaiting" />
+            <StatCard label="Provisioned Identities" value={stats.issued} sub="on-chain" subColor="text-mint" />
+            <StatCard label="Revoked Identities" value={stats.revoked} sub="flagged" subColor="text-red-400" />
           </div>
 
           <div className="flex items-center gap-3 bg-yellow-400/5 border border-yellow-400/20 rounded-xl px-4 py-3">

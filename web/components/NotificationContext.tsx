@@ -110,18 +110,6 @@ function parseSocketEvent(data: {
   };
 }
 
-// Mock events (used when NEXT_PUBLIC_SOCKET_URL is not set)
-
-const MOCK_EVENTS: Omit<Notification, 'id' | 'timestamp' | 'read'>[] = [
-  { type: 'wallet_connected',     title: 'Wallet connected',        message: 'Ahmed Hassan connected his wallet and is awaiting identity issuance.' },
-  { type: 'student_registered',   title: 'New student registered',  message: 'Sara Mohamed was added to the system by an admin.' },
-  { type: 'identity_issued',      title: 'Identity issued',         message: 'Blockchain identity successfully issued to Nour Ali.' },
-  { type: 'professor_registered', title: 'New professor registered', message: 'Dr. Khaled Mansour was registered in the Professors list.' },
-  { type: 'credential_issued',    title: 'Credential issued',       message: 'Enrollment credential issued to Ahmed Hassan on-chain.' },
-  { type: 'identity_revoked',     title: 'Identity revoked',        message: 'Blockchain identity for Hana Farouk has been revoked and flagged.' },
-  { type: 'credential_revoked',   title: 'Credential revoked',      message: 'Degree credential for Sara Mohamed was revoked by admin.' },
-];
-
 // Socket hook
 
 function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void) {
@@ -132,59 +120,46 @@ function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>)
     const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
     const token = getAccessToken(); // Safely pulls the real 'access_token' parameter string from storage
 
+    if (!SOCKET_URL) return;
+
     // REAL SOCKET (active when NEXT_PUBLIC_SOCKET_URL is set)
-    if (SOCKET_URL) {
-      let socket: ReturnType<typeof import('socket.io-client').io> | null = null;
+    let socket: ReturnType<typeof import('socket.io-client').io> | null = null;
 
-      import('socket.io-client').then(({ io }) => {
-        socket = io(SOCKET_URL, { transports: ['websocket'] });
+    import('socket.io-client').then(({ io }) => {
+      socket = io(SOCKET_URL, { transports: ['websocket'] });
 
-        // Step 1: on connect → authenticate with JWT
-        socket.on('connect', () => {
-          if (token) {
-            socket!.emit('join', token);
-          }
-        });
-
-        // Step 2: listen for notifications
-        socket.on('notification', (data: {
-          eventId: string;
-          tx_hash: string;
-          status: 'verified' | 'failed';
-          message: string;
-          created_at: string;
-        }) => {
-          const parsed = parseSocketEvent(data);
-          onEventRef.current(parsed);
-
-          // Step 3: ACK every event so server doesn't re-send it
-          if (data.eventId) {
-            socket!.emit('ack_event', data.eventId);
-          }
-        });
-
-        socket.on('disconnect', () => {
-          console.log('[S2dent] Socket disconnected');
-        });
+      // Step 1: on connect → authenticate with JWT
+      socket.on('connect', () => {
+        if (token) {
+          socket!.emit('join', token);
+        }
       });
 
-      return () => {
-        socket?.disconnect();
-      };
-    }
+      // Step 2: listen for notifications
+      socket.on('notification', (data: {
+        eventId: string;
+        tx_hash: string;
+        status: 'verified' | 'failed';
+        message: string;
+        created_at: string;
+      }) => {
+        const parsed = parseSocketEvent(data);
+        onEventRef.current(parsed);
 
-    // MOCK SOCKET (active when no NEXT_PUBLIC_SOCKET_URL)
-    let timeout: ReturnType<typeof setTimeout>;
-    const scheduleNext = () => {
-      const delay = 12000 + Math.random() * 8000;
-      timeout = setTimeout(() => {
-        const event = MOCK_EVENTS[Math.floor(Math.random() * MOCK_EVENTS.length)];
-        onEventRef.current(event);
-        scheduleNext();
-      }, delay);
+        // Step 3: ACK every event so server doesn't re-send it
+        if (data.eventId) {
+          socket!.emit('ack_event', data.eventId);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[S2dent] Socket disconnected');
+      });
+    });
+
+    return () => {
+      socket?.disconnect();
     };
-    scheduleNext();
-    return () => clearTimeout(timeout);
   }, []);
 }
 

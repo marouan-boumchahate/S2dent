@@ -310,7 +310,7 @@ export default function CreateStudentForm({
         message: `${firstName} ${lastName} has been successfully registered as a student.`,
         onConfirm: () => {
           onClose();
-          router.push('/students');
+          router.push('/enrolled-students');
         }
       });
     } catch (error: any) {

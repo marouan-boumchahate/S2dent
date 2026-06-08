@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     const role = localStorage.getItem('userRole');
-    const professorAllowed = ['/students', '/credentials', '/createCredential', '/profile'];
+    const professorAllowed = ['/enrolled-students', '/academic-credentials', '/createCredential', '/profile'];
     const isProfessor = role === 'professor';
     const isPathAllowed = !isProfessor || professorAllowed.some(p => pathname.startsWith(p));
 

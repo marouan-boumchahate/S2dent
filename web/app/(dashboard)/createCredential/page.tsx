@@ -506,7 +506,7 @@ export default function NewCredentialPage() {
         message: 'The verifiable credential has been successfully signed and issued on-chain.',
         onConfirm: () => {
           setShowReview(false);
-          router.push('/credentials');
+          router.push('/academic-credentials');
           router.refresh();
         }
       });
@@ -539,13 +539,13 @@ export default function NewCredentialPage() {
 
         {/* back nav button*/}
         <button
-          onClick={() => router.push('/credentials')}
+          onClick={() => router.push('/academic-credentials')}
           className="flex items-center gap-2 text-textMuted hover:text-textLight transition text-sm mb-6 w-fit"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Credentials
+          Back to Academic Credentials
         </button>
 
         <div className="bg-card border border-borderLine rounded-2xl overflow-y-auto flex-1">
@@ -662,7 +662,7 @@ export default function NewCredentialPage() {
           {/* form for last step in bottom the name of it should be FOOTER as i read */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-borderLine bg-surface/30">
             <button
-              onClick={() => router.push('/credentials')}
+              onClick={() => router.push('/academic-credentials')}
               className="px-5 py-2 rounded-xl border border-borderLine text-textMuted hover:bg-surface transition font-semibold text-sm"
             >
               Cancel

@@ -28,11 +28,11 @@ function StatusBadge({ status, loading = false }: { status: string; loading?: bo
     return <span className="inline-block w-16 h-5 rounded-full bg-borderLine animate-pulse" />;
   }
   const colors: Record<string, string> = {
-    Verified: 'bg-mint/10 text-mint border-mint/30',
-    Issued: 'bg-mint/10 text-mint border-mint/30',
-    Pending: 'bg-yellow-400/10 text-yellow-500 border-yellow-400/30',
-    Failed: 'bg-red-400/10 text-red-400 border-red-400/30',
-    Revoked: 'bg-red-400/10 text-red-400 border-red-400/30',
+    Verified: 'bg-mint/10 text-mint border border-mint/20',
+    Issued: 'bg-mint/10 text-mint border border-mint/20',
+    Pending: 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20',
+    Failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
+    Revoked: 'bg-red-500/10 text-red-400 border border-red-500/20',
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors[status] ?? colors.Pending}`}>
@@ -80,16 +80,16 @@ export default function CredentialsPage() {
   return (
     <div className="flex flex-col h-full">
 
-      <PageHeader title="Credentials" onAddNew={() => router.push('/createCredential')} />
+      <PageHeader title="Academic Credentials" onAddNew={() => router.push('/createCredential')} />
 
       <div className="p-6 space-y-6">
 
         {/* stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total credentials" value={total} sub="on blockchain" />
-          <StatCard label="Verified" value={verified} sub="valid" subColor="text-mint" />
-          <StatCard label="Pending" value={pending} sub="awaiting tx" subColor="text-yellow-400" />
-          <StatCard label="Revoked" value={revoked} sub="flagged" subColor="text-red-400" />
+          <StatCard label="Total Academic Credentials" value={total} sub="on blockchain" />
+          <StatCard label="Verified Credentials" value={verified} sub="valid" subColor="text-mint" />
+          <StatCard label="Pending Issuance" value={pending} sub="awaiting tx" subColor="text-yellow-400" />
+          <StatCard label="Revoked Credentials" value={revoked} sub="flagged" subColor="text-red-400" />
         </div>
 
         {/* table */}
@@ -165,7 +165,7 @@ export default function CredentialsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <button
-                            onClick={() => router.push(`/credentials/${cred.id}`)}
+                            onClick={() => router.push(`/academic-credentials/${cred.id}`)}
                             className="text-xs border border-borderLine text-textMuted hover:text-textLight hover:border-mint px-3 py-1 rounded-lg transition"
                           >
                             View

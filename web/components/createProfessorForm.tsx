@@ -331,7 +331,7 @@ export default function CreateProfessorForm({
         message: `${title} ${firstName} ${lastName} has been successfully registered as a professor.`,
         onConfirm: () => {
           onClose();
-          router.push('/professors');
+          router.push('/faculty-members');
         }
       });
     } catch (error: any) {
