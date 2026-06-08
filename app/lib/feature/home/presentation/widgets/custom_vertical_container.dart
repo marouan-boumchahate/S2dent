@@ -10,6 +10,7 @@ class CustomVerticalContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: context.colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
@@ -20,7 +21,17 @@ class CustomVerticalContainer extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: children,
+        children: children.isEmpty
+            ? [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    "No recent activities detected",
+                    style: context.texts.titleLarge,
+                  ),
+                ),
+              ]
+            : children,
       ),
     );
   }

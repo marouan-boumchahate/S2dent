@@ -124,11 +124,7 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     final image = ref.watch(logoImageProvider);
     return credentialsData.when(
       data: (data) {
-        if (data.isEmpty) {
-          return _emptyBody();
-        } else {
-          return _body(data, image);
-        }
+        return _body(data, image);
       },
       error: (error, stackTrace) => Center(
         child: Text("ERROR OCCURED: $error"),
@@ -149,9 +145,13 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
             searchController: _searchController,
             hasActiveFilters: _hasActiveFilters,
             onFilterTap: _showFilterSheet,
-            credentialCount: filtered.length,
+            credentialCount: data.length,
           ),
           const SizedBox(height: 16),
+          if (data.isEmpty)
+            _emptyBody("You have no credentials yet!")
+          else if (filtered.isEmpty)
+            _emptyBody("No credentials match your search"),
           ...List.generate(
             filtered.length,
             (index) => CredentialCard(
@@ -164,12 +164,16 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
     );
   }
 
-  Widget _emptyBody() {
-    return Center(
-      child: Text(
-        "You have no credentials yet !",
-        style: context.texts.titleLarge!.copyWith(
-          color: context.colors.primary,
+  Widget _emptyBody(String message) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.55,
+      child: Center(
+        child: Text(
+          message,
+          style: context.texts.titleLarge!.copyWith(
+            color: context.colors.primary,
+          ),
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -204,7 +208,7 @@ class _HeaderSection extends StatelessWidget {
                 .copyWith(color: context.colors.primary),
           ),
           Text(
-            "$credentialCount credentials",
+            "$credentialCount total credentials",
             style: context.texts.bodyMedium!.copyWith(color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -216,6 +220,12 @@ class _HeaderSection extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: "Search credentials...",
                     prefixIcon: const Icon(Icons.search),
+                    suffixIcon: searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => searchController.clear(),
+                          )
+                        : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
