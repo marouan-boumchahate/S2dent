@@ -272,9 +272,10 @@ export default function IssueIdentitiesPage() {
       )}
 
       {/* Sign modal — only opens after schema is successfully fetched */}
-      {signTarget && signData && (
+      {signTarget && signData && schema && (
         <SignAndIssueModal
           data={signData}
+          schema={schema}
           onConfirm={handleSignConfirm}
           onCancel={handleCancel}
           loading={signingLoading}

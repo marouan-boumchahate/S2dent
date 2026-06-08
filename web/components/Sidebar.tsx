@@ -88,6 +88,17 @@ export default function Sidebar() {
     setImageLoaded(false);
   }, [imgSrc]);
 
+  // Timeout handler: if the logo takes too long to load (e.g. broken/offline URL), fall back to default
+  useEffect(() => {
+    if (imgSrc && imgSrc !== '/logo.png' && !imageLoaded) {
+      const timer = setTimeout(() => {
+        setImgSrc('/logo.png');
+        setImageLoaded(true); // Force spinner to stop when falling back
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [imgSrc, imageLoaded]);
+
   const handleSignOut = () => {
     localStorage.removeItem('userRole');
     clearTokens(); // Erases access_token and refresh_token from local storage contexts safely
@@ -144,6 +155,7 @@ export default function Sidebar() {
             )}
             {!isFetchingLogo && (
               <Image
+                key={imgSrc}
                 src={imgSrc || '/logo.png'}
                 alt="University Logo"
                 width={96}
@@ -153,6 +165,8 @@ export default function Sidebar() {
                 onError={() => {
                   if (imgSrc !== '/logo.png') {
                     setImgSrc('/logo.png');
+                  } else {
+                    setImageLoaded(true);
                   }
                 }}
                 unoptimized

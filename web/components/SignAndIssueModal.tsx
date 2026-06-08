@@ -1,6 +1,5 @@
-'use client';
-
 import { useState } from 'react';
+import { IdentitySchema } from '@/lib/api';
 
 // Types
 
@@ -25,9 +24,33 @@ export interface SignAndIssueData {
 
 interface SignAndIssueModalProps {
   data: SignAndIssueData;
+  schema: IdentitySchema;
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
+}
+
+function highlightJson(data: any): string {
+  const json = JSON.stringify(data, null, 2);
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, (match) => {
+      let style = 'color: #fbbf24;';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          style = 'color: #f8fafc; font-weight: 600;';
+        } else {
+          style = 'color: #34d399;';
+        }
+      } else if (/true|false/.test(match)) {
+        style = 'color: #a78bfa; font-weight: 600;';
+      } else if (/null/.test(match)) {
+        style = 'color: #64748b;';
+      }
+      return `<span style="${style}">${match}</span>`;
+    });
 }
 
 // helper row component calibrated to match dashboard design schemas
@@ -46,6 +69,7 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
 
 export default function SignAndIssueModal({
   data,
+  schema,
   onConfirm,
   onCancel,
   loading = false,
@@ -57,47 +81,13 @@ export default function SignAndIssueModal({
   const isStudent = data.credentialType === 'Student';
   const roleText = isProfessor ? 'Professor' : 'Student';
 
-  // as it shows here 
-  let actualViewData: Record<string, any> = {};
-
-  if (isProfessor) {
-    actualViewData = {
-      professorIdHash: data.payloadHash || "0x8f14e45fceea167a5a36dedd4bea2543d7f8f1d6c5e5b7d9f5f4f6f0c6d4a123",
-      fullName: data.studentName, // get it from generic name prop
-      nationalIdHash: data.nationalIdHash || "0x45c48cce2e2d7fbdea1afc51c7c6ad26d6f7b2c4a8e5f1d9b7c3a2e1f4d5c678",
-      publicKey: data.publicKey || "0x04a34f8c2d91b7e5c6f8a123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
-      walletAddress: data.studentWallet,
-      academyWalletAddress: data.authorizerWalletAddress || "0x1234567890abcdef1234567890abcdef12345678",
-      academyName: data.authorizedBy,
-      hireDate: data.hireDate || "2024-09-01"
-    };
-  } else if (isStudent) {
-    actualViewData = {
-      studentIdHash: data.payloadHash || "0x7f6a4c9e2d3b1a8f5e6d7c8b9a0123456789abcdef0123456789abcdef012345",
-      fullName: data.studentName, // get it from generic name prop
-      nationalIdHash: data.nationalIdHash || "0xa1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
-      publicKey: data.publicKey || "0x04c8f1a2b3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789cd",
-      walletAddress: data.studentWallet,
-      academyWalletAddress: data.authorizerWalletAddress || "0x1234567890abcdef1234567890abcdef12345678",
-      academyName: data.authorizedBy,
-      enrollmentDate: data.enrollmentDate || "2023-09-18",
-      department: data.department || "Computer Engineering"
-    };
-  } else {
-    // compatibility container for direct testing fallback routes
-    actualViewData = {
-      credentialHash: data.credentialHash || '0xf655c1a399dcc800...',
-      title: data.title,
-      code: data.code,
-      credentialType: data.credentialType,
-      authorizerWalletAddress: data.authorizerWalletAddress || '0x414d72aFC5bEaBC9FF...',
-      authorizerName: data.authorizedBy,
-      issuerWalletAddress: data.issuerWalletAddress || '0xAdm1nIssuer000000...',
-      studentWalletAddress: data.studentWallet,
-      studentName: data.studentName,
-      payloadHash: data.payloadHash,
-    };
-  }
+  // Construct the full EIP-712 typing schema structure being signed
+  const { EIP712Domain: _, ...typesWithoutDomain } = schema.types as any;
+  const actualViewData = {
+    domain: schema.domain,
+    types: typesWithoutDomain,
+    message: schema.message,
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -114,10 +104,10 @@ export default function SignAndIssueModal({
         </p>
 
         {/* stylized theme warning banner */}
-        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-4 mb-6">
+        <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-4 mb-6">
           <span className="text-lg mt-0.5">🔒</span>
-          <p className="text-yellow-400/90 text-sm leading-relaxed">
-            <span className="font-bold text-yellow-400">Signature required.</span> You are about to authorize the
+          <p className="text-orange-400/90 text-sm leading-relaxed">
+            <span className="font-bold text-orange-400">Signature required.</span> You are about to authorize the
             issuance of a verifiable identity. Once signed and submitted, this action is permanent
             on the blockchain.
           </p>
@@ -139,39 +129,48 @@ export default function SignAndIssueModal({
 
         {/* human view layout */}
         {view === 'human' && (
-          <div className="rounded-2xl overflow-hidden border border-borderLine bg-surface/30">
+          <div className="rounded-2xl border border-borderLine bg-surface/30 overflow-hidden">
             <div className="bg-surface border-b border-borderLine px-5 py-3">
               <p className="text-mint text-sm font-bold">Details</p>
             </div>
-            <table className="w-full">
-              <tbody>
-                <Row label="Credential type" value={data.credentialType} />
-                <Row label="Title / code"    value={`${data.title} — ${data.code}`} />
-                <Row label="Authorized by"   value={data.authorizedBy} />
-                <Row label={`${isProfessor || isStudent ? roleText : 'Student'} name`} value={data.studentName} />
-                <Row label={`${isProfessor || isStudent ? roleText : 'Student'} wallet`} value={data.studentWallet} />
-                <Row label="Payload hash"    value={data.payloadHash} />
-              </tbody>
-            </table>
+            <div className="overflow-auto max-h-64">
+              <table className="w-full">
+                <tbody>
+                  <Row label="Identity type" value={data.credentialType} />
+                  <Row label={`${isProfessor || isStudent ? roleText : 'Student'} name`} value={data.studentName} />
+                  <Row label={`${isProfessor || isStudent ? roleText : 'Student'} wallet`} value={data.studentWallet} mono />
+                  <Row label="Authorized by"   value={data.authorizedBy} />
+                  {data.authorizerWalletAddress && (
+                    <Row label="Academy wallet" value={data.authorizerWalletAddress} mono />
+                  )}
+                  {isProfessor && data.hireDate && (
+                    <Row label="Hire date" value={data.hireDate} />
+                  )}
+                  {isStudent && data.enrollmentDate && (
+                    <Row label="Enrollment date" value={data.enrollmentDate} />
+                  )}
+                  {isStudent && data.department && (
+                    <Row label="Department" value={data.department} />
+                  )}
+                  {data.nationalIdHash && (
+                    <Row label="National ID hash" value={data.nationalIdHash} mono />
+                  )}
+                  {data.publicKey && (
+                    <Row label="Public key" value={data.publicKey} mono />
+                  )}
+                  <Row label="Identity hash"    value={data.payloadHash} mono />
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* actual raw payload terminal code block */}
         {view === 'actual' && (
-          <div className="bg-[#0f172a] rounded-2xl border border-slate-800 p-5 max-h-64 overflow-y-auto">
-            <div className="text-sm font-mono break-all leading-loose">
-              <span className="text-white">{"{ "}</span>
-              {Object.entries(actualViewData).map(([key, val]) => (
-                <span key={key}>
-                  <span className="text-slate-400 font-semibold">{key}: </span>
-                  <span className={typeof val === 'string' && val.startsWith('0x') ? "text-[#22d3ee]" : "text-mint"}>
-                    {typeof val === 'string' && val.startsWith('0x') ? val : `"${val}"`} 
-                  </span>{" "}
-                </span>
-              ))}
-              <span className="text-white">{"}"}</span>
-            </div>
-          </div>
+          <pre
+            className="bg-[#0f172a] text-xs rounded-2xl border border-slate-800 p-5 max-h-64 overflow-y-auto font-mono text-slate-300 whitespace-pre-wrap break-all leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: highlightJson(actualViewData) }}
+          />
         )}
 
         {/* actions interaction footer */}

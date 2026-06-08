@@ -24,14 +24,12 @@ const PAYLOAD_FIELDS: Record<string, FieldDef[]> = {
   Enrollment: [
     { id: 'course_name', label: 'Course name', type: 'text', ph: 'e.g. Advanced Algorithms', req: true },
     { id: 'course_code', label: 'Course code', type: 'text', ph: 'e.g. CS-401', req: true },
-    { id: 'academic_year', label: 'Academic year', type: 'text', ph: 'e.g. 2024-2025', req: true },
     { id: 'semester', label: 'Semester', type: 'select', options: ['fall', 'spring', 'summer'], req: true },
     { id: 'enrollment_date', label: 'Enrollment date', type: 'date', req: true },
   ],
   Attendance: [
     { id: 'course_code', label: 'Course code', type: 'text', ph: 'e.g. CS-401', req: true },
     { id: 'course_name', label: 'Course name', type: 'text', ph: 'e.g. Advanced Algorithms', req: true },
-    { id: 'academic_year', label: 'Academic year', type: 'text', ph: '2024-2025', req: true },
     { id: 'semester', label: 'Semester', type: 'select', options: ['fall', 'spring', 'summer'], req: true },
     { id: 'total_sessions', label: 'Total sessions', type: 'number', ph: 'e.g. 30', req: true },
     { id: 'attended_sessions', label: 'Attended sessions', type: 'number', ph: 'e.g. 27', req: true },
@@ -106,7 +104,7 @@ const CREDENTIAL_TYPES = ['Enrollment', 'Attendance', 'Degree', 'Certificate', '
 const LOCALES = ['English (en)', 'Arabic (ar)', 'French (fr)'];
 
 function highlightJson(data: any): string {
-  const json = JSON.stringify(data);
+  const json = JSON.stringify(data, null, 2);
   return json
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -144,39 +142,59 @@ function ReviewModal({
 }) {
   const [humanView, setHumanView] = useState(true);
 
+  // Construct the full EIP-712 typing schema structure being signed
+  const { EIP712Domain: _, ...typesWithoutDomain } = signingData.types;
+  const actualViewData = {
+    domain: signingData.domain,
+    types: typesWithoutDomain,
+    message: signingData.message,
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* backdrop design layer layout wrapper */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-        <div className="px-6 pt-6 pb-4">
-          <h3 className="text-gray-900 text-lg font-bold">Sign & Issue Credential</h3>
-          <p className="text-gray-500 text-sm mt-0.5">Review the signing data before authorizing on-chain.</p>
-        </div>
+      {/* modal box customized to match dashboard aesthetics */}
+      <div className="relative bg-card border border-borderLine rounded-[24px] p-8 max-w-lg w-full mx-4 shadow-2xl text-textLight">
 
-        <div className="mx-6 mb-4 flex gap-3 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-          <span className="text-lg shrink-0">🔒</span>
-          <p className="text-yellow-800 text-sm leading-relaxed">
-            <span className="font-bold">Signature required.</span> You are about to authorize the issuance of a verifiable credential. Once signed and submitted, this action is permanent on the blockchain.
+        {/* header */}
+        <h3 className="text-textLight text-2xl font-bold mb-1">Sign & Issue Credential</h3>
+        <p className="text-textMuted text-sm mb-6">
+          Review the signing data before authorizing on-chain.
+        </p>
+
+        {/* stylized theme warning banner */}
+        <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-4 mb-6">
+          <span className="text-lg mt-0.5">🔒</span>
+          <p className="text-orange-400/90 text-sm leading-relaxed">
+            <span className="font-bold text-orange-400">Signature required.</span> You are about to authorize the
+            issuance of a verifiable credential. Once signed and submitted, this action is permanent
+            on the blockchain.
           </p>
         </div>
 
-        <div className="mx-6 mb-4 flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Message to Sign</p>
-            <button
-              onClick={() => setHumanView(v => !v)}
-              className="px-3 py-1 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition"
-            >
-              {humanView ? 'Actual view' : 'Human view'}
-            </button>
-          </div>
+        {/* toggle controls panel */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-textMuted text-xs font-bold uppercase tracking-widest">
+            MESSAGE TO SIGN
+          </p>
+          <button
+            type="button"
+            onClick={() => setHumanView(!humanView)}
+            className="text-xs border border-borderLine text-textLight bg-surface hover:border-mint px-4 py-1.5 rounded-full transition-all"
+          >
+            {humanView ? 'Actual view' : 'Human view'}
+          </button>
+        </div>
 
-          {humanView ? (
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
-              <div className="bg-blue-600 px-4 py-2">
-                <p className="text-white text-sm font-semibold">Credential details</p>
-              </div>
+        {/* human view layout */}
+        {humanView ? (
+          <div className="rounded-2xl border border-borderLine bg-surface/30 overflow-hidden">
+            <div className="bg-surface border-b border-borderLine px-5 py-3">
+              <p className="text-mint text-sm font-bold">Credential details</p>
+            </div>
+            <div className="overflow-auto max-h-64">
               <table className="w-full">
                 <tbody>
                   {[
@@ -187,36 +205,40 @@ function ReviewModal({
                     ['Student wallet', signingData.message.studentWalletAddress || '—'],
                     ['Payload hash', signingData.message.payloadHash.slice(0, 18) + '…'],
                   ].map(([label, value]) => (
-                    <tr key={label} className="border-b border-gray-100 last:border-0">
-                      <td className="px-4 py-2.5 text-gray-500 text-sm w-1/3">{label}</td>
-                      <td className="px-4 py-2.5 text-gray-800 text-sm font-medium break-all">{value}</td>
+                    <tr key={label} className="border-b border-borderLine last:border-0">
+                      <td className="py-3 px-5 text-textMuted text-sm whitespace-nowrap w-1/3">{label}</td>
+                      <td className="py-3 pr-5 text-textLight text-sm font-medium break-all">{value}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <pre
-              className="bg-gray-900 text-xs rounded-xl p-4 leading-relaxed break-all font-mono text-gray-300 overflow-y-auto max-h-48 whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: highlightJson(signingData) }}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          /* actual raw payload terminal code block */
+          <pre
+            className="bg-[#0f172a] text-xs rounded-2xl border border-slate-800 p-5 max-h-64 overflow-y-auto font-mono text-slate-300 whitespace-pre-wrap break-all leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: highlightJson(actualViewData) }}
+          />
+        )}
 
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+        {/* actions interaction footer */}
+        <div className="flex gap-4 mt-8">
           <button
+            type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 p-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-semibold text-sm disabled:opacity-50"
+            className="flex-1 py-3 px-4 rounded-xl border border-borderLine bg-surface text-textMuted hover:text-textLight transition font-semibold text-sm disabled:opacity-50"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 p-3 rounded-xl bg-mint text-navy font-semibold text-sm hover:bg-mint/90 transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-3 px-4 rounded-xl bg-mint text-navy font-bold text-sm hover:opacity-90 transition disabled:opacity-40"
           >
-            {loading ? 'Issuing On-Chain...' : 'Sign & Issue Credential'}
+            {loading ? 'Signing…' : 'Issue Credential'}
           </button>
         </div>
       </div>
