@@ -1,7 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:app/core/navigation/navigator_key_provider.dart';
+import 'package:app/core/navigation/shell_page.dart';
 import 'package:app/core/navigation/shell_page_index_provider.dart';
 import 'package:app/core/network/api_client.dart';
+import 'package:app/feature/role_selection/presentation/pages/role_selection.dart';
+import 'package:app/feature/auth/presentation/providers/session_expired_provider.dart';
 import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/services/token_storage_services.dart';
@@ -19,20 +24,35 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
     required this.authRepo,
     required this.tokenStorage,
     required this.pkStorage,
-    required this.appKitModal,
+    required this.getAppKitModal,
     required this.onLogout,
     this.onLogin,
-  }) : super(const AsyncValue.data(null));
+  }) : super(const AsyncValue.loading()) {
+    _restoreSession();
+  }
 
   final AuthRepo authRepo;
   final TokenStorageService tokenStorage;
   final PKStorageService pkStorage;
-  final ReownAppKitModal? appKitModal;
+  final ReownAppKitModal? Function() getAppKitModal;
   final void Function() onLogout;
   final void Function(String accessToken)? onLogin;
+  bool _isLoggingOut = false;
+
+  Future<void> _restoreSession() async {
+    final accessToken = await tokenStorage.getAccessToken();
+    final refreshToken = await tokenStorage.getRefreshToken();
+    if (accessToken != null && refreshToken != null) {
+      state = AsyncValue.data(
+        AuthToken(accessToken: accessToken, refreshToken: refreshToken),
+      );
+    } else {
+      state = const AsyncValue.data(null);
+    }
+  }
 
   Future<void> signIn() async {
-    final modal = appKitModal;
+    final modal = getAppKitModal();
     if (modal == null) return;
 
     state = const AsyncValue.loading();
@@ -50,7 +70,6 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
       final chainId = modal.selectedChain!.chainId;
       //fetch the nonce
       final message = await authRepo.getNonce(address);
-
       final hexMessage = bytesToHex(utf8.encode(message), include0x: true);
       //sign the message using metamask
       final signature = await modal.request(
@@ -95,23 +114,25 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
   }
 
   Future<void> logout() async {
+    if (_isLoggingOut) return;
+    _isLoggingOut = true;
     try {
       final refreshToken = await tokenStorage.getRefreshToken();
       if (refreshToken != null) {
         await authRepo.logout(refreshToken);
       }
-      await appKitModal?.disconnect();
+      await getAppKitModal()?.disconnect();
     } finally {
       await tokenStorage.clearTokens();
       state = const AsyncValue.data(null);
       onLogout();
+      _isLoggingOut = false;
     }
   }
 }
 
-final hasSessionProvider = FutureProvider<bool>((ref) async {
-  final token = await ref.read(tokenStorageServiceProvider).getAccessToken();
-  return token != null;
+final hasSessionProvider = Provider<AsyncValue<bool>>((ref) {
+  return ref.watch(authControllerProvider).whenData((token) => token != null);
 });
 
 final authDatasourceProvider = Provider<AuthDatasource>(
@@ -124,17 +145,37 @@ final authRepositoryProvider = Provider<AuthRepo>(
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<AuthToken?>>(
-  (ref) => AuthController(
-    authRepo: ref.watch(authRepositoryProvider),
-    tokenStorage: ref.watch(tokenStorageServiceProvider),
-    pkStorage: ref.watch(pkStorageServiceProvider),
-    appKitModal: ref.watch(appKitModalProvider),
-    onLogout: () {
-      ref.read(shellPageIndexProvider.notifier).state = 0;
-      ref.read(appKitModalProvider.notifier).state = null;
-      ref.read(notificationRepoProvider).disconnect();
-    },
-    onLogin: (accessToken) =>
-        ref.read(notificationRepoProvider).connect(accessToken),
-  ),
+  (ref) {
+    final controller = AuthController(
+      authRepo: ref.watch(authRepositoryProvider),
+      tokenStorage: ref.watch(tokenStorageServiceProvider),
+      pkStorage: ref.watch(pkStorageServiceProvider),
+      getAppKitModal: () => ref.read(appKitModalProvider),
+      onLogout: () {
+        ref.read(shellPageIndexProvider.notifier).state = 0;
+        ref.read(appKitModalProvider.notifier).state = null;
+        ref.read(notificationRepoProvider).disconnect();
+        ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+              (route) => false,
+            );
+      },
+      onLogin: (accessToken) {
+        ref.read(sessionExpiredProvider.notifier).state = false;
+        ref.read(notificationRepoProvider).connect(accessToken);
+        ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const ShellPage()),
+              (route) => false,
+            );
+      },
+    );
+
+    ref.listen(sessionExpiredProvider, (previous, expired) {
+      if (expired == true && previous != true) {
+        controller.logout();
+      }
+    });
+
+    return controller;
+  },
 );

@@ -1,4 +1,5 @@
-﻿import 'package:app/core/navigation/shell_page.dart';
+﻿import 'package:app/core/navigation/navigator_key_provider.dart';
+import 'package:app/core/navigation/shell_page.dart';
 import 'package:app/core/theme/flex_color_scheme.dart';
 import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/core/widgets/ui/loading.dart';
@@ -48,8 +49,10 @@ class _MyAppState extends ConsumerState<MyApp> {
   Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
     final session = ref.watch(hasSessionProvider);
+    final navigatorKey = ref.watch(navigatorKeyProvider);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       themeMode: theme,
       theme: AppTheme.light,

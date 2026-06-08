@@ -42,7 +42,7 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    //dont try to refresh if the caller explicitly opted out (e.g. verifier token requests)
+    //dont try to refresh if the caller explicitly opted out (verifier token requests)
     if (err.requestOptions.extra['skipAuthRefresh'] == true) {
       handler.next(err);
       return;
@@ -58,12 +58,12 @@ class AuthInterceptor extends Interceptor {
 
     try {
       final newAccessToken = await _refreshOnce();
-
       final retryOptions = err.requestOptions;
+
       retryOptions.headers['Authorization'] = 'Bearer $newAccessToken';
       final response = await dio.fetch(retryOptions);
       handler.resolve(response);
-    } catch (_) {
+    } catch (e) {
       await tokenStorage.clearTokens();
       onSessionExpired?.call();
       handler.next(err);
