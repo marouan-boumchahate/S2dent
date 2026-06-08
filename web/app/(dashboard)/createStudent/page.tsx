@@ -11,7 +11,7 @@ export default function CreateStudentPage() {
 
   const handleClose = () => {
     setCurrentStep(1);
-    router.push('/students');
+    router.push('/enrolled-students');
   };
 
   return (

@@ -11,7 +11,7 @@ export default function AddProfessorPage() {
 
   const handleClose = () => {
     setCurrentStep(1);
-    router.push('/professors');
+    router.push('/faculty-members');
   };
 
   return (

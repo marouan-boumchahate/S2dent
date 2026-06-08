@@ -7,17 +7,17 @@ import SidebarItems from './sidebarItems'; // Clean child component link integra
 import { clearTokens, fetchAcademyMe, fetchAcademySummary, fetchProfessorMe } from '@/lib/api'; // Security patch to wipe active JWT sessions on logout
 
 const ADMIN_GROUPS = [
-  { label: 'Students', href: '/students', icon: '/student_1.png' },
-  { label: 'Professors', href: '/professors', icon: '/professor.png' },
-  { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
-  { label: 'Departments', href: '/departments', icon: '/corporation.png' },
-  { label: 'Issue identity', href: '/issueidentities', icon: '/certificate.png' },
+  { label: 'Enrolled Students', href: '/enrolled-students', icon: '/student_1.png' },
+  { label: 'Faculty Members', href: '/faculty-members', icon: '/professor.png' },
+  { label: 'Academic Credentials', href: '/academic-credentials', icon: '/verified.png' },
+  { label: 'Academic Departments', href: '/academic-departments', icon: '/corporation.png' },
+  { label: 'Identity Provisioning', href: '/identity-provisioning', icon: '/certificate.png' },
   { label: 'Profile', href: '/profile', icon: '/setting_1.png' },
 ];
 
 const PROFESSOR_GROUPS = [
-  { label: 'Students', href: '/students', icon: '/student_1.png' },
-  { label: 'Credentials', href: '/credentials', icon: '/verified.png' },
+  { label: 'Enrolled Students', href: '/enrolled-students', icon: '/student_1.png' },
+  { label: 'Academic Credentials', href: '/academic-credentials', icon: '/verified.png' },
   { label: 'Profile', href: '/profile', icon: '/setting.png' },
 ];
 

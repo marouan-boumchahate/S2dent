@@ -368,13 +368,13 @@ export default function DepartmentsPage() {
       <div className="flex flex-col h-full">
 
         {/* header */}
-        <PageHeader title="Departments" onAddNew={() => setShowAddModal(true)} />
+        <PageHeader title="Academic Departments" onAddNew={() => setShowAddModal(true)} />
 
         <div className="p-6 space-y-6">
 
           {/* stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total departments" value={total} sub="registered" />
+            <StatCard label="Total Academic Departments" value={total} sub="registered" />
             <StatCard label="Active" value={active} sub="running" subColor="text-mint" />
             <StatCard label="Inactive" value={inactive} sub="paused" subColor="text-yellow-400" />
             <StatCard label="Avg. study years" value={avgYears} sub="years" />
@@ -449,8 +449,8 @@ export default function DepartmentsPage() {
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border
                             ${dept.status === 'Active'
-                              ? 'bg-mint/10 text-mint border-mint/30'
-                              : 'bg-red-500/10 text-red-400 border-red-400/30'
+                              ? 'bg-mint/10 text-mint border-mint/20'
+                              : 'bg-red-500/10 text-red-400 border-red-500/20'
                             }`}>
                             {dept.status}
                           </span>

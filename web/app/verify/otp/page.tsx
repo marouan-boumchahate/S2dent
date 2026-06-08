@@ -101,9 +101,15 @@ export default function OtpPage() {
           <p className="text-textMuted mb-2">
             Your identity request has been submitted. Your academy has been notified and will issue your on-chain identity shortly.
           </p>
-          <p className="text-textMuted text-sm">
+          <p className="text-textMuted text-sm mb-6">
             Once issued, you'll be able to log in with your wallet.
           </p>
+          <button
+            onClick={() => router.push('/createLogin')}
+            className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition"
+          >
+            Okay
+          </button>
         </div>
       </div>
     );
