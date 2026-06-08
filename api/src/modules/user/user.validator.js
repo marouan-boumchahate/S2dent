@@ -12,7 +12,7 @@ const createUserSchema = Joi.object({
   middle_name: Joi.string().trim().max(100).optional().allow(null, ''),
   last_name: Joi.string().trim().max(100).required(),
 
-  date_of_birth: Joi.date().iso().required(),
+  date_of_birth: Joi.date().iso().max('now').required(),
   gender: Joi.string().valid(...GENDER_TYPES).required()
     .messages({
       'any.only': `gender must be one of: ${GENDER_TYPES.join(', ')}`,

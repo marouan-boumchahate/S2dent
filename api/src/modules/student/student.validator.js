@@ -13,11 +13,15 @@ const createStudentSchema = Joi.object({
 
   enrollment_status: Joi.string().valid(...ENROLLMENT_STATUSES).optional().allow(null, ''),
   enrollment_date: Joi.date().iso().max('now').optional().allow(null, ''),
-  actual_graduation_date: Joi.date().iso().optional().allow(null, ''),
+  actual_graduation_date: Joi.date().iso().optional().allow(null, '')
+    .when('enrollment_date', {
+      is: Joi.date().required(),
+      then: Joi.date().min(Joi.ref('enrollment_date'))
+    }),
 });
 
 const updateStudentSchema = Joi.object({
-  cgpa: Joi.number().precision(2).min(0).max(5).optional().allow(null, ''),
+  cgpa: Joi.number().precision(2).min(0).max(100).optional().allow(null, ''),
   advisor_id: Joi.string().uuid().optional().allow(null, ''),
 });
 

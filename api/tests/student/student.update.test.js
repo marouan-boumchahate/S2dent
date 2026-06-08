@@ -370,7 +370,7 @@ describe('PUT /api/students/:id', () => {
     const res = await request(app)
       .put(`${endpoint}/${STUDENT_ID}`)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({ cgpa: 5.01 });
+      .send({ cgpa: 100.01 });
 
     assert.equal(res.status, 422);
     assert.ok(res.body.errors.some(e => e.field === 'cgpa'));
