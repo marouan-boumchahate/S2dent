@@ -35,6 +35,7 @@ export const env = {
     smtpUser: process.env.SMTP_USER,
     smtpPass: process.env.SMTP_PASS,
     from: process.env.EMAIL_FROM,
+    brevoApiKey: process.env.BREVO_API_KEY,
   },
   db: {
     host: process.env.DB_HOST || 'localhost',
