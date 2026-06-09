@@ -18,7 +18,7 @@ export default function OtpPage() {
   const handleChange = (value: string, index: number) => {
     if (!/^[a-zA-Z0-9]*$/.test(value)) return;
     const newOtp = [...otp];
-    newOtp[index] = value.toUpperCase();
+    newOtp[index] = value;
     setOtp(newOtp);
     if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus();
