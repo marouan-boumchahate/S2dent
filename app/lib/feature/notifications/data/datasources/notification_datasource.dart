@@ -34,27 +34,35 @@ class NotificationDatasource {
       "notification",
       (data) {
         try {
-          // socket.io sends [payload, ackFn] when server emits with ack callback
+          //socket.io sends  [payload, ack function] as a list when server emits with ack callback
+          //first index is the payload of its a list
           final payload = data is List ? data[0] : data;
           final ack = data is List && data.length > 1 ? data[1] : null;
           final notification = AppNotification.fromJson(
             Map<String, dynamic>.from(payload as Map),
           );
           _streamController.add(notification);
-          if (ack is Function) ack('received');
+          if (ack != null) ack('received');
         } catch (e) {
-          debugPrint("Notification parsing failed: $e | raw: $data");
+          debugPrint(
+            "Notification parsing failed \n[ error: $e\n  raw data: $data ]",
+          );
         }
       },
     );
 
-    // server emits this when token is invalid or expires mid-session,
-    // then disconnects immediately — signal the provider to refresh & reconnect
-    _socket!.on("auth_error", (data) {
-      debugPrint("Socket auth_error: $data");
-      _socket = null;
-      _authErrorController.add(data?.toString() ?? "auth_error");
-    });
+    //listener for the auth error stream, the server emits when the access token is expired or invalid
+    //then disconnects immediately giving a signal to the provider to refresh and reconnect
+    _socket!.on(
+      "auth_error",
+      (data) {
+        debugPrint("Socket auth_error: $data");
+        _socket?.disconnect();
+        _socket?.dispose();
+        _socket = null;
+        _authErrorController.add(data?.toString() ?? "auth_error");
+      },
+    );
 
     //finally connect
     _socket!.connect();

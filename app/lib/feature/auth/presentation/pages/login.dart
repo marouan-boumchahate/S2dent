@@ -57,7 +57,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ref.read(appKitModalProvider.notifier).state = modal;
       }
     } catch (e) {
-      debugPrint('AppKit init failed: $e');
+      //reownappkit initialization failed
+      Text(errorMessage(e.toString()));
     }
   }
 

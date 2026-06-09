@@ -22,9 +22,9 @@ class NotificationRepoImpl implements NotificationRepo {
   }
 
   @override
-  Stream<AppNotification> get notificationStream => dataSource.notificationStream;
+  Stream<AppNotification> get notificationStream =>
+      dataSource.notificationStream;
 
   @override
   Stream<String> get authErrorStream => dataSource.authErrorStream;
-
 }

@@ -15,7 +15,7 @@ class AuthInterceptor extends Interceptor {
   final Dio dio;
   final void Function()? onSessionExpired;
 
-  //only one refresh in flight at a time; others wait for it
+  //completer to prevent multiple refresh tries at the same time
   static Completer<String>? _refreshCompleter;
 
   @override
@@ -48,7 +48,7 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    //dont try to refresh if the refresh request itself failed
+    //dont try to refresh if the refreshToken itself is dead
     if (err.requestOptions.path.contains('/auth/refresh')) {
       await tokenStorage.clearTokens();
       onSessionExpired?.call();
