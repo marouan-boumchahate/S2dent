@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 
 
@@ -40,15 +39,64 @@ const genericTemplate = wrapEmailHtml(
   'Notification from S2dent',
   `<p style="margin:0;white-space:pre-line;">{{message}}</p>`
 );
-const transporter = nodemailer.createTransport({
-  host: env.email.smtpHost,
-  port: env.email.smtpPort,
-  secure: env.email.smtpPort === 465,
-  auth: env.email.smtpUser && env.email.smtpPass ? {
-    user: env.email.smtpUser,
-    pass: env.email.smtpPass,
-  } : undefined,
-});
+
+const parseSender = (fromStr) => {
+  if (!fromStr) return { email: 'no-reply@s2dent.com' };
+
+  const match = fromStr.match(/^(?:"?([^"<]+)"?\s)?<([^>]+)>$/);
+  if (match) {
+    const name = match[1]?.trim();
+    const email = match[2]?.trim();
+    return name ? { name, email } : { email };
+  }
+
+  return { email: fromStr.trim() };
+};
+
+const formatRecipients = (to) => {
+  if (Array.isArray(to)) {
+    return to.map(email => ({ email: String(email).trim() }));
+  }
+  if (typeof to === 'string') {
+    return to.split(',')
+      .map(email => ({ email: email.trim() }))
+      .filter(e => e.email);
+  }
+  return [];
+};
+
+const buildBrevoPayload = ({ to, subject, message, html, text }) => {
+  const htmlContent = html || interpolateTemplate(genericTemplate, {
+    message: escapeHtml(message || text || ''),
+  });
+  
+  return {
+    sender: parseSender(env.email.from),
+    to: formatRecipients(to),
+    subject,
+    htmlContent,
+    textContent: text || message || '',
+  };
+};
+
+const sendToBrevoApi = async (payload) => {
+  console.log(`Api key is: ${env.email.brevoApiKey}`);
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': env.email.brevoApiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API returned status ${response.status}: ${errorText}`);
+  }
+  
+  return response;
+};
 
 const logMailFailure = (recipient, error) => {
   console.error(`Email delivery failed for ${recipient}: ${error?.message || error}`);
@@ -69,21 +117,10 @@ const sendEmail = async ({ to, subject, message, html, text }) => {
       return;
     }
 
-    void transporter.sendMail({
-      from: env.email.from,
-      to,
-      subject,
-      text: text || message || '',
-      html: html || interpolateTemplate(genericTemplate, {
-        message: escapeHtml(message || text || ''),
-      }),
-    })
-      .then(() => {
-        console.log(`Email sent successfully to ${to}`);
-      })
-      .catch((error) => {
-        logMailFailure(to, error);
-      });
+    const payload = buildBrevoPayload({ to, subject, message, html, text });
+    await sendToBrevoApi(payload);
+    
+    console.log(`Email sent successfully to ${to}`);
   } catch (error) {
     logMailFailure(to, error);
   }
