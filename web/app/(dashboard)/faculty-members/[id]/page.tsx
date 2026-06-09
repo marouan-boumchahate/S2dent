@@ -66,7 +66,14 @@ function UpdateModal({ currentRank, currentEmployment, currentLocation, currentH
           <FormField label="Rank" value={rank} onChange={setRank}
             options={['', 'Assist. Prof', 'Assoc. Prof', 'Prof', 'Lecturer', 'Instructor']} />
           <FormField label="Employment type" value={employmentType} onChange={setEmploymentType}
-            options={['', 'full_time', 'part_time', 'adjunct', 'visiting', 'contract']} />
+            options={[
+              { value: '', label: '' },
+              { value: 'full_time', label: 'Full Time' },
+              { value: 'part_time', label: 'Part Time' },
+              { value: 'adjunct', label: 'Adjunct' },
+              { value: 'visiting', label: 'Visiting' },
+              { value: 'contract', label: 'Contract' }
+            ]} />
           <FormField label="Office location" value={officeLocation} onChange={setOfficeLocation}
             placeholder="e.g. Room C-03, Medical Bldg" />
           <FormField label="Office hours" value={officeHours} onChange={setOfficeHours}

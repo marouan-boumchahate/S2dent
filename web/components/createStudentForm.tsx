@@ -360,7 +360,7 @@ export default function CreateStudentForm({
                 } rounded-lg px-4 py-2.5 text-textLight focus:outline-none`}
               >
                 <option value="">Select department…</option>
-                {departments.map((d) => (
+                {departments.filter((d) => d.is_active).map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
@@ -371,7 +371,12 @@ export default function CreateStudentForm({
               label="Enrollment Status"
               value={enrollmentStatus}
               onChange={handleEnrollmentStatusChange}
-              options={['', 'active', 'inactive', 'graduated']}
+              options={[
+                { value: '', label: 'Select status...' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'graduated', label: 'Graduated' },
+              ]}
               error={errors.enrollmentStatus}
             />
           </div>
@@ -452,7 +457,11 @@ export default function CreateStudentForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField label="Date of Birth" isDate value={dateOfBirth} onChange={handleDateOfBirthChange} required error={errors.dateOfBirth} />
-          <FormField label="Gender" value={gender} onChange={handleGenderChange} required options={['', 'male', 'female']} error={errors.gender} />
+          <FormField label="Gender" value={gender} onChange={handleGenderChange} required options={[
+            { value: '', label: 'Select gender...' },
+            { value: 'male', label: 'Male' },
+            { value: 'female', label: 'Female' },
+          ]} error={errors.gender} />
           <FormField label="Nationality" value={nationality} onChange={handleNationalityChange} required maxLength={100} error={errors.nationality} />
         </div>
 

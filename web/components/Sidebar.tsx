@@ -55,7 +55,7 @@ export default function Sidebar() {
         })
         .catch(() => {
           clearTokens();
-          router.push('/createLogin');
+          router.push('/login');
         })
         .finally(() => {
           setIsFetchingLogo(false);
@@ -74,7 +74,7 @@ export default function Sidebar() {
         })
         .catch(() => {
           clearTokens();
-          router.push('/createLogin');
+          router.push('/login');
         })
         .finally(() => {
           setIsFetchingLogo(false);
@@ -102,7 +102,7 @@ export default function Sidebar() {
   const handleSignOut = () => {
     localStorage.removeItem('userRole');
     clearTokens(); // Erases access_token and refresh_token from local storage contexts safely
-    router.push('/createLogin');
+    router.push('/login');
   };
 
   const groups = role === null ? [] : (role === 'professor' ? PROFESSOR_GROUPS : ADMIN_GROUPS);
