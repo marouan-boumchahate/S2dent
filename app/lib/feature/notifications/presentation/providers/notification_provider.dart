@@ -16,13 +16,19 @@ class NotificationController extends Notifier<List<AppNotification>> {
     if (!AppConfig.useMockApi) {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      //ping the API first so AuthInterceptor refreshes the access token if expired,
-      //then read the (possibly updated) token from storage before connecting
-      dio.get('/helper/health').whenComplete(() {
-        tokenStorage.getAccessToken().then((token) {
-          if (token != null) repo.connect(token);
-        });
-      });
+      //call an authenticated endpoint so the AuthInterceptor triggers and refreshes
+      //the expired access token (a 401 triggers the refresh, /helper/health is
+      //public therefore it always returns 200, so it never triggers a refresh).
+      dio.get('/credentials').then(
+        (_) {
+          tokenStorage.getAccessToken().then((token) {
+            if (token != null) repo.connect(token);
+          });
+        },
+        onError: (_) {
+          //Refresh failed, session expired; onSessionExpired will navigate to login.
+        },
+      );
       ref.onDispose(repo.disconnect);
     }
 
@@ -37,16 +43,17 @@ class NotificationController extends Notifier<List<AppNotification>> {
     final authErrorSub = repo.authErrorStream.listen((event) {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      dio
-          .get('/helper/health')
-          .then((value) {},
-              onError:
-                  (error) {}) //pinging the interceptor may fail, even if it fails, continue.
-          .whenComplete(() {
-        tokenStorage.getAccessToken().then((token) {
-          if (token != null) repo.connect(token);
-        });
-      });
+      //use an authenticated endpoint so the AuthInterceptor can be triggered to
+      //refresh the access token. it will only reconnect on success. and on error the session is
+      //expired and onSessionExpired will handle navigation to login and never reconnect.
+      dio.get('/credentials').then(
+        (_) {
+          tokenStorage.getAccessToken().then((token) {
+            if (token != null) repo.connect(token);
+          });
+        },
+        onError: (_) {},
+      );
     });
     ref.onDispose(authErrorSub.cancel);
 

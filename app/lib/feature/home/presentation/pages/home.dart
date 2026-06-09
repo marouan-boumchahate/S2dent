@@ -135,11 +135,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 radius: 26,
                 backgroundColor: Colors.transparent,
                 child: data.universityLogo != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(6),
+                    ? ClipOval(
                         child: Image.network(
                           data.universityLogo!,
-                          fit: BoxFit.contain,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(Icons.school_outlined),
                         ),
