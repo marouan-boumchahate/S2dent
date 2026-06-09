@@ -105,7 +105,7 @@ export default function OtpPage() {
             Once issued, you'll be able to log in with your wallet.
           </p>
           <button
-            onClick={() => router.push('/createLogin')}
+            onClick={() => router.push('/login')}
             className="w-full p-3 rounded-lg bg-mint text-navy font-bold hover:opacity-90 transition"
           >
             Okay

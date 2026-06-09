@@ -70,7 +70,7 @@ export async function apiFetch<T>(
         // If we don't have a refresh token, log them out
         if (!refresh) {
             clearTokens();
-            if (typeof window !== 'undefined') window.location.href = '/createLogin';
+            if (typeof window !== 'undefined') window.location.href = '/login';
             throw new Error('Session expired. Please log in again.');
         }
 
@@ -87,7 +87,7 @@ export async function apiFetch<T>(
             // 4. If refresh fails, kill the session
             if (!refreshRes.ok || !refreshData.success) {
                 clearTokens();
-                if (typeof window !== 'undefined') window.location.href = '/createLogin';
+                if (typeof window !== 'undefined') window.location.href = '/login';
                 throw new Error('Session completely expired.');
             }
 
@@ -107,7 +107,7 @@ export async function apiFetch<T>(
             
         } catch (error) {
             clearTokens();
-            if (typeof window !== 'undefined') window.location.href = '/createLogin';
+            if (typeof window !== 'undefined') window.location.href = '/login';
             throw error;
         }
     }
@@ -120,8 +120,10 @@ export async function apiFetch<T>(
             if (
                 typeof window !== 'undefined' && 
                 window.location.pathname !== '/profile' && 
-                window.location.pathname !== '/createLogin' &&
-                window.location.pathname !== '/verify'
+                window.location.pathname !== '/login' &&
+                window.location.pathname !== '/verify' &&
+                !window.location.pathname.startsWith('/enrolled-students') &&
+                !window.location.pathname.startsWith('/academic-credentials')
             ) {
                 window.location.href = '/profile';
             }

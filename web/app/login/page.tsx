@@ -7,5 +7,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-//http://localhost:3000/createLogin

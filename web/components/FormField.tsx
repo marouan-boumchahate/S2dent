@@ -2,6 +2,11 @@ import DatePicker from "react-datepicker";
 // @ts-ignore
 import "react-datepicker/dist/react-datepicker.css";
 
+interface OptionObject {
+  value: string;
+  label: string;
+}
+
 interface FormFieldProps {
   label: string;
   type?: string;
@@ -9,7 +14,7 @@ interface FormFieldProps {
 
   onChange: (value: string) => void;
   required?: boolean;
-  options?: string[];
+  options?: (string | OptionObject)[];
   maxLength?: number;
   placeholder?: string;
   isDate?: boolean;
@@ -60,9 +65,13 @@ export default function FormField({
           required={required}
           disabled={disabled} // Freezes the dropdown menu selection list
         >
-          {options.map(opt => (
-            <option key={opt} value={opt}>{opt || 'Select...'}</option>
-          ))}
+          {options.map(opt => {
+            const val = typeof opt === 'string' ? opt : opt.value;
+            const lbl = typeof opt === 'string' ? opt : opt.label;
+            return (
+              <option key={val} value={val}>{lbl || 'Select...'}</option>
+            );
+          })}
         </select>
       ) : isTextarea ? (
         <textarea

@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      router.replace('/createLogin');
+      router.replace('/login');
       return;
     }
 

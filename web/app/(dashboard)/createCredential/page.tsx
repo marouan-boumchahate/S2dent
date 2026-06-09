@@ -246,6 +246,14 @@ function ReviewModal({
   );
 }
 
+function formatSnakeCase(str: string): string {
+  if (!str) return str;
+  return str
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 // main page
 export default function NewCredentialPage() {
   const router = useRouter();
@@ -481,13 +489,25 @@ export default function NewCredentialPage() {
     setLoading(true);
     try {
       if (!window.ethereum) throw new Error("MetaMask is required");
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x7a69' }],
-        });
-      } catch (switchError) {
-        console.warn(switchError);
+
+      // Read the expected chain from the EIP-712 domain (matches identity-provisioning flow)
+      const expectedChainId = `0x${signingData.domain.chainId.toString(16)}`;
+      const currentChainId: string = await window.ethereum.request({ method: 'eth_chainId' });
+
+      if (currentChainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: expectedChainId }],
+          });
+        } catch (switchErr: any) {
+          showAlert({
+            type: 'error',
+            title: 'Wrong Network',
+            message: `Please switch MetaMask to the correct network (chainId ${signingData.domain.chainId}) and try again.`,
+          });
+          return;
+        }
       }
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -648,7 +668,17 @@ export default function NewCredentialPage() {
                       onChange={val => handlePayloadFieldChange(f, val)}
                       placeholder={f.ph}
                       type={f.type === 'date' || f.type === 'number' ? f.type : 'text'}
-                      options={f.type === 'select' ? ['', ...(f.options ?? [])] : undefined}
+                      options={
+                        f.type === 'select'
+                          ? [
+                              { value: '', label: '' },
+                              ...(f.options ?? []).map(opt => ({
+                                value: opt,
+                                label: formatSnakeCase(opt)
+                              }))
+                            ]
+                          : undefined
+                      }
                       isDate={f.type === 'date'}
                       required={f.req}
                       error={fieldErrors[f.id]}

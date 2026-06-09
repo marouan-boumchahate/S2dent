@@ -388,7 +388,7 @@ export default function CreateProfessorForm({
                 } rounded-lg px-4 py-2.5 text-textLight focus:outline-none`}
               >
                 <option value="">Select department…</option>
-                {departments.map((d) => (
+                {departments.filter((d) => d.is_active).map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
@@ -396,11 +396,11 @@ export default function CreateProfessorForm({
             </div>
 
             <FormField
-              label="Title (e.g. Dr.)"
+              label="Title"
               value={title}
               onChange={handleTitleChange}
               required
-              maxLength={100}
+              options={['', 'Dr.', 'Mr.', 'Ms.', 'Mrs.']}
               error={errors.title}
             />
           </div>
@@ -418,7 +418,13 @@ export default function CreateProfessorForm({
               label="Employment Type"
               value={employmentType}
               onChange={handleEmploymentTypeChange}
-              options={['full_time', 'part_time', 'adjunct', 'visiting', 'contract']}
+              options={[
+                { value: 'full_time', label: 'Full Time' },
+                { value: 'part_time', label: 'Part Time' },
+                { value: 'adjunct', label: 'Adjunct' },
+                { value: 'visiting', label: 'Visiting' },
+                { value: 'contract', label: 'Contract' },
+              ]}
               error={errors.employmentType}
             />
           </div>
@@ -504,7 +510,11 @@ export default function CreateProfessorForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField label="Date of Birth" isDate value={dateOfBirth} onChange={handleDateOfBirthChange} required error={errors.dateOfBirth} />
-          <FormField label="Gender" value={gender} onChange={handleGenderChange} required options={['', 'male', 'female']} error={errors.gender} />
+          <FormField label="Gender" value={gender} onChange={handleGenderChange} required options={[
+            { value: '', label: 'Select gender...' },
+            { value: 'male', label: 'Male' },
+            { value: 'female', label: 'Female' },
+          ]} error={errors.gender} />
           <FormField label="Nationality" value={nationality} onChange={handleNationalityChange} required maxLength={100} error={errors.nationality} />
         </div>
 
