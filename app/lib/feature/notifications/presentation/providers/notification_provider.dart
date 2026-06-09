@@ -16,8 +16,8 @@ class NotificationController extends Notifier<List<AppNotification>> {
     if (!AppConfig.useMockApi) {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      // ping the API first so AuthInterceptor refreshes an expired token,
-      // then read the (possibly updated) token from storage before connecting
+      //ping the API first so AuthInterceptor refreshes the access token if expired,
+      //then read the (possibly updated) token from storage before connecting
       dio.get('/helper/health').whenComplete(() {
         tokenStorage.getAccessToken().then((token) {
           if (token != null) repo.connect(token);
@@ -34,13 +34,14 @@ class NotificationController extends Notifier<List<AppNotification>> {
     );
     ref.onDispose(subscription.cancel);
 
-    final authErrorSub = repo.authErrorStream.listen((_) {
+    final authErrorSub = repo.authErrorStream.listen((event) {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
       dio
           .get('/helper/health')
-          .then((_) {},
-              onError: (_) {}) // ping may fail in mock/offline; still reconnect
+          .then((value) {},
+              onError:
+                  (error) {}) //pinging the interceptor may fail, even if it fails, continue.
           .whenComplete(() {
         tokenStorage.getAccessToken().then((token) {
           if (token != null) repo.connect(token);

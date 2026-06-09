@@ -91,8 +91,8 @@ class AuthController extends StateNotifier<AsyncValue<AuthToken?>> {
       state = AsyncValue.data(token);
       onLogin?.call(token.accessToken);
     } catch (e, trace) {
+      //if user doesnt sign nonce, then disconnect the wallet
       await getAppKitModal()?.disconnect();
-      // user consciously rejected the wallet prompt — reset silently, no error dialog
       if (e is ReownAppKitModalException) {
         state = const AsyncValue.data(null);
       } else {
@@ -162,7 +162,9 @@ final authControllerProvider =
         ref.read(appKitModalProvider.notifier).state = null;
         ref.read(notificationRepoProvider).disconnect();
         ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+              MaterialPageRoute(
+                builder: (context) => const RoleSelectionPage(),
+              ),
               (route) => false,
             );
       },
@@ -170,7 +172,9 @@ final authControllerProvider =
         ref.read(sessionExpiredProvider.notifier).state = false;
         ref.read(notificationRepoProvider).connect(accessToken);
         ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const ShellPage()),
+              MaterialPageRoute(
+                builder: (context) => const ShellPage(),
+              ),
               (route) => false,
             );
       },
