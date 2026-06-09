@@ -334,8 +334,9 @@ const sendOtpService = async (email) => {
 
     var otp, message;
     if(isProduction) {
-        otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
-        message = `Sign this nonce to verify your identity: ${getNonce()}`;
+        //otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
+        otp = (crypto.randomInt(900000) + 100000).toString();
+	message = `Sign this nonce to verify your identity: ${getNonce()}`;
     }
     else {
         otp = "000000";

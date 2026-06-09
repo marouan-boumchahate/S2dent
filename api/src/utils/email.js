@@ -80,7 +80,7 @@ const buildBrevoPayload = ({ to, subject, message, html, text }) => {
 };
 
 const sendToBrevoApi = async (payload) => {
-  console.log(`Api key is: ${env.email.brevoApiKey}`);
+  //console.log(`Api key is: ${env.email.brevoApiKey}`);
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
