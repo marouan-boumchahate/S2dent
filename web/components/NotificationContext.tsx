@@ -130,8 +130,10 @@ function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>)
 
       // Step 1: on connect → authenticate with JWT
       socket.on('connect', () => {
-        if (token) {
+        if (token && token !== 'undefined' && token !== 'null') {
           socket!.emit('join', token);
+        } else {
+          console.error('Cannot connect to socket: Access token is missing or undefined.');
         }
       });
 

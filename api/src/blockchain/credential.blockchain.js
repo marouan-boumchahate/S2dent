@@ -126,12 +126,13 @@ const issueCredential = async (payload) => {
         const params = [studentAddress, issuerAddress, academyAddress, args]
 
         const gasLimit = await getGasLimit(contract, 'issueCredential', params)
-
         const tx = await contract.issueCredential(...params, { gasLimit })
         return tx
 
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
+
+        console.error('Error in issueCredential:', reason, err)
 
         const wrapped = new Error(`issueCredential failed: ${reason}`)
         wrapped.statusCode = 502
@@ -153,12 +154,6 @@ const revokeCredential = async (payload) => {
 
         const params = [studentAddress, BigInt(credentialIndex), revokerAddress, reason]
 
-        console.log('Estimating gas for revokeCredential with params:', {
-            studentAddress,
-            credentialIndex: credentialIndex.toString(),
-            revokerAddress,
-            reason,
-        })
         const gasLimit = await getGasLimit(contract, 'revokeCredential', params)
 
         const tx = await contract.revokeCredential(...params, { gasLimit })
@@ -168,6 +163,7 @@ const revokeCredential = async (payload) => {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
         console.error('Error in revokeCredential:', reason, err)
+
         const wrapped = new Error(`revokeCredential failed: ${reason.includes('revert') ? 'Already revoked or does not exist' : reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
@@ -193,6 +189,8 @@ const getCredential = async (studentAddress, index) => {
     } catch (err) {
         const reason = err?.reason ?? err?.shortMessage ?? err?.message ?? 'Unknown blockchain error'
 
+        console.error('Error in getCredential:', reason, err)
+        
         const wrapped = new Error(`getCredential failed: ${reason}`)
         wrapped.statusCode = 502
         wrapped.code = 'BLOCKCHAIN_ERROR'
