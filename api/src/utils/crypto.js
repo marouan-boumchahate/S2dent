@@ -37,7 +37,10 @@ const encryptBySecretKey = (text, SECRET) => {
     }
 };
 const decryptBySecretKey = (payload, SECRET) => {
-    const [ivHex, tagHex, encryptedHex] = payload.split(':');
+    const parts = payload.split(':');                                                                               
+    if (parts.length !== 3) throw new Error('Invalid encrypted token format');                                                          
+
+    const [ivHex, tagHex, encryptedHex] = parts;
 
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');

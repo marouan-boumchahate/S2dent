@@ -72,7 +72,7 @@ export const initSocket = (httpServer) => {
                 }, msUntilExpiry)
             } catch (error) {
                 socket.emit('auth_error', 'Authentication failed. Please reconnect with a valid token.')
-                console.log('Socket authentication failed:', error.message)
+                //console.log('Socket authentication failed:', error.message)
                 return socket.disconnect()
             }
 
