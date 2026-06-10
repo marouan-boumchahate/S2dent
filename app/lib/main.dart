@@ -6,6 +6,7 @@ import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/role_selection/presentation/pages/role_selection.dart';
 import 'package:device_preview/device_preview.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,18 @@ void main() async {
     DevicePreview(
       enabled: false,
       builder: (context) => ProviderScope(
+        retry: (retryCount, error) {
+          //permanent client errors (4xx) are not fixable by retrying, stop and never retry
+          if (error is DioException) {
+            final status = error.response?.statusCode;
+            if (status != null && status >= 400 && status < 500) {
+              return null;
+            }
+          }
+          //transient/flaky errors (5xx, timeout, network) get a short exponential backoff and try 3 times only (total 4 api calls)
+          if (retryCount >= 3) return null;
+          return Duration(milliseconds: 200 * (1 << retryCount));
+        },
         overrides: [
           themeProvider.overrideWith((ref) => ThemeNotifier(initialTheme)),
         ],

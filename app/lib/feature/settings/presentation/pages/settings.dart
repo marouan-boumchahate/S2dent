@@ -1,6 +1,8 @@
 ﻿import 'package:app/core/services/pk_storage.service.dart';
 import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
+import 'package:app/core/utils/show_logout_dialog.dart';
+import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
 import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
@@ -70,6 +72,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         .setTheme(isDarkMode ? ThemeMode.dark : ThemeMode.light);
   }
 
+  void onTapLogout() {
+    showLogoutDialog(context, onConfirm: () async {
+      await ref.read(authControllerProvider.notifier).logout();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
@@ -91,7 +99,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _appPreference(theme),
           _support(),
-          _security(),
+          _account(),
           if (kDebugMode) _debug(),
         ],
       ),
@@ -140,16 +148,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Padding _security() {
+  Padding _account() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: InfoSection(
-        title: "Security",
+        title: "Account",
         widgets: [
           PressableInfoTile(
             label: "Save a Private Key",
             onTap: onTapSavePK,
             icon: Icons.save,
+          ),
+          PressableInfoTile(
+            label: "Logout",
+            onTap: onTapLogout,
+            icon: Icons.logout,
           ),
         ],
       ),

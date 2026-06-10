@@ -1,4 +1,5 @@
 ﻿import 'package:app/core/widgets/layouts/main_layout.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
@@ -85,8 +86,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ],
         ),
       ),
-      error: (error, stackTrace) => Center(
-        child: Text("ERROR OCCURED"),
+      error: (error, stackTrace) => ErrorView(
+        error: error,
+        onTapRetry: () =>
+            ref.read(profileControllerProvider.notifier).loadFullProfile(),
       ),
       loading: () => LoadingState(),
     );

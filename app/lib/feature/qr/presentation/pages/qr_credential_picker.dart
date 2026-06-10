@@ -1,6 +1,7 @@
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
@@ -49,7 +50,7 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
       appBar: CustomAppbar(color: context.colors.surface),
       body: credentialController.when(
         data: (data) => _body(context, data),
-        error: (error, stackTrace) => Center(child: Text("ERROR")),
+        error: (error, stackTrace) => ErrorView(error: error),
         loading: () => LoadingState(),
       ),
     );

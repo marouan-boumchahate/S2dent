@@ -1,6 +1,7 @@
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
@@ -126,8 +127,10 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
       data: (data) {
         return _body(data, image);
       },
-      error: (error, stackTrace) => Center(
-        child: Text("ERROR OCCURED: $error"),
+      error: (error, stackTrace) => ErrorView(
+        error: error,
+        onTapRetry: () =>
+            ref.read(credentialControllerProvider.notifier).loadCredentials(),
       ),
       loading: () => LoadingState(),
     );
