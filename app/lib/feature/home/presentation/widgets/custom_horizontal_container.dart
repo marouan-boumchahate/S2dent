@@ -15,7 +15,7 @@ class CustomHorizontalContainer extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.blueGrey.withAlpha(160),
-          width: 2,
+          width: 1,
         ),
       ),
       child: Row(

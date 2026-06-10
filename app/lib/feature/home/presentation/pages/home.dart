@@ -1,10 +1,12 @@
 ﻿import 'package:app/core/navigation/shell_page_index_provider.dart';
 import 'package:app/core/services/pk_storage.service.dart';
-import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
+import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
+import 'package:app/feature/profile/presentation/providers/profile_provider.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_details.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
 import 'package:app/feature/home/domain/home_data.dart';
@@ -114,8 +116,12 @@ class _HomePageState extends ConsumerState<HomePage> {
           _recentActivities(data),
         ],
       ),
-      error: (error, stackTrace) => Center(
-        child: Text(errorMessage(error)),
+      error: (error, stackTrace) => ErrorView(
+        error: error,
+        onTapRetry: () {
+          ref.read(profileControllerProvider.notifier).loadFullProfile();
+          ref.read(credentialControllerProvider.notifier).loadCredentials();
+        },
       ),
       loading: () => const Center(
         child: LoadingState(),

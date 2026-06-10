@@ -1,8 +1,10 @@
 import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/app_color.dart';
+import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
 import 'package:app/core/widgets/ui/loading.dart';
+import 'package:dio/dio.dart';
 import 'package:app/feature/qr/domain/models/verification_result.dart';
 import 'package:app/feature/qr/presentation/providers/qr_provider.dart';
 import 'package:app/feature/qr/presentation/widgets/verification_credential_card.dart';
@@ -28,7 +30,15 @@ class QRScanResultPage extends ConsumerWidget {
       appBar: CustomAppbar(color: context.colors.surface),
       body: verificationResult.when(
         data: (data) => _body(context, data),
-        error: (error, stackTrace) => _expiredView(context),
+        error: (error, stackTrace) {
+          //a missing response means the request never reached the server (no
+          //connection / timeout), so its not an invalid qr, its connectivity
+          final isConnectionError = error is DioException &&
+              error.type != DioExceptionType.badResponse;
+          return isConnectionError
+              ? _connectionView(context, error)
+              : _expiredView(context);
+        },
         loading: () => Center(
           child: LoadingState(
             animationPath: "assets/animations/qr_scanning.json",
@@ -58,6 +68,36 @@ class QRScanResultPage extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(
               "This QR code is invalid or has expired. Ask the student to generate a new one.",
+              textAlign: TextAlign.center,
+              style:
+                  context.texts.bodyMedium?.copyWith(color: AppColors.textHint),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _connectionView(BuildContext context, Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Lottie.asset(
+              "assets/animations/error.json",
+              width: 120,
+              height: 120,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Connection Failed",
+              style: context.texts.titleLarge?.copyWith(color: AppColors.error),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage(error),
               textAlign: TextAlign.center,
               style:
                   context.texts.bodyMedium?.copyWith(color: AppColors.textHint),

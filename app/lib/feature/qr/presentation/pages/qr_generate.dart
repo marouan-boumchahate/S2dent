@@ -5,6 +5,7 @@ import 'package:app/core/theme/app_color.dart';
 import 'package:app/core/utils/dimensions.dart';
 import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/custom_appbar.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
 import 'package:app/feature/credentials/domain/models/credential_item.dart';
 import 'package:app/feature/credentials/presentation/widgets/credential_icon.dart';
@@ -119,7 +120,7 @@ class _QRGenerateState extends ConsumerState<QRGenerate> {
         data: (token) => _body(context, token!),
         error: (error, _) {
           if (error.toString() == "NO PK FOUND") return const SizedBox.shrink();
-          return Center(child: Text("ERROR OCCURED: $error"));
+          return ErrorView(error: error);
         },
         loading: () => LoadingState(
           animationPath: "assets/animations/qr_scanning.json",
