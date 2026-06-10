@@ -31,9 +31,26 @@ export default function OtpPage() {
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (!/^[a-zA-Z0-9]+$/.test(pastedData)) return;
+
+    const newOtp = [...otp];
+    const chars = pastedData.slice(0, 6).split('');
+    chars.forEach((char, idx) => {
+      newOtp[idx] = char;
+    });
+    setOtp(newOtp);
+
+    const nextFocusIndex = Math.min(chars.length, 5);
+    document.getElementById(`otp-${nextFocusIndex}`)?.focus();
+  };
+
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join('');
+    console.log('Submitting OTP:', code);
     if (code.length < 6 || loading) return;
     setLoading(true);
 
@@ -143,7 +160,8 @@ export default function OtpPage() {
               value={digit}
               onChange={(e) => handleChange(e.target.value, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-12 h-12 text-center text-xl font-bold bg-navy border border-borderLine rounded-lg text-textLight focus:border-electric outline-none transition disabled:opacity-50 uppercase"
+              onPaste={handlePaste}
+              className="w-12 h-12 text-center text-xl font-bold bg-navy border border-borderLine rounded-lg text-textLight focus:border-electric outline-none transition disabled:opacity-50"
             />
           ))}
         </div>
