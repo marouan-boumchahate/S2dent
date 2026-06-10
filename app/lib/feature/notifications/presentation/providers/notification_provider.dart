@@ -1,6 +1,7 @@
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/core/services/token_storage_services.dart';
+import 'package:app/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/notifications/data/datasources/notification_datasource.dart';
 import 'package:app/feature/notifications/data/repos_impl/notification_repo_impl.dart';
@@ -13,47 +14,34 @@ class NotificationController extends Notifier<List<AppNotification>> {
   List<AppNotification> build() {
     final repo = ref.watch(notificationRepoProvider);
 
+    //on app restart with existing session, connect if they are valid tokens
     if (!AppConfig.useMockApi) {
-      final dio = ref.read(dioProvider);
-      final tokenStorage = ref.read(tokenStorageServiceProvider);
-      //call an authenticated endpoint so the AuthInterceptor triggers and refreshes
-      //the expired access token (a 401 triggers the refresh, /helper/health is
-      //public therefore it always returns 200, so it never triggers a refresh).
-      dio.get('/credentials').then(
-        (_) {
-          tokenStorage.getAccessToken().then((token) {
-            if (token != null) repo.connect(token);
-          });
-        },
-        onError: (_) {
-          //Refresh failed, session expired; onSessionExpired will navigate to login.
-        },
-      );
+      ref.read(tokenStorageServiceProvider).getAccessToken().then((token) {
+        if (token != null) repo.connect(token);
+      });
       ref.onDispose(repo.disconnect);
     }
 
     final subscription = repo.notificationStream.listen(
       (event) {
         state = [event, ...state];
-        ref.read(credentialControllerProvider.notifier).loadCredentials();
+        ref.read(credentialControllerProvider.notifier).refreshSilently();
       },
     );
     ref.onDispose(subscription.cancel);
 
-    final authErrorSub = repo.authErrorStream.listen((event) {
+    final authErrorSub = repo.authErrorStream.listen((event) async {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      //use an authenticated endpoint so the AuthInterceptor can be triggered to
-      //refresh the access token. it will only reconnect on success. and on error the session is
-      //expired and onSessionExpired will handle navigation to login and never reconnect.
-      dio.get('/credentials').then(
-        (_) {
-          tokenStorage.getAccessToken().then((token) {
-            if (token != null) repo.connect(token);
-          });
-        },
-        onError: (_) {},
-      );
+      final refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken == null) return;
+      try {
+        final authToken =
+            await AuthDatasource(dio).refreshAccessToken(refreshToken);
+        await tokenStorage.saveTokens(
+            authToken.accessToken, authToken.refreshToken);
+        repo.connect(authToken.accessToken);
+      } catch (_) {}
     });
     ref.onDispose(authErrorSub.cancel);
 
@@ -83,6 +71,10 @@ class NotificationController extends Notifier<List<AppNotification>> {
     return [];
   }
 
+  void clear() {
+    state = [];
+  }
+
   void ackAll() {
     final repo = ref.read(notificationRepoProvider);
     for (final notification in state) {
@@ -95,7 +87,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
 final notificationDataSourceProvider = Provider(
   (ref) {
     final dataSource = NotificationDatasource();
-    ref.onDispose(dataSource.disconnect);
+    ref.onDispose(dataSource.dispose);
     return dataSource;
   },
 );

@@ -27,6 +27,16 @@ class CredentialController
       state = AsyncValue.error(e, trace);
     }
   }
+
+  //refresh credentials silently when a notification comes
+  Future<void> refreshSilently() async {
+    credRepo.clearDetailCache();
+    try {
+      final credentials = await credRepo.getCredentials();
+      //set state immediately to new data instead of data -> loading -> data
+      state = AsyncValue.data(credentials);
+    } catch (_) {}
+  }
 }
 
 final credentialDatasourceProvider = Provider<CredentialDatasource>(

@@ -12,6 +12,8 @@ AppNotificationStatus appNotificationStatusFromJson(String value) {
   }
 }
 
+enum AppNotificationType { issuance, revocation, unknown }
+
 class AppNotification {
   const AppNotification({
     required this.eventId,
@@ -26,6 +28,13 @@ class AppNotification {
   final String message;
   final DateTime? createdAt;
   final AppNotificationStatus status;
+
+  AppNotificationType get type {
+    final lower = message.toLowerCase();
+    if (lower.contains('revok')) return AppNotificationType.revocation;
+    if (lower.contains('issu')) return AppNotificationType.issuance;
+    return AppNotificationType.unknown;
+  }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(

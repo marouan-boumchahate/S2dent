@@ -156,7 +156,10 @@ class _CredentialPageState extends ConsumerState<CredentialPage> {
             filtered.length,
             (index) => CredentialCard(
               credential: filtered[index],
-              onTap: () => _showCredentialDetails(filtered[index]),
+              onTap: () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                _showCredentialDetails(filtered[index]);
+              },
             ),
           ),
         ],

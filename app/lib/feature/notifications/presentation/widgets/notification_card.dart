@@ -12,23 +12,23 @@ class NotificationCard extends StatelessWidget {
   final AppNotification notification;
 
   IconData get _icon {
-    switch (notification.status) {
-      case AppNotificationStatus.verified:
+    switch (notification.type) {
+      case AppNotificationType.issuance:
         return Icons.verified_rounded;
-      case AppNotificationStatus.failed:
-        return Icons.error_outlined;
-      case AppNotificationStatus.unknown:
-        return Icons.question_mark_rounded;
+      case AppNotificationType.revocation:
+        return Icons.cancel_rounded;
+      case AppNotificationType.unknown:
+        return Icons.notifications_outlined;
     }
   }
 
   Color _iconColor(ColorScheme colors) {
-    switch (notification.status) {
-      case AppNotificationStatus.verified:
+    switch (notification.type) {
+      case AppNotificationType.issuance:
         return colors.primary;
-      case AppNotificationStatus.failed:
+      case AppNotificationType.revocation:
         return colors.error;
-      case AppNotificationStatus.unknown:
+      case AppNotificationType.unknown:
         return AppColors.textMuted;
     }
   }
@@ -79,19 +79,10 @@ class NotificationCard extends StatelessWidget {
                     style: context.texts.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.clip,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    notification.txHash,
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                    maxLines: 2,
+                    maxLines: 5,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     _timeAgo,
                     style: context.texts.bodySmall?.copyWith(
