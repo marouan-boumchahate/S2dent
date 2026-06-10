@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useLogo } from '@/lib/logoContext';
 import SidebarItems from './sidebarItems'; // Clean child component link integration
 import { clearTokens, fetchAcademyMe, fetchAcademySummary, fetchProfessorMe } from '@/lib/api'; // Security patch to wipe active JWT sessions on logout
+import { useAlert } from '@/components/AlertContext';
 
 const ADMIN_GROUPS = [
   { label: 'Enrolled Students', href: '/enrolled-students', icon: '/student_1.png' },
@@ -99,10 +100,21 @@ export default function Sidebar() {
     }
   }, [imgSrc, imageLoaded]);
 
+  const { showAlert } = useAlert();
+
   const handleSignOut = () => {
-    localStorage.removeItem('userRole');
-    clearTokens(); // Erases access_token and refresh_token from local storage contexts safely
-    router.push('/login');
+    showAlert({
+      type: 'warning',
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out? You will need to log in again to access the dashboard.',
+      confirmLabel: 'Sign Out',
+      cancelLabel: 'Stay',
+      onConfirm: () => {
+        localStorage.removeItem('userRole');
+        clearTokens();
+        router.push('/login');
+      },
+    });
   };
 
   const groups = role === null ? [] : (role === 'professor' ? PROFESSOR_GROUPS : ADMIN_GROUPS);

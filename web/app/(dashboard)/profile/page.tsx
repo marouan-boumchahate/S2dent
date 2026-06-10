@@ -306,17 +306,13 @@ function ProcessingModal({ imageUrl, message = 'Processing and saving changes...
 }
 
 function ProfileHeader({
-  initials,
   name,
-  sub,
   color,
   allowLogoUpload = false,
   imageSrc,
   onImageUpload,
 }: {
-  initials: string;
   name: string;
-  sub: string;
   color: 'mint' | 'violet';
   allowLogoUpload?: boolean;
   imageSrc?: string;
@@ -381,12 +377,12 @@ function ProfileHeader({
       </label>
 
       {/* Information Container */}
-      <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col gap-1.5 relative z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 justify-center sm:justify-start">
-          <h1 className="text-lg sm:text-xl font-extrabold text-textLight tracking-tight leading-tight">
-            {name}
-          </h1>
-          <span className={`self-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-sm ${
+      <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col gap-2 relative z-10">
+        <h1 className="text-lg sm:text-xl font-extrabold text-textLight tracking-tight leading-tight">
+          {name}
+        </h1>
+        <div className="flex justify-center sm:justify-start">
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-sm ${
             color === 'mint'
               ? 'bg-mint/10 text-mint border-mint/20'
               : 'bg-violet-500/10 text-violet-400 border-violet-500/20'
@@ -394,9 +390,6 @@ function ProfileHeader({
             {color === 'mint' ? 'Academy' : 'Professor'}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-textMuted font-medium leading-relaxed max-w-xl">
-          {sub}
-        </p>
       </div>
     </div>
   );
@@ -530,9 +523,7 @@ function AcademyProfileTab() {
     <div className="w-full">
       {uploadingImage && <ProcessingModal imageUrl={uploadingImage} />}
       <ProfileHeader
-        initials={data.shortName ? data.shortName.slice(0, 2) : 'AC'}
         name={data.fullName}
-        sub={`Academy #${data.academyNumber || 'ACU-2024'} · ${data.type}`}
         color="mint"
         allowLogoUpload={true}
         imageSrc={draft.logoUrl}
@@ -748,9 +739,7 @@ function ProfessorProfileTab() {
     <div className="w-full">
       {uploadingImage && <ProcessingModal imageUrl={uploadingImage} />}
       <ProfileHeader
-        initials={`${draft.firstName ? draft.firstName[0] : ''}${draft.lastName ? draft.lastName[0] : ''}`}
         name={`${draft.title} ${draft.firstName} ${draft.lastName}`}
-        sub={`Employee #${identity?.identity?.employee_id_hash ? identity.identity.employee_id_hash.slice(0, 8).toUpperCase() : 'EMP-0042'} · ${draft.rank} · ${draft.department}`}
         color="violet"
         imageSrc={draft.photoUrl}
         allowLogoUpload={true}
