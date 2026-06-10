@@ -31,6 +31,7 @@ const PAYLOAD_FIELDS: Record<string, FieldDef[]> = {
     { id: 'course_code', label: 'Course code', type: 'text', ph: 'e.g. CS-401', req: true },
     { id: 'course_name', label: 'Course name', type: 'text', ph: 'e.g. Advanced Algorithms', req: true },
     { id: 'semester', label: 'Semester', type: 'select', options: ['fall', 'spring', 'summer'], req: true },
+    { id: 'academic_year', label: 'Academic year', type: 'text', ph: 'e.g. 2025-2026', req: true },
     { id: 'total_sessions', label: 'Total sessions', type: 'number', ph: 'e.g. 30', req: true },
     { id: 'attended_sessions', label: 'Attended sessions', type: 'number', ph: 'e.g. 27', req: true },
     { id: 'excused_absences', label: 'Excused absences', type: 'number', ph: 'e.g. 2', req: true },

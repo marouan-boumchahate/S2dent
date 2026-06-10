@@ -177,6 +177,7 @@ export default function StudentDetailPage() {
   const [user, setUser] = useState<ApiUser | null>(null);            // full_name, photo_url
   const [onChain, setOnChain] = useState<OnChainStudent | null>(null);
   const [walletAddress, setWalletAddress] = useState<string>('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [deptName, setDeptName] = useState<string>('');
   const [professors, setProfessors] = useState<ApiProfessor[]>([]);
 
@@ -210,7 +211,10 @@ export default function StudentDetailPage() {
           fetchProfessors(),
         ]);
 
-        if (userRecord.status === 'fulfilled' && userRecord.value) setUser(userRecord.value);
+        if (userRecord.status === 'fulfilled' && userRecord.value) {
+          setUser(userRecord.value);
+          if (userRecord.value.photo_url) setPhotoUrl(userRecord.value.photo_url);
+        }
         if (depts.status === 'fulfilled') {
           const match = depts.value.find((d: ApiDepartment) => d.id === detail.department_id);
           if (match) setDeptName(match.name);
@@ -221,10 +225,16 @@ export default function StudentDetailPage() {
         try {
           const allStudents = await fetchStudents();
           const match = allStudents.find((s) => s.id === id);
-          if (match?.wallet_address) {
-            setWalletAddress(match.wallet_address);
-            const onChainData = await fetchStudentOnChain(match.wallet_address);
-            setOnChain(onChainData);
+          if (match) {
+            // Fallback photo from list data (useful when user fetch fails, e.g. professor role)
+            if (match.photo_url) {
+              setPhotoUrl((prev) => prev || (match.photo_url as string));
+            }
+            if (match.wallet_address) {
+              setWalletAddress(match.wallet_address);
+              const onChainData = await fetchStudentOnChain(match.wallet_address);
+              setOnChain(onChainData);
+            }
           }
         } catch (e) {
           console.warn('No on-chain identity:', e);
@@ -336,9 +346,9 @@ export default function StudentDetailPage() {
             <div className="bg-card border border-borderLine rounded-2xl p-6 flex flex-col items-center text-center">
 
               {/* Photo or avatar fallback */}
-              {user?.photo_url && !imgError ? (
+              {photoUrl && !imgError ? (
                 <img
-                  src={user.photo_url}
+                  src={photoUrl}
                   alt={displayName}
                   className="w-20 h-20 rounded-full object-cover border-2 border-mint mb-3"
                   onError={() => setImgError(true)}

@@ -3,14 +3,16 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import Image from 'next/image';
 
-type AlertType = 'success' | 'error' | 'info';
+type AlertType = 'success' | 'error' | 'info' | 'warning';
 
 interface AlertOptions {
   type: AlertType;
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   onConfirm?: () => void;
+  onCancel?: () => void;
 }
 
 interface AlertContextType {
@@ -52,6 +54,13 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     hideAlert();
   };
 
+  const handleCancel = () => {
+    if (alert?.onCancel) {
+      alert.onCancel();
+    }
+    hideAlert();
+  };
+
   return (
     <AlertContext.Provider value={{ showAlert, hideAlert }}>
       {children}
@@ -64,7 +73,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
           {/* Backdrop overlay */}
           <div
             className="absolute inset-0 bg-navy/80 backdrop-blur-md"
-            onClick={hideAlert}
+            onClick={alert.type === 'warning' ? handleCancel : hideAlert}
           />
 
           {/* Alert Card container */}
@@ -106,6 +115,13 @@ export function AlertProvider({ children }: { children: ReactNode }) {
                   </svg>
                 </div>
               )}
+              {alert.type === 'warning' && (
+                <div className="w-full h-full rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 0010.5 21h3a2.25 2.25 0 002.25-2.25V15m3-3l3-3m0 0l-3-3m3 3H9" />
+                  </svg>
+                </div>
+              )}
             </div>
 
             {/* Typography info details */}
@@ -119,18 +135,35 @@ export function AlertProvider({ children }: { children: ReactNode }) {
             </div>
 
             {/* CTA action buttons */}
-            <button
-              onClick={handleConfirm}
-              className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                alert.type === 'success'
-                  ? 'bg-mint text-navy hover:shadow-mint/20'
-                  : alert.type === 'error'
-                  ? 'bg-red-500 text-white hover:shadow-red-500/20 hover:bg-red-600'
-                  : 'bg-violet-500 text-white hover:shadow-violet-500/20 hover:bg-violet-600'
-              }`}
-            >
-              {alert.confirmLabel || 'OK'}
-            </button>
+            {alert.type === 'warning' ? (
+              <div className="w-full flex gap-3">
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide border border-borderLine text-textMuted hover:text-textLight hover:bg-surface/60 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {alert.cancelLabel || 'Cancel'}
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  className="flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-lg bg-red-500 text-white hover:shadow-red-500/20 hover:bg-red-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {alert.confirmLabel || 'Confirm'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleConfirm}
+                className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                  alert.type === 'success'
+                    ? 'bg-mint text-navy hover:shadow-mint/20'
+                    : alert.type === 'error'
+                    ? 'bg-red-500 text-white hover:shadow-red-500/20 hover:bg-red-600'
+                    : 'bg-violet-500 text-white hover:shadow-violet-500/20 hover:bg-violet-600'
+                }`}
+              >
+                {alert.confirmLabel || 'OK'}
+              </button>
+            )}
           </div>
         </div>
       )}
