@@ -190,7 +190,7 @@ class AchievementPayload {
   final DateTime? eventDate;
   final String eventLocation;
   final num? score;
-  final int? placement;
+  final String? placement;
   final String? teamName;
   final String? projectTitle;
   final String? projectDescription;

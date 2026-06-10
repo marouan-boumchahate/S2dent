@@ -157,8 +157,8 @@ class CredentialDecryptedDetails extends StatelessWidget {
           _payloadInfoTile("Location", data.eventLocation),
           if (data.score != null)
             _payloadInfoTile("Score", data.score.toString()),
-          if (data.placement != null)
-            _payloadInfoTile("Placement", "#${data.placement}"),
+          if (data.placement != null && data.placement!.isNotEmpty)
+            _payloadInfoTile("Placement", data.placement!),
           if (data.teamName != null) _payloadInfoTile("Team", data.teamName!),
           if (data.projectTitle != null)
             _payloadInfoTile("Project", data.projectTitle!),
