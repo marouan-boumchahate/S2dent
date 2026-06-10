@@ -161,6 +161,7 @@ final authControllerProvider =
         ref.read(shellPageIndexProvider.notifier).state = 0;
         ref.read(appKitModalProvider.notifier).state = null;
         ref.read(notificationRepoProvider).disconnect();
+        ref.read(notificationControllerProvider.notifier).clear();
         ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => const RoleSelectionPage(),

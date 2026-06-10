@@ -17,7 +17,14 @@ final homeDataProvider = Provider<AsyncValue<HomeData>>(
             enrollmentStatus:
                 profileData.academic?.enrollmentsStatus.name ?? "",
             firstName: profileData.user?.firstName ?? "",
-            recentCredentials: credentialData.take(3).toList(),
+            recentCredentials: (credentialData.toList()
+                  ..sort((a, b) {
+                    if (a.issuedAt == null) return 1;
+                    if (b.issuedAt == null) return -1;
+                    return b.issuedAt!.compareTo(a.issuedAt!);
+                  }))
+                .take(3)
+                .toList(),
             walletAddress: profileData.identity?.walletAddress ?? "",
             credentialsList: credentialData,
             universityLogo: profileData.university?.logoUrl,

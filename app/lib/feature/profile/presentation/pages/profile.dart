@@ -10,10 +10,8 @@ import 'package:app/feature/profile/presentation/widgets/address_section.dart';
 import 'package:app/feature/profile/presentation/widgets/header_section.dart';
 import 'package:app/feature/profile/presentation/widgets/settings_section.dart';
 import 'package:app/feature/profile/presentation/widgets/user_section.dart';
-import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/core/utils/show_logout_dialog.dart';
 import 'package:app/feature/settings/presentation/pages/settings.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -84,20 +82,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               onTapSettings: onTapSettings,
               onTapLogout: onTapLogout,
             ),
-            if (kDebugMode)
-              TextButton.icon(
-                onPressed: () async {
-                  final storage = ref.read(tokenStorageServiceProvider);
-                  final messenger = ScaffoldMessenger.of(context);
-                  await storage.saveTokens('corrupted_access', 'corrupted_refresh');
-                  messenger.showSnackBar(const SnackBar(
-                    content: Text('[DEBUG] Both tokens corrupted — make any API call to trigger expiry'),
-                  ));
-                },
-                icon: const Icon(Icons.bug_report, color: Colors.red),
-                label: const Text('Simulate session expiry',
-                    style: TextStyle(color: Colors.red)),
-              ),
           ],
         ),
       ),

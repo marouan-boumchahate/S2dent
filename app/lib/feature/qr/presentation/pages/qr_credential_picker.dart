@@ -28,6 +28,7 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
 
   @override
   void dispose() {
+    FocusManager.instance.primaryFocus?.unfocus();
     _searchController.dispose();
     super.dispose();
   }
@@ -96,6 +97,7 @@ class _QRCredentialPickerState extends ConsumerState<QRCredentialPicker> {
           (index) => CredentialCard(
             credential: filtered[index],
             onTap: () async {
+              FocusManager.instance.primaryFocus?.unfocus();
               final duration = await showModalBottomSheet<int>(
                 context: context,
                 builder: (ctx) => const DurationPickerBottomSheet(),

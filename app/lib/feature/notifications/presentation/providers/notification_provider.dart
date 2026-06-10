@@ -1,6 +1,7 @@
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/core/services/token_storage_services.dart';
+import 'package:app/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
 import 'package:app/feature/notifications/data/datasources/notification_datasource.dart';
 import 'package:app/feature/notifications/data/repos_impl/notification_repo_impl.dart';
@@ -13,15 +14,10 @@ class NotificationController extends Notifier<List<AppNotification>> {
   List<AppNotification> build() {
     final repo = ref.watch(notificationRepoProvider);
 
+    //on app restart with existing session, connect if they are valid tokens
     if (!AppConfig.useMockApi) {
-      final dio = ref.read(dioProvider);
-      final tokenStorage = ref.read(tokenStorageServiceProvider);
-      //ping the API first so AuthInterceptor refreshes the access token if expired,
-      //then read the (possibly updated) token from storage before connecting
-      dio.get('/helper/health').whenComplete(() {
-        tokenStorage.getAccessToken().then((token) {
-          if (token != null) repo.connect(token);
-        });
+      ref.read(tokenStorageServiceProvider).getAccessToken().then((token) {
+        if (token != null) repo.connect(token);
       });
       ref.onDispose(repo.disconnect);
     }
@@ -29,24 +25,23 @@ class NotificationController extends Notifier<List<AppNotification>> {
     final subscription = repo.notificationStream.listen(
       (event) {
         state = [event, ...state];
-        ref.read(credentialControllerProvider.notifier).loadCredentials();
+        ref.read(credentialControllerProvider.notifier).refreshSilently();
       },
     );
     ref.onDispose(subscription.cancel);
 
-    final authErrorSub = repo.authErrorStream.listen((event) {
+    final authErrorSub = repo.authErrorStream.listen((event) async {
       final dio = ref.read(dioProvider);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      dio
-          .get('/helper/health')
-          .then((value) {},
-              onError:
-                  (error) {}) //pinging the interceptor may fail, even if it fails, continue.
-          .whenComplete(() {
-        tokenStorage.getAccessToken().then((token) {
-          if (token != null) repo.connect(token);
-        });
-      });
+      final refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken == null) return;
+      try {
+        final authToken =
+            await AuthDatasource(dio).refreshAccessToken(refreshToken);
+        await tokenStorage.saveTokens(
+            authToken.accessToken, authToken.refreshToken);
+        repo.connect(authToken.accessToken);
+      } catch (_) {}
     });
     ref.onDispose(authErrorSub.cancel);
 
@@ -76,6 +71,10 @@ class NotificationController extends Notifier<List<AppNotification>> {
     return [];
   }
 
+  void clear() {
+    state = [];
+  }
+
   void ackAll() {
     final repo = ref.read(notificationRepoProvider);
     for (final notification in state) {
@@ -88,7 +87,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
 final notificationDataSourceProvider = Provider(
   (ref) {
     final dataSource = NotificationDatasource();
-    ref.onDispose(dataSource.disconnect);
+    ref.onDispose(dataSource.dispose);
     return dataSource;
   },
 );

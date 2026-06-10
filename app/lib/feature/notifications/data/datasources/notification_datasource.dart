@@ -76,6 +76,10 @@ class NotificationDatasource {
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
+  }
+
+  void dispose() {
+    disconnect();
     if (!_streamController.isClosed) _streamController.close();
     if (!_authErrorController.isClosed) _authErrorController.close();
   }

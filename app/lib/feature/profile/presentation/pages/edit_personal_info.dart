@@ -103,7 +103,12 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   }
 
   Future<void> _pickImage() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
     if (image == null) return;
     setState(() => _pickedImage = image);
   }

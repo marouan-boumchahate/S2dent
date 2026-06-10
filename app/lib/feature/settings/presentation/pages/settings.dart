@@ -1,4 +1,5 @@
 ﻿import 'package:app/core/services/pk_storage.service.dart';
+import 'package:app/core/services/token_storage_services.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/custom_backbutton.dart';
 import 'package:app/core/widgets/ui/buttons/pressable_info_tile.dart';
@@ -9,6 +10,7 @@ import 'package:app/core/extensions/context_extensions.dart';
 import 'package:app/core/theme/theme_provider.dart';
 import 'package:app/feature/home/presentation/widgets/pk_setup_dialog.dart';
 import 'package:app/feature/settings/presentation/pages/faqs.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -90,6 +92,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _appPreference(theme),
           _support(),
           _security(),
+          if (kDebugMode) _debug(),
         ],
       ),
     );
@@ -147,6 +150,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             label: "Save a Private Key",
             onTap: onTapSavePK,
             icon: Icons.save,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Padding _debug() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: InfoSection(
+        title: "Developer",
+        widgets: [
+          TextButton.icon(
+            onPressed: () async {
+              final storage = ref.read(tokenStorageServiceProvider);
+              final messenger = ScaffoldMessenger.of(context);
+              await storage.saveTokens('corrupted_access', 'corrupted_refresh');
+              messenger.showSnackBar(const SnackBar(
+                content: Text('[DEBUG] Both tokens corrupted — make any API call to trigger expiry'),
+              ));
+            },
+            icon: const Icon(Icons.bug_report, color: Colors.red),
+            label: const Text('Simulate session expiry',
+                style: TextStyle(color: Colors.red)),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              final storage = ref.read(tokenStorageServiceProvider);
+              final messenger = ScaffoldMessenger.of(context);
+              final refreshToken = await storage.getRefreshToken();
+              await storage.saveTokens('corrupted_access', refreshToken ?? '');
+              messenger.showSnackBar(const SnackBar(
+                content: Text('[DEBUG] Access token expired — refresh token intact'),
+              ));
+            },
+            icon: const Icon(Icons.timer_off, color: Colors.orange),
+            label: const Text('Expire access token only',
+                style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),
