@@ -1,11 +1,24 @@
-const validate = (schema, statusCodeOrLocation = 422) => (req, res, next) => {
-  const { error, value } = schema.validate(req.body, {
-    abortEarly: false, // Return all errors, not just the first one
-    stripUnknown: true, // Remove unknown fields that are not defined in the schema
-    convert: true, // Attempt to convert values to the required types (e.g., strings to numbers)
-  });
+const validate = (schema, locationOrStatusCode = 'body', statusCode = 422) => (req, res, next) => {
+  let location = 'body';
+  let code = 422;
 
-  const statusCode = typeof statusCodeOrLocation === 'number' ? statusCodeOrLocation : 422;
+  if (typeof locationOrStatusCode === 'number') {
+    code = locationOrStatusCode;
+  } else if (typeof locationOrStatusCode === 'string') {
+    location = locationOrStatusCode;
+  }
+
+  if (typeof statusCode === 'number') {
+    code = statusCode;
+  }
+
+  const dataToValidate = req[location] || {};
+
+  const { error, value } = schema.validate(dataToValidate, {
+    abortEarly: false,
+    stripUnknown: true,
+    convert: true,
+  });
 
   if (error) {
     const errors = error.details.map((d) => ({
@@ -13,14 +26,14 @@ const validate = (schema, statusCodeOrLocation = 422) => (req, res, next) => {
       message: d.message,
     }));
 
-    return res.status(statusCode).json({
+    return res.status(code).json({
       success: false,
       code: 'VALIDATION_ERROR',
       errors,
     });
   }
 
-  req.body = value;
+  req[location] = value;
   return next();
 };
 

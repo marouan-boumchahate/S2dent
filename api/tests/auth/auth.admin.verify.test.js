@@ -113,9 +113,9 @@ describe('POST /api/auth/admin/verify', function () {
         assert.equal(refreshPayload.role, 'admin');
 
         assert.equal(cache.getCache.calledOnce, true, 'getCache must be called exactly once');
-        assert.equal(cache.getCache.firstCall.args[0], 'admin_nonce');
+        assert.match(cache.getCache.firstCall.args[0], /^admin_nonce:0x[0-9a-f]{64}$/);
         assert.equal(cache.delCache.calledOnce, true, 'delCache must be called exactly once');
-        assert.equal(cache.delCache.firstCall.args[0], 'admin_nonce');
+        assert.match(cache.delCache.firstCall.args[0], /^admin_nonce:0x[0-9a-f]{64}$/);
         assert.equal(isOwnerService.calledOnce, true, 'isOwnerService must be called exactly once');
     });
 
