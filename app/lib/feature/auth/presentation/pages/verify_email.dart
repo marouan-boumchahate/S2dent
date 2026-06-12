@@ -79,8 +79,8 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
             ),
           ),
           AuthTextfield(
-            label: "STUDENT EMAIL",
-            hint: "example@university.edu",
+            label: "EMAIL",
+            hint: "example@gmail.com",
             controller: _emailController,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
