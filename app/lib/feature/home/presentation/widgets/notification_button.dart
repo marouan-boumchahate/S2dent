@@ -20,7 +20,7 @@ class NotificationButton extends StatelessWidget {
           icon: Icon(
             Icons.notifications_none,
             color: AppColors.textMuted,
-            size: 36,
+            size: 32,
           ),
         ),
         hasUnread

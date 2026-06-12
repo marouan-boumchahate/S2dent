@@ -30,21 +30,23 @@ final dioProvider = Provider<Dio>((ref) {
         },
       ),
     );
-    //debug purposses
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onResponse: (r, handler) {
-          debugPrint(
-              '[API] ${r.requestOptions.method} ${r.requestOptions.path} → ${r.statusCode}');
-          handler.next(r);
-        },
-        onError: (e, handler) {
-          debugPrint(
-              '[API ERROR] ${e.requestOptions.method} ${e.requestOptions.path} → ${e.response?.statusCode} | ${e.response?.data}');
-          handler.next(e);
-        },
-      ),
-    );
+    //debug only logging, compiled out of release builds
+    if (kDebugMode) {
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onResponse: (r, handler) {
+            debugPrint(
+                '[API] ${r.requestOptions.method} ${r.requestOptions.path} → ${r.statusCode}');
+            handler.next(r);
+          },
+          onError: (e, handler) {
+            debugPrint(
+                '[API ERROR] ${e.requestOptions.method} ${e.requestOptions.path} → ${e.response?.statusCode} | ${e.response?.data}');
+            handler.next(e);
+          },
+        ),
+      );
+    }
   }
 
   return dio;

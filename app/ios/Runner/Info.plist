@@ -8,6 +8,8 @@
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>NSCameraUsageDescription</key>
 		<string>S2dent needs camera access to scan student QR codes</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>S2dent needs photo library access to set your profile picture</string>
 		<key>CFBundleDisplayName</key>
 		<string>App</string>
 		<key>CFBundleExecutable</key>
