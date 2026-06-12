@@ -24,6 +24,43 @@ const parseRedisUrl = (redisUrl) => {
 
 const redisFromUrl = parseRedisUrl(process.env.REDIS_URL)
 
+const validateSecrets = () => {
+  const errors = []
+
+  const accessSecret = process.env.JWT_ACCESS_SECRET
+  const refreshSecret = process.env.JWT_REFRESH_SECRET
+  const encryptionSecret = process.env.JWT_ENCRYPTION_SECRET
+
+  if (!accessSecret) {
+    errors.push('JWT_ACCESS_SECRET is missing.')
+  } else if (accessSecret.length < 32) {
+    errors.push('JWT_ACCESS_SECRET is too weak. It should be at least 32 characters long.')
+  }
+
+  if (!refreshSecret) {
+    errors.push('JWT_REFRESH_SECRET is missing.')
+  } else if (refreshSecret.length < 32) {
+    errors.push('JWT_REFRESH_SECRET is too weak. It should be at least 32 characters long.')
+  }
+
+  if (!encryptionSecret) {
+    errors.push('JWT_ENCRYPTION_SECRET is missing.')
+  } else {
+    const hexRegex = /^[0-9a-fA-F]{64}$/
+    if (!hexRegex.test(encryptionSecret)) {
+      errors.push('JWT_ENCRYPTION_SECRET must be a valid 64-character hex string (representing a 256-bit key for AES-256-GCM).')
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('❌ Startup configuration validation failed:')
+    errors.forEach((err) => console.error(`  - ${err}`))
+    process.exit(1)
+  }
+}
+
+validateSecrets()
+
 export const env = {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
   PRODUCTION: process.env.NODE_ENV === 'production',
@@ -61,5 +98,10 @@ export const env = {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
     apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
+  jwt: {
+    accessSecret: process.env.JWT_ACCESS_SECRET,
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
+    encryptionSecret: Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex'),
   },
 }

@@ -3,8 +3,8 @@
 // dotenv.config (called inside src/config/env.js) does NOT override
 // already-set process.env values, so these stay in effect for tests.
 
-process.env.JWT_ACCESS_SECRET ??= 'test_access_secret_for_testing'
-process.env.JWT_REFRESH_SECRET ??= 'test_refresh_secret_for_testing'
+process.env.JWT_ACCESS_SECRET ??= 'test_access_secret_for_testing_length_32'
+process.env.JWT_REFRESH_SECRET ??= 'test_refresh_secret_for_testing_length_32'
 process.env.JWT_ENCRYPTION_SECRET ??= '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'
 
 // Polyfill: src/modules/identity/professor/professor.identity.service.js
