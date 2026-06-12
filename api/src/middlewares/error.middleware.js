@@ -9,7 +9,7 @@ const errorMiddleware = (err, req, res, next) => {
   const code = err.code ?? 'INTERNAL_ERROR';
 
   const message =
-    env.NODE_ENV === 'production' && statusCode === 500
+    env.PRODUCTION && statusCode === 500
       ? 'An unexpected error occurred'
       : err.message;
 

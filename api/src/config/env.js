@@ -64,7 +64,6 @@ validateSecrets()
 export const env = {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
   PRODUCTION: process.env.NODE_ENV === 'production',
-  NODE_ENV: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3000,
   email: {
     smtpHost: process.env.SMTP_HOST || 'smtp-relay.brevo.com',

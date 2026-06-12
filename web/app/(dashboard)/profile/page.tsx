@@ -24,6 +24,15 @@ function formatDate(dateStr?: string | null) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// network name helper
+function getNetworkName(address?: string) {
+  if (!address) return '—';
+  if (address.toLowerCase() === '0x5fbdb2315678afecb367f032d93f642f64180aa3') {
+    return 'Local Devnet';
+  }
+  return 'Sepolia Testnet';
+}
+
 type Role = 'admin' | 'professor';
 type Tab = { id: string; label: string };
 
@@ -570,16 +579,19 @@ function AcademyProfileTab() {
       <Card>
         <SettingsRow 
           label="Smart contract address" 
-          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''} 
+          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '—'} 
+          copyValue={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}
           action={
-            <OutlineButton 
-              onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''}`, '_blank')}
-            >
-              View contract
-            </OutlineButton>
+            process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ? (
+              <OutlineButton 
+                onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')}
+              >
+                View contract
+              </OutlineButton>
+            ) : null
           } 
         />
-        <SettingsRow label="Network" sub="Ethereum mainnet" />
+        <SettingsRow label="Network" sub={getNetworkName(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS)} />
       </Card>
     </div>
   );
@@ -793,16 +805,19 @@ function ProfessorProfileTab() {
       <Card>
         <SettingsRow 
           label="Smart contract address" 
-          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''} 
+          sub={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '—'} 
+          copyValue={process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}
           action={
-            <OutlineButton 
-              onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''}`, '_blank')}
-            >
-              View contract
-            </OutlineButton>
+            process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ? (
+              <OutlineButton 
+                onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')}
+              >
+                View contract
+              </OutlineButton>
+            ) : null
           } 
         />
-        <SettingsRow label="Network" sub="Ethereum mainnet" />
+        <SettingsRow label="Network" sub={getNetworkName(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS)} />
       </Card>
     </div>
   );

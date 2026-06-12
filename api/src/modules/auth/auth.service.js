@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { ethers, recoverAddress } from 'ethers';
 import db from '../../config/db.js';
 import { setCache, getCache, delCache } from '../../cache/cache.client.js';
-import { refreshTokenKey, otpKey } from '../../cache/cache.keys.js';
+import { refreshTokenKey, otpKey, adminNonceKey } from '../../cache/cache.keys.js';
 import { ACADEMY_REFRESH_TOKEN_TTL, STUDENT_REFRESH_TOKEN_TTL, OTP_TTL } from '../../cache/cache.ttl.js';
 import { getNonce } from '../../utils/crypto.js';
 import { getAcademyIdentity } from '../../blockchain/identity/academy.identity.blockchain.js';
@@ -15,7 +15,7 @@ import { sendOtpEmail } from '../../utils/email.js';
 import { env } from '../../config/env.js';
 
 
-const isProduction = env.NODE_ENV === 'production' || env.NODE_ENV === 'test';
+const isProduction = env.PRODUCTION || process.env.NODE_ENV === 'test';
 
 
 // DTOs
@@ -239,14 +239,16 @@ const getUserByEmail = async (email) => {
 
 
 // Services
-const generateAdminNonceService = async () => {
+const generateAdminNonceService = async ({ ip, device }) => {
     const nonce = getNonce(64);
-    await setCache('admin_nonce', nonce, 5 * 60);
+    const cacheKey = adminNonceKey(ip, device);
+    await setCache(cacheKey, nonce, 5 * 60);
 
     return { message: `Sign this nonce to authenticate as admin: ${nonce}` };
 }
-const verifyAdminSignatureService = async (signature) => {
-    const nonce = await getCache('admin_nonce');
+const verifyAdminSignatureService = async (signature, { ip, device }) => {
+    const cacheKey = adminNonceKey(ip, device);
+    const nonce = await getCache(cacheKey);
 
     if (!nonce) {
         const err = new Error('Nonce is missing or has expired');
@@ -269,7 +271,7 @@ const verifyAdminSignatureService = async (signature) => {
         { role: 'admin' }, 
         { accessExpiresIn: '1h', refreshExpiresIn: '1d' }
     );
-    await delCache('admin_nonce');
+    await delCache(cacheKey);
     
     return tokenResponseDto(tokens);
 }

@@ -11,7 +11,11 @@ import { created, ok } from '../../utils/response.js';
 
 
 const generateAdminNonceController = async (req, res) => {
-  const result = await generateAdminNonceService();
+  const { ip, headers } = req;
+  const result = await generateAdminNonceService({
+    ip: ip || headers['x-forwarded-for'],
+    device: headers['user-agent'],
+  });
   return ok(res, result, 'Nonce expires in 5 minutes');
 }
 const generateNonceController = async (req, res) => {
