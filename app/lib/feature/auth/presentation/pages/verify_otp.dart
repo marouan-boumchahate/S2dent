@@ -94,13 +94,13 @@ class _VerifyOTPPageState extends ConsumerState<VerifyOTPPage> {
           return "OTP required";
         }
         if (value.length < 6) {
-          return "Must be 6 figures";
+          return "Must be 6 digits";
         }
         return null;
       },
       controller: _otpController,
       keyboardType: TextInputType.visiblePassword,
-      textCapitalization: TextCapitalization.characters,
+      textCapitalization: TextCapitalization.none,
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
       ],
