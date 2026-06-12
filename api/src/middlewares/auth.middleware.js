@@ -17,7 +17,8 @@ function authenticate(req, res, next) {
         const authError = new Error(msg);
         authError.statusCode = 401;
         authError.code = 'UNAUTHORIZED';
-        throw authError;
+        
+        return next(authError);
     }
 }
 

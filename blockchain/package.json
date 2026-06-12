@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "test": "npx hardhat test",
     "node": "npx hardhat node",
     "deploy:local": "npx hardhat ignition deploy ignition/modules/Credential.ts --network localhost",
     "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/Credential.ts --network sepolia",
