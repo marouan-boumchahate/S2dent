@@ -1,7 +1,6 @@
 ﻿import 'package:app/core/widgets/layouts/main_layout.dart';
 import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/core/widgets/ui/loading.dart';
-import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/profile/domain/models/student.dart';
 import 'package:app/feature/profile/presentation/pages/edit_address_info.dart';
 import 'package:app/feature/profile/presentation/pages/edit_personal_info.dart';
@@ -11,7 +10,6 @@ import 'package:app/feature/profile/presentation/widgets/address_section.dart';
 import 'package:app/feature/profile/presentation/widgets/header_section.dart';
 import 'package:app/feature/profile/presentation/widgets/settings_section.dart';
 import 'package:app/feature/profile/presentation/widgets/user_section.dart';
-import 'package:app/core/utils/show_logout_dialog.dart';
 import 'package:app/feature/settings/presentation/pages/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,12 +53,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  void onTapLogout() {
-    showLogoutDialog(context, onConfirm: () async {
-      await ref.read(authControllerProvider.notifier).logout();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final studentData = ref.watch(profileControllerProvider);
@@ -81,7 +73,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
             SettingsSection(
               onTapSettings: onTapSettings,
-              onTapLogout: onTapLogout,
             ),
           ],
         ),

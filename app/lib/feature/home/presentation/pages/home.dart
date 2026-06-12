@@ -37,6 +37,10 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isCopied = false;
 
+  //shared across HomePage instances so the dialog opens once even when HomePage
+  //and it bascially prevents a second pkSetupDialog from showing.
+  static bool _pkDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,18 +50,24 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> pkCheckUp() async {
     final pk = await ref.read(pkStorageServiceProvider).getPK();
     if (pk != null) return;
+    if (_pkDialogOpen) return;
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PkSetupDialog(
-        onSave: () => showAlertDialog(
-          context,
-          "Private Key saved successfully",
-          type: AlertType.success,
+    _pkDialogOpen = true;
+    try {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PkSetupDialog(
+          onSave: () => showAlertDialog(
+            context,
+            "Private Key saved successfully",
+            type: AlertType.success,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _pkDialogOpen = false;
+    }
   }
 
   void onTapCopy(HomeData data) async {

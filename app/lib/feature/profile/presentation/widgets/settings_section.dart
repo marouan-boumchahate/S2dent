@@ -6,10 +6,8 @@ class SettingsSection extends StatelessWidget {
   const SettingsSection({
     super.key,
     required this.onTapSettings,
-    required this.onTapLogout,
   });
   final void Function() onTapSettings;
-  final void Function() onTapLogout;
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -22,11 +20,6 @@ class SettingsSection extends StatelessWidget {
             onTap: onTapSettings,
             icon: Icons.settings,
           ),
-          PressableInfoTile(
-            label: "Logout",
-            onTap: onTapLogout,
-            icon: Icons.logout,
-          )
         ],
       ),
     );
