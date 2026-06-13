@@ -11,11 +11,11 @@ class VerificationDetailsCard extends StatelessWidget {
 
   final Map<String, dynamic> payload;
 
-  //foramts the value if its date
-  String _valueFormatter(String value) {
-    final parsed = DateTime.tryParse(value);
+  String _valueFormatter(dynamic value) {
+    final str = value.toString();
+    final parsed = DateTime.tryParse(str);
     if (parsed != null) return dateFormatter(parsed);
-    return value;
+    return str;
   }
 
   @override
@@ -42,20 +42,16 @@ class VerificationDetailsCard extends StatelessWidget {
             const SizedBox(height: 12),
             const Divider(thickness: 2),
             const SizedBox(height: 8),
-            ...payload.entries
-                .where(
-                  (element) => element.value is! int,
-                )
-                .map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: VerificationInfoRow(
-                      label: e.key.replaceAll('_', ' ').toUpperCase(),
-                      //incase its a date, format it (otherwise return the same value)
-                      value: _valueFormatter(e.value),
-                    ),
-                  ),
+            ...payload.entries.map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: VerificationInfoRow(
+                  label: e.key.replaceAll('_', ' ').toUpperCase(),
+                  //incase its a date, format it (otherwise return the same value)
+                  value: _valueFormatter(e.value),
                 ),
+              ),
+            ),
           ],
         ),
       ),

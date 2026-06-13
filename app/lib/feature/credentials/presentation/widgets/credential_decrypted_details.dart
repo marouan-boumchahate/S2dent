@@ -88,7 +88,6 @@ class CredentialDecryptedDetails extends StatelessWidget {
         return Column(children: [
           _payloadInfoTile("Course", data.courseName),
           _payloadInfoTile("Course Code", data.courseCode),
-          _payloadInfoTile("Academic Year", data.academicYear),
           _payloadInfoTile("Semester", data.semester),
           if (data.enrollmentDate != null)
             _payloadInfoTile(
