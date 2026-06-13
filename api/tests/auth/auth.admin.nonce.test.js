@@ -86,7 +86,7 @@ describe('GET /api/auth/admin/nonce', function () {
         );
 
         assert.equal(cache.setCache.calledOnce, true, 'setCache must be called exactly once');
-        assert.match(cache.setCache.firstCall.args[0], /^admin_nonce:0x[0-9a-f]{64}$/);
+        assert.match(cache.setCache.firstCall.args[0], /^auth:admin_nonce:0x[0-9a-f]{64}$/);
         assert.match(cache.setCache.firstCall.args[1], /^[0-9a-f]{128}$/);
         assert.equal(cache.setCache.firstCall.args[2], 5 * 60);
     });

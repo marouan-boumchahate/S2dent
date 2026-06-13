@@ -3,7 +3,7 @@ import { ethers, recoverAddress } from 'ethers';
 import db from '../../config/db.js';
 import { setCache, getCache, delCache } from '../../cache/cache.client.js';
 import { refreshTokenKey, otpKey, adminNonceKey } from '../../cache/cache.keys.js';
-import { ACADEMY_REFRESH_TOKEN_TTL, STUDENT_REFRESH_TOKEN_TTL, OTP_TTL } from '../../cache/cache.ttl.js';
+import { ACADEMY_REFRESH_TOKEN_TTL, STUDENT_REFRESH_TOKEN_TTL, OTP_TTL, NONCE_TTL_MS, ADMIN_NONCE_TTL_SECONDS } from '../../config/ttl.js';
 import { getNonce } from '../../utils/crypto.js';
 import { getAcademyIdentity } from '../../blockchain/identity/academy.identity.blockchain.js';
 import { getStudentIdentity } from '../../blockchain/identity/student.identity.blockchain.js';
@@ -30,7 +30,7 @@ const storeNonce = async (address, nonce) => await db.query(
       `UPDATE identities
        SET nonce = $2, nonce_expires_at = $3
        WHERE wallet_address = $1`,
-      [address, nonce, new Date(Date.now() + 5 * 60 * 1000)]
+      [address, nonce, new Date(Date.now() + NONCE_TTL_MS)]
     );
 const deleteNonce = async (address) => await db.query(
       `UPDATE identities
@@ -201,40 +201,44 @@ const createJwtPayloadAndOptions = async (wallet_address, role, entity_id) => {
 const getJwt = (payload, options, isRefresh = false) => signTokens(payload, options, isRefresh);
 
 const getUserByEmail = async (email) => {
-    const { rows: [user] } = await db.query(
-        `SELECT id FROM users WHERE email = $1`,
+    const { rows: [result] } = await db.query(
+        `SELECT 
+            u.id AS user_id, 
+            s.id AS student_id, 
+            p.id AS professor_id, 
+            NULL::uuid AS academy_id
+         FROM users u
+         LEFT JOIN students s ON s.user_id = u.id
+         LEFT JOIN professors p ON p.user_id = u.id
+         WHERE u.email = $1
+         
+         UNION ALL
+         
+         SELECT 
+            NULL::uuid AS user_id, 
+            NULL::uuid AS student_id, 
+            NULL::uuid AS professor_id, 
+            a.id AS academy_id
+         FROM academies a
+         WHERE a.email = $1`,
         [email]
     );
 
-    if(!user) {
-        const { rows: [academy] } = await db.query(
-            `SELECT id FROM academies WHERE email = $1`,
-            [email]
-        );
-
-        if(!academy) {
-            const err = new Error('Email is not registered');
-            err.statusCode = 404;
-            err.code = 'EMAIL_NOT_FOUND';
-            throw err;
-        }
-
-        return { id: academy.id, role: 'academy' };
+    if (!result) {
+        const err = new Error('Email is not registered');
+        err.statusCode = 404;
+        err.code = 'EMAIL_NOT_FOUND';
+        throw err;
     }
 
-    const { rows: [student] } = await db.query(
-        `SELECT id FROM students WHERE user_id = $1`,
-        [user.id]
-    );
+    if (result.academy_id) return { id: result.academy_id, role: 'academy' };
+    if (result.student_id) return { id: result.student_id, role: 'student' };
+    if (result.professor_id) return { id: result.professor_id, role: 'professor' };
 
-    if(student) return { id: student.id, role: 'student' };
-
-    const { rows: [professor] } = await db.query(
-        `SELECT id FROM professors WHERE user_id = $1`,
-        [user.id]
-    );
-
-    if(professor) return { id: professor.id, role: 'professor' };
+    const err = new Error('User has no assigned role record (student or professor)');
+    err.statusCode = 400;
+    err.code = 'INVALID_USER_ROLE';
+    throw err;
 }
 
 
@@ -242,7 +246,7 @@ const getUserByEmail = async (email) => {
 const generateAdminNonceService = async ({ ip, device }) => {
     const nonce = getNonce(64);
     const cacheKey = adminNonceKey(ip, device);
-    await setCache(cacheKey, nonce, 5 * 60);
+    await setCache(cacheKey, nonce, ADMIN_NONCE_TTL_SECONDS);
 
     return { message: `Sign this nonce to authenticate as admin: ${nonce}` };
 }

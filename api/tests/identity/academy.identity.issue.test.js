@@ -385,7 +385,7 @@ describe('POST /api/identity/academies/issue', function () {
 
         assert.equal(res.status, 200);
         assert.equal(cacheCalls.length, 1);
-        const expectedKey = `otp:${ethers.keccak256(Buffer.from(`seed@fenerbahce.edu.tr:${ISSUE_OTP}`, 'utf8'))}`;
+        const expectedKey = `auth:otp:${ethers.keccak256(Buffer.from(`seed@fenerbahce.edu.tr:${ISSUE_OTP}`, 'utf8'))}`;
         assert.equal(cacheCalls[0], expectedKey);
     });
 

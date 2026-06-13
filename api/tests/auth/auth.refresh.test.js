@@ -418,7 +418,7 @@ describe('POST /api/auth/refresh', function () {
     // ── Cache integration (sinon-stubbed cache layer) ──────────────────────────
     describe('cache integration', () => {
         const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
-        const cacheKeyFor = (token) => `refresh:${hash(token)}`;
+        const cacheKeyFor = (token) => `auth:refresh:${hash(token)}`;
 
         it('looks up the refresh token in cache under key `refresh:{hash(token)}`', async () => {
             const refreshToken = issueRefreshToken(address, 'professor');

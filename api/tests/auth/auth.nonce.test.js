@@ -340,26 +340,25 @@ describe('GET /api/auth/nonce', function () {
         assert.equal(row.nonce_expires_at, null);
     });
 
-    it('returns 500 when the address query parameter is missing (validator does not check req.query)', async () => {
-        // The route declares validate(generateNonceSchema, 'query') but the middleware only
-        // ever validates req.body. For a GET request, req.body is undefined and Joi tolerates
-        // it, so the controller forwards `undefined` to ethers.getAddress(), which throws.
+    it('returns 422 when the address query parameter is missing', async () => {
         const app = await makeApp();
 
         const res = await request(app).get('/api/auth/nonce');
 
-        assert.equal(res.status, 500);
+        assert.equal(res.status, 422);
         assert.equal(res.body.success, false);
+        assert.equal(res.body.code, 'VALIDATION_ERROR');
     });
 
-    it('returns 500 when the address query parameter has an invalid format', async () => {
+    it('returns 422 when the address query parameter has an invalid format', async () => {
         const app = await makeApp();
 
         const res = await request(app)
             .get('/api/auth/nonce')
             .query({ wallet_address: 'not-an-address' });
 
-        assert.equal(res.status, 500);
+        assert.equal(res.status, 422);
         assert.equal(res.body.success, false);
+        assert.equal(res.body.code, 'VALIDATION_ERROR');
     });
 });

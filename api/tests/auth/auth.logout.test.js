@@ -31,7 +31,7 @@ const TEST_IP = '127.0.0.1';
 const TEST_UA = 'logout-test-agent/1.0';
 
 const hash = (text) => keccak256(Buffer.from(text, 'utf8'));
-const cacheKeyFor = (token) => `refresh:${hash(token)}`;
+const cacheKeyFor = (token) => `auth:refresh:${hash(token)}`;
 
 const makeCacheStubs = (overrides = {}) => ({
     getCache: sinon.stub().resolves(JSON.stringify({ ip: TEST_IP, device: TEST_UA })),

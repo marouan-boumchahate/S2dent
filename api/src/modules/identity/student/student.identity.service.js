@@ -360,7 +360,6 @@ const getStudentWalletByUserId = async (user_id, requester_id, requester_role) =
             throw err;
     }
 
-    console.log('getStudentWalletByUserId params:', params, 'clause:', clause);
     const { rows: [identity] } = await db.query(
         `SELECT wallet_address
          FROM identities i

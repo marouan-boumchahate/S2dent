@@ -4,12 +4,15 @@ import { ensureDatabaseExists } from './src/config/db.js';
 import { runMigrations } from './src/db/migrate.js';
 import http from 'http';
 import { initSocket } from './src/config/socket.js';
+import { startNonceCleanupJob } from './src/jobs/nonceCleanup.js';
 
 const bootstrap = async () => {
   try {
     await ensureDatabaseExists();
 
     await runMigrations();
+
+    startNonceCleanupJob();
 
     const httpServer = http.createServer(app);
     initSocket(httpServer);
