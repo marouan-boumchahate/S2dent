@@ -584,7 +584,10 @@ function AcademyProfileTab() {
           action={
             process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ? (
               <OutlineButton 
-                onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')}
+                onClick={() => {
+                  console.log('Opening Etherscan for contract address:', process.env.NEXT_PUBLIC_CONTRACT_ADDRESS);
+                  window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')
+                }}
               >
                 View contract
               </OutlineButton>
@@ -810,7 +813,10 @@ function ProfessorProfileTab() {
           action={
             process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ? (
               <OutlineButton 
-                onClick={() => window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')}
+                  onClick={() => {
+                    console.log('Opening Etherscan for contract address:', process.env.NEXT_PUBLIC_CONTRACT_ADDRESS);
+                    window.open(`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`, '_blank')
+                  }}
               >
                 View contract
               </OutlineButton>
