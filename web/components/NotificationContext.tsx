@@ -33,7 +33,7 @@ interface NotificationContextValue {
   markAllRead: () => void;
   markRead: (id: string) => void;
   clearAll: () => void;
-  push: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  push: (n: Omit<Notification, 'id' | 'timestamp' | 'read'> & { timestamp?: Date }) => void;
 }
 
 // Context
@@ -68,7 +68,7 @@ function parseSocketEvent(data: {
   status: 'verified' | 'failed';
   message: string;
   created_at: string;
-}): Omit<Notification, 'id' | 'timestamp' | 'read'> {
+}): Omit<Notification, 'id' | 'timestamp' | 'read'> & { timestamp?: Date } {
   const msg = data.message.toLowerCase();
 
   let type: NotificationType = 'system';
@@ -100,6 +100,14 @@ function parseSocketEvent(data: {
     title = 'Professor registered';
   }
 
+  let parsedTimestamp: Date | undefined = undefined;
+  if (data.created_at) {
+    const d = new Date(data.created_at);
+    if (!isNaN(d.getTime())) {
+      parsedTimestamp = d;
+    }
+  }
+
   return {
     eventId: data.eventId,
     type,
@@ -107,12 +115,13 @@ function parseSocketEvent(data: {
     message: data.message,
     txHash: data.tx_hash,
     status: data.status,
+    timestamp: parsedTimestamp,
   };
 }
 
 // Socket hook
 
-function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void) {
+function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'> & { timestamp?: Date }) => void) {
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
 
@@ -170,9 +179,9 @@ function useSocket(onEvent: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>)
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const push = useCallback((n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+  const push = useCallback((n: Omit<Notification, 'id' | 'timestamp' | 'read'> & { timestamp?: Date }) => {
     setNotifications(prev => [
-      { ...n, id: crypto.randomUUID(), timestamp: new Date(), read: false },
+      { ...n, id: crypto.randomUUID(), timestamp: n.timestamp || new Date(), read: false },
       ...prev,
     ].slice(0, 50));
   }, []);
