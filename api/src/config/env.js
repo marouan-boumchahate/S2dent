@@ -9,20 +9,33 @@ dotenv.config({
 const parseRedisUrl = (redisUrl) => {
   if (!redisUrl) return {}
 
+  if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+    throw new Error('Redis URL must start with "redis://" or "rediss://"')
+  }
+
   try {
     const url = new URL(redisUrl)
+
+    if (!url.hostname) {
+      throw new Error('Redis URL is missing a hostname')
+    }
 
     return {
       host: url.hostname,
       port: url.port ? Number(url.port) : undefined,
       password: url.password || undefined,
     }
-  } catch {
-    return {}
+  } catch (err) {
+    throw new Error(`Failed to parse Redis URL: ${err.message}`)
   }
 }
 
-const redisFromUrl = parseRedisUrl(process.env.REDIS_URL)
+let redisFromUrl = {}
+try {
+  redisFromUrl = parseRedisUrl(process.env.REDIS_URL)
+} catch {
+  // Ignored here; validateSecrets() will capture validation errors and exit the process.
+}
 
 const validateSecrets = () => {
   const errors = []
@@ -31,24 +44,24 @@ const validateSecrets = () => {
   const refreshSecret = process.env.JWT_REFRESH_SECRET
   const encryptionSecret = process.env.JWT_ENCRYPTION_SECRET
 
-  if (!accessSecret) {
-    errors.push('JWT_ACCESS_SECRET is missing.')
-  } else if (accessSecret.length < 32) {
-    errors.push('JWT_ACCESS_SECRET is too weak. It should be at least 32 characters long.')
+  if (!accessSecret) errors.push('JWT_ACCESS_SECRET is missing.')
+  else if (accessSecret.length < 32) errors.push('JWT_ACCESS_SECRET is too weak. It should be at least 32 characters long.')
+
+  if (!refreshSecret) errors.push('JWT_REFRESH_SECRET is missing.')
+  else if (refreshSecret.length < 32) errors.push('JWT_REFRESH_SECRET is too weak. It should be at least 32 characters long.')
+
+  if (!encryptionSecret) errors.push('JWT_ENCRYPTION_SECRET is missing.')
+  else {
+    const decodedKey = Buffer.from(encryptionSecret, 'hex')
+    if (decodedKey.length !== 32) errors.push('JWT_ENCRYPTION_SECRET must be a valid 64-character hex string that decodes to exactly 32 bytes (256 bits) for AES-256-GCM.')
   }
 
-  if (!refreshSecret) {
-    errors.push('JWT_REFRESH_SECRET is missing.')
-  } else if (refreshSecret.length < 32) {
-    errors.push('JWT_REFRESH_SECRET is too weak. It should be at least 32 characters long.')
-  }
-
-  if (!encryptionSecret) {
-    errors.push('JWT_ENCRYPTION_SECRET is missing.')
-  } else {
-    const hexRegex = /^[0-9a-fA-F]{64}$/
-    if (!hexRegex.test(encryptionSecret)) {
-      errors.push('JWT_ENCRYPTION_SECRET must be a valid 64-character hex string (representing a 256-bit key for AES-256-GCM).')
+  const redisUrl = process.env.REDIS_URL
+  if (redisUrl) {
+    try {
+      parseRedisUrl(redisUrl)
+    } catch (err) {
+      errors.push(`REDIS_URL is invalid: ${err.message}`)
     }
   }
 
@@ -101,6 +114,8 @@ export const env = {
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    encryptionSecret: Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex'),
+    encryptionSecret: process.env.JWT_ENCRYPTION_SECRET 
+      ? Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex') 
+      : Buffer.alloc(0),
   },
 }

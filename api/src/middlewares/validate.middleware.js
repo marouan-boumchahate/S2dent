@@ -33,7 +33,16 @@ const validate = (schema, locationOrStatusCode = 'body', statusCode = 422) => (r
     });
   }
 
-  req[location] = value;
+  if (location === 'query') {
+    Object.defineProperty(req, 'query', {
+      value,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+  } else {
+    req[location] = value;
+  }
   return next();
 };
 

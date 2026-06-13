@@ -23,4 +23,5 @@ credentials.md
 # Logs
 fix_tests.js
 
-docs/api_limitations.md
+# Documentation
+docs/private/*

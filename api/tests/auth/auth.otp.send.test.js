@@ -185,7 +185,7 @@ describe('POST /api/auth/otp/send', function () {
         const [cacheKey, payloadStr, ttl] = cache.setCache.firstCall.args;
         const payload = JSON.parse(payloadStr);
 
-        assert.ok(cacheKey.startsWith('otp:'));
+        assert.ok(cacheKey.startsWith('auth:otp:'));
         assert.equal(payload.role, 'student');
         assert.equal(ttl, OTP_TTL);
 
