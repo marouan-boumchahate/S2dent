@@ -24,6 +24,8 @@ class NotificationController extends Notifier<List<AppNotification>> {
 
     final subscription = repo.notificationStream.listen(
       (event) {
+        //if notification already exist, dont add it to the sate (happens when accessToken is refreshed and the notifiations arent being read)
+        if (state.any((newEvent) => newEvent.eventId == event.eventId)) return;
         state = [event, ...state];
         ref.read(credentialControllerProvider.notifier).refreshSilently();
       },

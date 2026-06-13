@@ -76,7 +76,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         loading: () => const Scaffold(body: LoadingState()),
         error: (error, stackTrace) => const Scaffold(
           body: Center(
-            child: Text("ERROR OCCURED"),
+            child: Text("Something went wrong. Please restart the app."),
           ),
         ),
       ),

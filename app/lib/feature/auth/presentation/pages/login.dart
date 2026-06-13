@@ -5,6 +5,7 @@ import 'package:app/feature/auth/presentation/providers/appkit_provider.dart';
 import 'package:app/core/utils/error_message.dart';
 import 'package:app/core/utils/show_alert_dialog.dart';
 import 'package:app/core/widgets/ui/buttons/primary_button.dart';
+import 'package:app/core/widgets/ui/error_view.dart';
 import 'package:app/feature/auth/presentation/pages/verify_email.dart';
 import 'package:app/feature/auth/presentation/providers/auth_provider.dart';
 import 'package:app/feature/auth/presentation/widgets/auth_layout.dart';
@@ -23,6 +24,7 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   bool isDark = true;
+  Object? _initError;
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _initAppKit() async {
+    if (_initError != null) setState(() => _initError = null);
     try {
       final modal = ReownAppKitModal(
         context: context,
@@ -57,8 +60,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ref.read(appKitModalProvider.notifier).state = modal;
       }
     } catch (e) {
-      //reownappkit initialization failed
-      Text(errorMessage(e.toString()));
+      //reownappkit init failed (no network / relay unreachable / bad projectId)
+      //surface it and let the user retry instead of leaving the buttons stuck
+      if (mounted) setState(() => _initError = e);
     }
   }
 
@@ -97,7 +101,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Column _actions(BuildContext context, bool isLoading, bool isModalReady) {
+  Widget _actions(BuildContext context, bool isLoading, bool isModalReady) {
+    if (_initError != null) {
+      return ErrorView(error: _initError!, onTapRetry: _initAppKit);
+    }
     final isDisabled = !isModalReady || isLoading;
     return Column(
       children: [
