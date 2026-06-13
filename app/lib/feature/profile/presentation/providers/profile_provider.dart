@@ -50,12 +50,12 @@ class ProfileController extends StateNotifier<AsyncValue<Student>> {
       //results is now a list of Student
       // "all wait operations happen in parallel"
       final results = await Future.wait([
+        repository.getUniversityInfo(),
         repository.getUserInfo(),
         repository.getAddressInfo(),
         repository.getDepartmentInfo(),
         repository.getAcademicInfo(),
         repository.getIdentityInfo(),
-        repository.getUniversityInfo(),
       ]);
 
       Student merged = const Student(

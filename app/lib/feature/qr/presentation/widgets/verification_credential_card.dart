@@ -82,7 +82,7 @@ class VerificationCredentialCard extends StatelessWidget {
               VerificationInfoRow(
                 label: 'REVOKE TX',
                 value: data.verificationBlockchain.revokeTxHash != null
-                    ? '${data.verificationBlockchain.revokeTxHash!.substring(0, 10)}...'
+                    ? data.verificationBlockchain.revokeTxHash!
                     : '—',
                 color: AppColors.error,
               ),

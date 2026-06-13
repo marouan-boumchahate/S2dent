@@ -44,11 +44,13 @@ class VerificationStudentCard extends StatelessWidget {
                       child: Icon(Icons.person_outline, color: color, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      data.verificationStudent.studentName,
-                      style: context.texts.titleSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        data.verificationStudent.studentName,
+                        style: context.texts.titleSmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
