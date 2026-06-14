@@ -1,4 +1,5 @@
 import db from '../../config/db.js';
+import { handleMediaUpdate } from '../media/media.service.js';
 
 
 // DTOs
@@ -341,6 +342,10 @@ const createAcademyService = async (payload) => {
 
   const { rows: [academy] } = await insertAcademyToDB({ ...payload, academy_number });
 
+  if (logo_url) {
+    await handleMediaUpdate(null, logo_url);
+  }
+
   return { academy: academyDto(academy) };
 };
 const updateAcademyService = async ({
@@ -351,6 +356,13 @@ const updateAcademyService = async ({
   website,
 }) => {
   await ensureAcademyExists(academy_id);
+
+  let oldLogoUrl = null;
+  if (logo_url !== undefined) {
+    const oldAcademy = await getAcademyById(academy_id);
+    oldLogoUrl = oldAcademy.logo_url;
+  }
+
   const { rows: [academy] } = await updateAcademyInDB({
     academy_id,
     description,
@@ -358,6 +370,10 @@ const updateAcademyService = async ({
     phone,
     website,
   });
+
+  if (logo_url !== undefined) {
+    await handleMediaUpdate(oldLogoUrl, logo_url);
+  }
 
   return { academy: academyDto(academy) };
 };
