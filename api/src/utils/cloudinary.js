@@ -11,7 +11,7 @@ const uploadImage = (buffer, mimetype) =>
             },
             (error, result) => {
                 if (error) return reject(error)
-                return resolve(result.secure_url)
+                return resolve({ url: result.secure_url, publicId: result.public_id })
             },
         )
 
@@ -19,4 +19,20 @@ const uploadImage = (buffer, mimetype) =>
         Readable.from([buffer]).pipe(uploadStream)
     })
 
-export { uploadImage }
+const deleteImage = (publicId) =>
+    new Promise((resolve, reject) => {
+        cloudinary.uploader.destroy(publicId, (error, result) => {
+            if (error) return reject(error)
+            return resolve(result)
+        })
+    })
+
+const deleteImages = (publicIds) =>
+    new Promise((resolve, reject) => {
+        cloudinary.api.delete_resources(publicIds, (error, result) => {
+            if (error) return reject(error)
+            return resolve(result)
+        })
+    })
+
+export { uploadImage, deleteImage, deleteImages }

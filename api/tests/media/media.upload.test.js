@@ -3,7 +3,10 @@ import request from 'supertest'
 import { strict as assert } from 'assert'
 import { signTokens } from '../../src/utils/jwt.js'
 
-const mockUploadImage = async () => 'https://res.cloudinary.com/demo/image/upload/v1/sample.png'
+const mockUploadImage = async () => ({
+  url: 'https://res.cloudinary.com/demo/image/upload/v1/sample.png',
+  publicId: 's2dent/uploads/sample'
+})
 const { accessToken } = signTokens({ sub: 'media-test-user', role: 'student' })
 
 const makeApp = async () => {

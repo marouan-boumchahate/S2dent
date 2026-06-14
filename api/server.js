@@ -6,6 +6,7 @@ import http from 'http';
 import { initSocket } from './src/config/socket.js';
 import { startNonceCleanupJob } from './src/jobs/nonceCleanup.js';
 import { startCredentialCleanupJob } from './src/jobs/credentialCleanup.js';
+import { startMediaCleanupJob } from './src/jobs/mediaCleanup.js';
 
 const bootstrap = async () => {
   try {
@@ -15,6 +16,7 @@ const bootstrap = async () => {
 
     startNonceCleanupJob();
     startCredentialCleanupJob();
+    startMediaCleanupJob();
 
     const httpServer = http.createServer(app);
     initSocket(httpServer);

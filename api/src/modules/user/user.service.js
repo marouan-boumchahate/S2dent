@@ -1,4 +1,5 @@
 import db from '../../config/db.js';
+import { handleMediaUpdate } from '../media/media.service.js';
 
 
 // DTO
@@ -194,14 +195,28 @@ export const createUserService = async (payload, client = db) => {
 
   const {rows: [user]} = await insertUserToDB({ ...payload }, client);
 
+  if (photo_url) {
+    await handleMediaUpdate(null, photo_url, client);
+  }
+
   return { user: toUserDto(user) };
 };
 export const updateUserService = async (payload) => {
-  const { user_id } = payload;
+  const { user_id, photo_url } = payload;
 
   await ensureUserExists(user_id);
 
+  let oldPhotoUrl = null;
+  if (photo_url !== undefined) {
+    const oldUser = await getUserFromDB(user_id);
+    oldPhotoUrl = oldUser.photo_url;
+  }
+
   const { rows: [user] } = await updateUserInDB({ ...payload });
+
+  if (photo_url !== undefined) {
+    await handleMediaUpdate(oldPhotoUrl, photo_url);
+  }
 
   return { user: toUserDto(user) };
 };
