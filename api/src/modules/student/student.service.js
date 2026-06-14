@@ -1,4 +1,6 @@
 import db from '../../config/db.js';
+import { createUserService } from '../user/user.service.js';
+import { createAddressService } from '../address/address.service.js';
 
 
 // DTO
@@ -34,9 +36,10 @@ const StudentSummaryDto = (student) => ({
 // Helpers
 const ensureStudentUnique = async (
   studentNumber,
+  client = db,
 ) => {
   const [studentNumberExists] = await Promise.all([
-    db.query('SELECT id FROM students WHERE student_number = $1 LIMIT 1', [studentNumber]),
+    client.query('SELECT id FROM students WHERE student_number = $1 LIMIT 1', [studentNumber]),
   ]);
 
   if (studentNumberExists.rows.length > 0) {
@@ -59,8 +62,8 @@ const ensureUserExists = async (user_id) => {
     throw err;
   }
 };
-const ensureAcademyExists = async (academy_id) => {
-  const { rows: [academy] } = await db.query(
+const ensureAcademyExists = async (academy_id, client = db) => {
+  const { rows: [academy] } = await client.query(
     `SELECT id 
      FROM identities 
      WHERE academy_id = $1
@@ -78,8 +81,8 @@ const ensureAcademyExists = async (academy_id) => {
     throw err;
   }
 };
-const ensureAdvisorExists = async (advisor_id, academy_id) => {
-  const { rows: [row] } = await db.query(
+const ensureAdvisorExists = async (advisor_id, academy_id, client = db) => {
+  const { rows: [row] } = await client.query(
     `SELECT 1
      FROM professors p
      JOIN identities i ON p.user_id = i.user_id
@@ -99,8 +102,8 @@ const ensureAdvisorExists = async (advisor_id, academy_id) => {
     throw err;
   }
 };
-const generateStudentNumber = async () => {
-    const result = await db.query(`SELECT nextval('student_seq')`);
+const generateStudentNumber = async (client = db) => {
+    const result = await client.query(`SELECT nextval('student_seq')`);
     const seq = result.rows[0].nextval;
   
     const now = new Date();
@@ -110,8 +113,8 @@ const generateStudentNumber = async () => {
   
     return studentNumber;
 };
-const getDepartmentGraduationYears = async (department_id) => {
-  const { rows: [department] } = await db.query(
+const getDepartmentGraduationYears = async (department_id, client = db) => {
+  const { rows: [department] } = await client.query(
     `SELECT * FROM departments WHERE id = $1`,
     [department_id]
   );
@@ -251,7 +254,7 @@ const insertStudentToDB = async ({
   enrollment_date,
   total_years_to_graduate,
   actual_graduation_date,
-}) => await db.query(`
+}, client = db) => await client.query(`
     INSERT INTO students (
       user_id,
       academy_id,
@@ -298,7 +301,8 @@ const updateStudentToDB = async ({
 // Services
 export const createStudentService = async (payload) => {
   const {
-    user_id,
+    user,
+    address,
     academy_id,
     department_id,
     advisor_id,
@@ -308,22 +312,47 @@ export const createStudentService = async (payload) => {
     actual_graduation_date
   } = payload;
 
-  await ensureUserExists(user_id);
-  await ensureAcademyExists(academy_id);
-  if (advisor_id) await ensureAdvisorExists(advisor_id, academy_id);
-  const department = await getDepartmentGraduationYears(department_id);
-  
-  const studentNumber = await generateStudentNumber();
-  await ensureStudentUnique(studentNumber);
+  const client = await db.connect();
 
+  try {
+    await client.query('BEGIN');
 
-  const { rows: [student] } = await insertStudentToDB({
-    ...payload,
-    student_number: studentNumber,
-    total_years_to_graduate: department.total_years
-  })
+    await ensureAcademyExists(academy_id, client);
+    if (advisor_id) await ensureAdvisorExists(advisor_id, academy_id, client);
+    const department = await getDepartmentGraduationYears(department_id, client);
 
-  return { student: toStudentDto(student) };
+    // Create User inside transaction
+    const { user: createdUser } = await createUserService(user, client);
+    const user_id = createdUser.id;
+
+    // Create Address inside transaction
+    await createAddressService({ ...address, user_id }, client);
+
+    const studentNumber = await generateStudentNumber(client);
+    await ensureStudentUnique(studentNumber, client);
+
+    const { rows: [student] } = await insertStudentToDB({
+      user_id,
+      academy_id,
+      department_id,
+      advisor_id,
+      current_level,
+      enrollment_status,
+      enrollment_date,
+      actual_graduation_date,
+      student_number: studentNumber,
+      total_years_to_graduate: department.total_years
+    }, client);
+
+    await client.query('COMMIT');
+
+    return { student: toStudentDto(student) };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 export const updateStudentService = async (payload) => {
   const { student_id, cgpa, advisor_id } = payload;

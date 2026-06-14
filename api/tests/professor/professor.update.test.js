@@ -174,9 +174,27 @@ const validBody = (overrides = {}) => ({
 });
 
 const createProfessor = async (overrides = {}) => {
+  const uniqueId = Math.floor(Math.random() * 10000000);
   const body = {
-    user_id: TUSER_ID,
-    academy_id: ACADEMY_ID,
+    user: {
+      first_name: `Professor${uniqueId}`,
+      middle_name: 'Update',
+      last_name: 'Cases',
+      date_of_birth: '1980-03-20',
+      gender: 'male',
+      nationality: 'Turkish',
+      national_id: `PROF-UPD-NID-${uniqueId}`,
+      email: `prof.${uniqueId}@profupdatecases.com`,
+      phone: '+905551234567',
+    },
+    address: {
+      city: 'Istanbul',
+      country: 'Turkey',
+      street: 'Main St',
+      district: 'Kadikoy',
+      state: 'Istanbul',
+      postal_code: '34000',
+    },
     department_id: DEPARTMENT_ID,
     ...createProfessorDefaults,
     ...overrides,
@@ -195,16 +213,22 @@ const cleanupProfessors = async () => {
   await db.query(
     `DELETE FROM identities
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test'
+        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test' OR email LIKE '%@profupdatecases.com'
      )`,
   );
   await db.query(
     `DELETE FROM professors
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test'
+        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test' OR email LIKE '%@profupdatecases.com'
      )`,
   );
-  await db.query(`DELETE FROM users WHERE email LIKE '%@profupdatecases.test'`);
+  await db.query(
+    `DELETE FROM addresses
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@profupdatecases.test' OR email LIKE '%@profupdatecases.com'
+     )`,
+  );
+  await db.query(`DELETE FROM users WHERE email LIKE '%@profupdatecases.test' OR email LIKE '%@profupdatecases.com'`);
 };
 
 const teardownSeed = async () => {
@@ -223,17 +247,17 @@ describe('PUT /api/professors/:id', () => {
 
   beforeEach(async () => {
     await cleanupProfessors();
-    TUSER_ID = await seedTUser();
+
+    const prof = await createProfessor();
+    PROFESSOR_ID = prof.id;
 
     // Seed identity for professor
     const profPubKey = '0x04' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(120);
     await db.query(
       `INSERT INTO identities (user_id, wallet_address, public_key, role, issued_at)
        VALUES ($1, $2, $3, 'professor', NOW())`,
-      [TUSER_ID, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
+      [prof.user_id, '0xpf' + Date.now().toString(16).slice(-8).padStart(8, '0') + 'a'.repeat(30), profPubKey]
     );
-
-    PROFESSOR_ID = (await createProfessor()).id;
   });
 
   afterEach(async () => {

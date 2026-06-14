@@ -145,8 +145,30 @@ const seedTUser = async () => {
   return u.id;
 };
 
-const validBody = (overrides = {}) => ({
-    user_id: TUSER_ID,
+const validBody = (overrides = {}) => {
+  const uniqueId = Math.floor(Math.random() * 10000000);
+  return {
+    user: {
+      first_name: `Professor${uniqueId}`,
+      middle_name: 'Cases',
+      last_name: 'Test',
+      date_of_birth: '1980-03-20',
+      gender: 'male',
+      nationality: 'Turkish',
+      national_id: `PROF-NID-${uniqueId}`,
+      email: `prof.${uniqueId}@profcases.com`,
+      phone: '+905551234567',
+      ...overrides.user
+    },
+    address: {
+      city: 'Istanbul',
+      country: 'Turkey',
+      street: 'Main St',
+      district: 'Kadikoy',
+      state: 'Istanbul',
+      postal_code: '34000',
+      ...overrides.address
+    },
     academy_id: ACADEMY_ID,
     department_id: DEPARTMENT_ID,
     title: 'Dr.',
@@ -158,16 +180,23 @@ const validBody = (overrides = {}) => ({
     office_hours: 'Mon 10:00-12:00',
     bio: 'Researcher in machine learning.',
     ...overrides,
-});
+  };
+};
 
 const cleanupProfessors = async () => {
   await db.query(
     `DELETE FROM professors
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@profcases.test'
+        SELECT id FROM users WHERE email LIKE '%@profcases.test' OR email LIKE '%@profcases.com'
      )`,
   );
-      await db.query(`DELETE FROM users WHERE email LIKE '%@profcases.test'`);
+  await db.query(
+    `DELETE FROM addresses
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@profcases.test' OR email LIKE '%@profcases.com'
+     )`,
+  );
+  await db.query(`DELETE FROM users WHERE email LIKE '%@profcases.test' OR email LIKE '%@profcases.com'`);
 };
 
 const teardownSeed = async () => {
@@ -222,7 +251,7 @@ describe('POST /api/professors', () => {
         const { professor } = res.body.data;
 
         assert.ok(professor.id);
-        assert.equal(professor.user_id, body.user_id);
+        assert.ok(professor.user_id);
         assert.equal(professor.academy_id, body.academy_id);
         assert.equal(professor.department_id, body.department_id);
         assert.equal(professor.title, body.title);
@@ -235,14 +264,23 @@ describe('POST /api/professors', () => {
         assert.match(professor.serial_number, /^EMP_\d{6}\d+$/);
     });
 
-    it('returns 404 USER_NOT_FOUND when user_id does not exist', async () => {
+    it('returns 409 USER_NOT_UNIQUE when email already exists', async () => {
+      const body1 = validBody();
+      await request(app)
+        .post('/api/professors')
+        .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
+        .send(body1);
+
+      const body2 = validBody();
+      body2.user.email = body1.user.email;
+
       const res = await request(app)
         .post('/api/professors')
         .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-        .send(validBody({ user_id: '00000000-0000-0000-0000-000000000001' }));
+        .send(body2);
 
-      assert.equal(res.status, 404);
-      assert.equal(res.body.code, 'USER_NOT_FOUND');
+      assert.equal(res.status, 409);
+      assert.equal(res.body.code, 'USER_NOT_UNIQUE');
     });
 
     it('returns 404 ACADEMY_NOT_FOUND when academy_id does not exist', async () => {
@@ -316,7 +354,7 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 422 when each required field is missing', async () => {
-        const requiredFields = ['user_id', 'department_id', 'title', 'rank'];
+        const requiredFields = ['user', 'address', 'department_id', 'title', 'rank'];
 
         for (const field of requiredFields) {
             const body = validBody();
@@ -337,16 +375,19 @@ describe('POST /api/professors', () => {
         }
     });
 
-    it('returns 422 when user_id is not a valid UUID', async () => {
+    it('returns 422 when user email is invalid', async () => {
+        const body = validBody();
+        body.user.email = 'not-an-email';
+
         const res = await request(app)
             .post('/api/professors')
           .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-            .send(validBody({ user_id: 'not-a-uuid' }));
+            .send(body);
 
         assert.equal(res.status, 422);
 
-        const field = res.body.errors.find(e => e.field === 'user_id');
-        assert.ok(field, 'errors should contain a user_id entry');
+        const field = res.body.errors.find(e => e.field === 'user.email');
+        assert.ok(field, 'errors should contain a user.email entry');
     });
 
 
@@ -403,6 +444,7 @@ describe('POST /api/professors', () => {
     });
 
     it('returns 500 when the database throws unexpectedly', async () => {
+        sinon.stub(db, 'connect').rejects(new Error('DB connection lost'));
         sinon.stub(db, 'query').rejects(new Error('DB connection lost'));
 
         const res = await request(app)

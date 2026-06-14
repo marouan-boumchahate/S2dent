@@ -1,4 +1,6 @@
 import db from '../../config/db.js';
+import { createUserService } from '../user/user.service.js';
+import { createAddressService } from '../address/address.service.js';
 
 // DTO
 const professorDto = (p) => ({
@@ -32,9 +34,10 @@ const ProfessorSummaryDto = (p) => ({
 // Helpers
 const ensureProfessorUnique = async (
   employeeNumber,
+  client = db,
 ) => {
   const [employeeNumberExists] = await Promise.all([
-    db.query('SELECT id FROM professors WHERE employee_number = $1 LIMIT 1', [employeeNumber]),
+    client.query('SELECT id FROM professors WHERE employee_number = $1 LIMIT 1', [employeeNumber]),
   ]);
 
   if (employeeNumberExists.rows.length > 0) {
@@ -44,8 +47,8 @@ const ensureProfessorUnique = async (
     throw err;
   }
 };
-const ensureDepartmentExistsForAcademy = async (academy_id, department_id) => {
-  const { rows } = await db.query(
+const ensureDepartmentExistsForAcademy = async (academy_id, department_id, client = db) => {
+  const { rows } = await client.query(
     `SELECT 1 FROM departments WHERE id = $1 AND academy_id = $2 LIMIT 1`,
     [department_id, academy_id]
   );
@@ -89,8 +92,8 @@ const ensureProfessorExists = async (professor_id) => {
     throw err;
   }
 };
-const ensureAcademyExists = async (academy_id) => {
-  const { rows: [academy] } = await db.query(
+const ensureAcademyExists = async (academy_id, client = db) => {
+  const { rows: [academy] } = await client.query(
     `SELECT id 
      FROM identities 
      WHERE academy_id = $1
@@ -109,8 +112,8 @@ const ensureAcademyExists = async (academy_id) => {
   }
 };
 
-const generateRandomEmployeeId = async () => {
-  const result = await db.query(`SELECT nextval('employee_seq')`);
+const generateRandomEmployeeId = async (client = db) => {
+  const result = await client.query(`SELECT nextval('employee_seq')`);
   const seq = result.rows[0].nextval;
 
   const now = new Date();
@@ -134,7 +137,7 @@ const insertProfessorToDB = async ({
   office_location,
   office_hours,
   bio
-}) => await db.query(
+}, client = db) => await client.query(
     `INSERT INTO professors (
         user_id,
         academy_id,
@@ -287,24 +290,62 @@ const getProfessorFromDB = async (professor_id) => {
 // Service functions
 const createProfessorService = async (payload) => {
   const {
-    user_id,
+    user,
+    address,
     academy_id,
     department_id,
+    title,
+    rank,
+    specialization,
+    hire_date,
+    employment_type,
+    office_location,
+    office_hours,
+    bio
   } = payload;
 
-  await ensureUserExists(user_id);
-  await ensureAcademyExists(academy_id);
-  await ensureDepartmentExistsForAcademy(academy_id, department_id);
+  const client = await db.connect();
 
-  const employeeNumber = await generateRandomEmployeeId();
-  await ensureProfessorUnique(employeeNumber);
+  try {
+    await client.query('BEGIN');
 
-  const { rows: [professor] } = await insertProfessorToDB({
-    ...payload,
-    employee_number: employeeNumber,
-  });
+    await ensureAcademyExists(academy_id, client);
+    await ensureDepartmentExistsForAcademy(academy_id, department_id, client);
 
-  return { professor: professorDto(professor) };
+    // Create User inside transaction
+    const { user: createdUser } = await createUserService(user, client);
+    const user_id = createdUser.id;
+
+    // Create Address inside transaction
+    await createAddressService({ ...address, user_id }, client);
+
+    const employeeNumber = await generateRandomEmployeeId(client);
+    await ensureProfessorUnique(employeeNumber, client);
+
+    const { rows: [professor] } = await insertProfessorToDB({
+      user_id,
+      academy_id,
+      department_id,
+      employee_number: employeeNumber,
+      title,
+      rank,
+      specialization,
+      hire_date,
+      employment_type,
+      office_location,
+      office_hours,
+      bio
+    }, client);
+
+    await client.query('COMMIT');
+
+    return { professor: professorDto(professor) };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 const updateProfessorService = async (payload) => {
   const { professor_id } = payload;

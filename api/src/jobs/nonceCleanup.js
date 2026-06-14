@@ -11,15 +11,15 @@ const cleanupExpiredNonces = async () => {
     `);
     
     if (result.rowCount > 0) {
-      console.log(`🧹 Cleaned up ${result.rowCount} expired nonces.`);
+      console.log(`=> Cleaned up ${result.rowCount} expired nonces.`);
     }
   } catch (err) {
-    console.error('❌ Error running nonce cleanup job:', err);
+    console.error('=> Error running nonce cleanup job:', err);
   }
 };
 
 export const startNonceCleanupJob = () => {
-  console.log('🔄 Nonce Cleanup Job initialized.');
+  console.log('=> Nonce Cleanup Job initialized.');
 
   cleanupExpiredNonces();
 

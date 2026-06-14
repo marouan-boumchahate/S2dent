@@ -5,6 +5,7 @@ import { runMigrations } from './src/db/migrate.js';
 import http from 'http';
 import { initSocket } from './src/config/socket.js';
 import { startNonceCleanupJob } from './src/jobs/nonceCleanup.js';
+import { startCredentialCleanupJob } from './src/jobs/credentialCleanup.js';
 
 const bootstrap = async () => {
   try {
@@ -13,6 +14,7 @@ const bootstrap = async () => {
     await runMigrations();
 
     startNonceCleanupJob();
+    startCredentialCleanupJob();
 
     const httpServer = http.createServer(app);
     initSocket(httpServer);

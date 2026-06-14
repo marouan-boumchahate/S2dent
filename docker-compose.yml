@@ -16,21 +16,21 @@ services:
     networks:
       - s2dent-net
 
-  # web:
-  #   build:
-  #     context: ./web
-  #     target: runner
-  #     args:
-  #       NEXT_PUBLIC_API_URL: http://localhost:3000/api
-  #       NEXT_PUBLIC_SOCKET_URL: http://localhost:3000
-  #       NEXT_PUBLIC_CONTRACT_ADDRESS: ${NEXT_PUBLIC_CONTRACT_ADDRESS}
-  #   ports:
-  #     - "4585:3000"
-  #   depends_on:
-  #     api:
-  #       condition: service_started
-  #   networks:
-  #     - s2dent-net
+  web:
+    build:
+      context: ./web
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:3000
+        NEXT_PUBLIC_CONTRACT_ADDRESS: ${NEXT_PUBLIC_CONTRACT_ADDRESS}
+    ports:
+      - "4585:3000"
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - s2dent-net
 
   blockchain:
     build:
