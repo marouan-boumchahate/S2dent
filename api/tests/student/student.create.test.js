@@ -215,23 +215,29 @@ const cleanupStudents = async () => {
   await db.query(
     `DELETE FROM identities
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@studentcreate.test'
+        SELECT id FROM users WHERE email LIKE '%@studentcreate.test' OR email LIKE '%@studentcreate.com'
      )`,
   );
   await db.query(
    `DELETE FROM professors
     WHERE user_id IN (
-      SELECT id FROM users WHERE email LIKE '%@studentcreate.test'
+      SELECT id FROM users WHERE email LIKE '%@studentcreate.test' OR email LIKE '%@studentcreate.com'
     )`,
   );
   await db.query(
     `DELETE FROM students
      WHERE user_id IN (
-        SELECT id FROM users WHERE email LIKE '%@studentcreate.test'
+        SELECT id FROM users WHERE email LIKE '%@studentcreate.test' OR email LIKE '%@studentcreate.com'
+     )`,
+  );
+  await db.query(
+    `DELETE FROM addresses
+     WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@studentcreate.test' OR email LIKE '%@studentcreate.com'
      )`,
   );
   
-  await db.query(`DELETE FROM users WHERE email LIKE '%@studentcreate.test'`);
+  await db.query(`DELETE FROM users WHERE email LIKE '%@studentcreate.test' OR email LIKE '%@studentcreate.com'`);
 };
 
 const teardownSeed = async () => {
@@ -281,14 +287,40 @@ describe('POST /api/students', () => {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  it('returns 201 and the student DTO on valid input', async () => {
-    const body = {
-      user_id: USER_ID,
-      academy_id: ACADEMY_ID,
+  const validBody = (overrides = {}) => {
+    const uniqueId = Math.floor(Math.random() * 10000000);
+    return {
+      user: {
+        first_name: `Student${uniqueId}`,
+        middle_name: 'Cases',
+        last_name: 'Test',
+        date_of_birth: '2004-01-15',
+        gender: 'male',
+        nationality: 'Turkish',
+        national_id: `STU-NID-${uniqueId}`,
+        email: `student${uniqueId}@studentcreate.com`,
+        phone: '+905551234567',
+        ...overrides.user
+      },
+      address: {
+        city: 'Istanbul',
+        country: 'Turkey',
+        street: 'Main St',
+        district: 'Kadikoy',
+        state: 'Istanbul',
+        postal_code: '34000',
+        ...overrides.address
+      },
       department_id: DEPARTMENT_ID,
       advisor_id: ADVISOR_ID,
-      actual_graduation_date: '2028-06-30',
+      ...overrides
     };
+  };
+
+  it('returns 201 and the student DTO on valid input', async () => {
+    const body = validBody({
+      actual_graduation_date: '2028-06-30',
+    });
 
     const res = await request(app)
       .post(endpoint)
@@ -313,14 +345,10 @@ describe('POST /api/students', () => {
   });
 
   it('accepts enrollment_status and enrollment_date when provided', async () => {
-    const body = {
-      user_id: USER_ID,
-      academy_id: ACADEMY_ID,
-      department_id: DEPARTMENT_ID,
-      advisor_id: ADVISOR_ID,
+    const body = validBody({
       enrollment_status: 'inactive',
       enrollment_date: '2023-09-15',
-    };
+    });
 
     const res = await request(app)
       .post(endpoint)
@@ -336,12 +364,7 @@ describe('POST /api/students', () => {
   });
 
   it('stores actual_graduation_date as null when not provided', async () => {
-    const body = {
-      user_id: USER_ID,
-      academy_id: ACADEMY_ID,
-      department_id: DEPARTMENT_ID,
-      advisor_id: ADVISOR_ID,
-    };
+    const body = validBody();
 
     const res = await request(app)
       .post(endpoint)
@@ -366,18 +389,15 @@ describe('POST /api/students', () => {
 
   it('returns 422 when each required field is missing', async () => {
     const requiredFields = [
-      'user_id',
+      'user',
+      'address',
       'department_id',
     ];
 
     for (const field of requiredFields) {
-      const body = {
-        user_id: USER_ID,
-        academy_id: ACADEMY_ID,
-        department_id: DEPARTMENT_ID,
-        advisor_id: ADVISOR_ID,
+      const body = validBody({
         actual_graduation_date: '2029-06-30',
-      };
+      });
       delete body[field];
 
       const res = await request(app)
@@ -395,33 +415,28 @@ describe('POST /api/students', () => {
     }
   });
 
-  it('returns 422 when user_id is not a valid UUID', async () => {
+  it('returns 422 when user email is invalid', async () => {
+    const body = validBody();
+    body.user.email = 'not-an-email';
+
     const res = await request(app)
       .post(endpoint)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: 'not-a-uuid',
-        academy_id: ACADEMY_ID,
-        department_id: DEPARTMENT_ID,
-      });
+      .send(body);
 
     assert.equal(res.status, 422);
 
-    const field = res.body.errors.find((e) => e.field === 'user_id');
-    assert.ok(field, 'errors should contain a user_id entry');
+    const field = res.body.errors.find((e) => e.field === 'user.email');
+    assert.ok(field, 'errors should contain a user.email entry');
   });
-
-
 
   it('returns 422 when department_id is not a valid UUID', async () => {
     const res = await request(app)
       .post(endpoint)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: USER_ID,
-        academy_id: ACADEMY_ID,
+      .send(validBody({
         department_id: 'not-a-uuid',
-      });
+      }));
 
     assert.equal(res.status, 422);
 
@@ -433,12 +448,9 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: USER_ID,
-        academy_id: ACADEMY_ID,
-        department_id: DEPARTMENT_ID,
+      .send(validBody({
         actual_graduation_date: 'not-a-date',
-      });
+      }));
 
     assert.equal(res.status, 422);
 
@@ -454,13 +466,9 @@ describe('POST /api/students', () => {
     const res = await request(app)
       .post(endpoint)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: USER_ID,
-        academy_id: ACADEMY_ID,
-        department_id: DEPARTMENT_ID,
-        advisor_id: ADVISOR_ID,
+      .send(validBody({
         enrollment_date,
-      });
+      }));
 
     assert.equal(res.status, 422);
     const field = res.body.errors.find((e) => e.field === 'enrollment_date');
@@ -468,17 +476,13 @@ describe('POST /api/students', () => {
   });
 
   it('returns 500 when the database throws unexpectedly', async () => {
+    sinon.stub(db, 'connect').rejects(new Error('DB connection lost'));
     sinon.stub(db, 'query').rejects(new Error('DB connection lost'));
 
     const res = await request(app)
       .post(endpoint)
       .set('Authorization', `Bearer ${ACADEMY_TOKEN}`)
-      .send({
-        user_id: USER_ID,
-        academy_id: ACADEMY_ID,
-        department_id: DEPARTMENT_ID,
-        advisor_id: ADVISOR_ID,
-      });
+      .send(validBody());
 
     assert.equal(res.status, 500);
     assert.equal(res.body.success, false);

@@ -31,8 +31,8 @@ const insertAddressToDB = async ({
   country,
   latitude,
   longitude
-}) => {
-  const { rows: [address] } = await db.query(
+}, client = db) => {
+  const { rows: [address] } = await client.query(
     `INSERT INTO addresses (
       user_id,
       academy_id,
@@ -185,8 +185,8 @@ const getAddressById = async (id, role) => {
 
 
 // Services
-const createAddressService = async (payload) => {
-  const { rows: [address] } = await insertAddressToDB({ ...payload });
+const createAddressService = async (payload, client = db) => {
+  const { rows: [address] } = await insertAddressToDB({ ...payload }, client);
 
   if (address.user_id) payload.user_id = address.user_id;
   if (address.academy_id) payload.academy_id = address.academy_id;

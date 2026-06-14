@@ -11,7 +11,8 @@ const createProfessorController = async (req, res) => {
     const { rid: academy_id } = req.user;
 
     const payload = {
-        user_id: req.body.user_id,
+        user: req.body.user,
+        address: req.body.address,
         department_id: req.body.department_id,
         title: req.body.title,
         rank: req.body.rank,

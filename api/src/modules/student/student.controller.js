@@ -10,7 +10,8 @@ const createStudentController = async (req, res) => {
     const { rid: academy_id } = req.user;
 
     const payload = {
-        user_id: req.body.user_id,
+        user: req.body.user,
+        address: req.body.address,
         department_id: req.body.department_id,
         advisor_id: req.body.advisor_id,
         current_level: req.body.current_level,

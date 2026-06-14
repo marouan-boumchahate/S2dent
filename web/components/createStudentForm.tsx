@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from './Button';
 import FormField from './FormField';
 import AddressForm, { AddressData } from './AddressForm';
-import { createUser, createAddress, fetchDepartments, fetchProfessors, apiFetch, ApiDepartment, ApiProfessor } from '@/lib/api';
+import { createStudent, fetchDepartments, fetchProfessors, ApiDepartment, ApiProfessor } from '@/lib/api';
 import { useAlert } from '@/components/AlertContext';
 import { getFriendlyErrorMessage } from '@/lib/utils';
 
@@ -251,10 +251,7 @@ export default function CreateStudentForm({
     }
   };
 
-  // ── Step 3 submit: 3 sequential API calls per the Off-Chain Creation Workflow
-  //   1. POST /api/users        → returns user_id
-  //   2. POST /api/addresses    → links address to user_id (city + country required)
-  //   3. POST /api/students     → links student to user_id + department_id + advisor_id
+  // ── Step 3 submit: Single API call for Student Creation Workflow
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep3()) return;
@@ -262,46 +259,34 @@ export default function CreateStudentForm({
     setLoading(true);
 
     try {
-      // 1️⃣ POST /api/users
-      const user = await createUser({
-        first_name: firstName,
-        middle_name: middleName || undefined,
-        last_name: lastName,
-        date_of_birth: dateOfBirth,
-        gender,
-        nationality,
-        national_id: nationalId,
-        email,
-        phone: phone || undefined,
-        photo_url: photoUrl || undefined,
-      });
-
-      // 2️⃣ POST /api/addresses (city & country required per API spec)
-      await createAddress({
-        user_id: user.id,
-        city: (address as AddressData).city,
-        country: (address as AddressData).country,
-        address_line1: (address as AddressData).address_line1 || undefined,
-        address_line2: (address as AddressData).address_line2 || undefined,
-        street: (address as AddressData).street || undefined,
-        district: (address as AddressData).district || undefined,
-        state: (address as AddressData).state || undefined,
-        postal_code: (address as AddressData).postal_code || undefined,
-      });
-
-      // 3️⃣ POST /api/students
-      //    Required: user_id, department_id, advisor_id
-      //    Optional: enrollment_status, enrollment_date, actual_graduation_date
-      await apiFetch('/students', {
-        method: 'POST',
-        body: JSON.stringify({
-          user_id: user.id,
-          department_id: departmentId,
-          advisor_id: advisorId,
-          enrollment_status: enrollmentStatus || undefined,
-          enrollment_date: enrollmentDate || undefined,
-          actual_graduation_date: actualGraduationDate || undefined,
-        }),
+      await createStudent({
+        user: {
+          first_name: firstName,
+          middle_name: middleName || undefined,
+          last_name: lastName,
+          date_of_birth: dateOfBirth,
+          gender,
+          nationality,
+          national_id: nationalId,
+          email,
+          phone: phone || undefined,
+          photo_url: photoUrl || undefined,
+        },
+        address: {
+          city: (address as AddressData).city,
+          country: (address as AddressData).country,
+          address_line1: (address as AddressData).address_line1 || undefined,
+          address_line2: (address as AddressData).address_line2 || undefined,
+          street: (address as AddressData).street || undefined,
+          district: (address as AddressData).district || undefined,
+          state: (address as AddressData).state || undefined,
+          postal_code: (address as AddressData).postal_code || undefined,
+        },
+        department_id: departmentId,
+        advisor_id: advisorId,
+        enrollment_status: enrollmentStatus || undefined,
+        enrollment_date: enrollmentDate || undefined,
+        actual_graduation_date: actualGraduationDate || undefined,
       });
 
       showAlert({

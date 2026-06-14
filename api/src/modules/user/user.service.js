@@ -20,8 +20,8 @@ const toUserDto = (u) => ({
 
 
 // Helpers
-const ensureUserUnique = async (email, nationalId) => {
-  const { rows } = await db.query(
+const ensureUserUnique = async (email, nationalId, client = db) => {
+  const { rows } = await client.query(
     'SELECT id FROM users WHERE email = $1 OR national_id = $2 LIMIT 1',
     [email, nationalId],
   );
@@ -97,10 +97,10 @@ const insertUserToDB = async ({
   email,
   phone,
   photo_url
-}) => {
+}, client = db) => {
   const full_name = `${first_name} ${middle_name ? `${middle_name} ` : ''}${last_name}`.trim();
 
-  const { rows: [user] } = await db.query(
+  const { rows: [user] } = await client.query(
     `INSERT INTO users (
           first_name,
           middle_name,
@@ -176,7 +176,7 @@ const updateUserInDB = async ({
 
 
 // Services
-export const createUserService = async (payload) => {
+export const createUserService = async (payload, client = db) => {
   const {
     first_name,
     middle_name,
@@ -190,9 +190,9 @@ export const createUserService = async (payload) => {
     photo_url
   } = payload;
 
-  await ensureUserUnique(email, national_id);
+  await ensureUserUnique(email, national_id, client);
 
-  const {rows: [user]} = await insertUserToDB({ ...payload });
+  const {rows: [user]} = await insertUserToDB({ ...payload }, client);
 
   return { user: toUserDto(user) };
 };
