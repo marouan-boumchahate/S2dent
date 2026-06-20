@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:app/feature/credentials/presentation/providers/credential_provider.dart';
+import 'package:app/feature/profile/presentation/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/navigation/navigator_key_provider.dart';
 import 'package:app/core/navigation/shell_page.dart';
@@ -172,6 +174,8 @@ final authControllerProvider =
       onLogin: (accessToken) {
         ref.read(sessionExpiredProvider.notifier).state = false;
         ref.read(notificationRepoProvider).connect(accessToken);
+        ref.invalidate(profileControllerProvider);
+        ref.invalidate(credentialControllerProvider);
         ref.read(navigatorKeyProvider).currentState?.pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => const ShellPage(),
