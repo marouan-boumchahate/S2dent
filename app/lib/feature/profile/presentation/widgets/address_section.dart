@@ -34,12 +34,34 @@ class AddressSection extends StatelessWidget {
                   trailing: Text(address.addressLine1),
                   icon: Icons.location_on_outlined,
                 ),
+          address?.addressLine2 == null || address!.addressLine2.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "Address Line 2",
+                  trailing: Text(address.addressLine2),
+                  icon: Icons.location_on,
+                ),
+
           address?.street == null || address!.street.isEmpty
               ? const SizedBox()
               : InfoTile(
                   label: "Street",
                   trailing: Text(address.street),
                   icon: Icons.signpost_outlined,
+                ),
+          address?.district == null || address!.district.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "District",
+                  trailing: Text(address.district),
+                  icon: Icons.area_chart_rounded,
+                ),
+          address?.state == null || address!.state.isEmpty
+              ? const SizedBox()
+              : InfoTile(
+                  label: "State",
+                  trailing: Text(address.state),
+                  icon: Icons.calendar_view_day_outlined,
                 ),
           address?.postalCode == null || address!.postalCode.isEmpty
               ? const SizedBox()

@@ -106,11 +106,36 @@ class _PkSetupDialogState extends ConsumerState<PkSetupDialog> {
                   ? Text(
                       "You have no saved PRIVATE KEY, please, copy the private key from your wallet, and paste it here.",
                     )
-                  : PkTextfield(
-                      hint: "* * * * * * * * * * *",
-                      controller: _pkController,
-                      obsecure: true,
-                      validator: _validatePK,
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: context.colors.error,
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Text(
+                                    "Private key cannot be changed later.",
+                                    overflow: TextOverflow.clip,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PkTextfield(
+                          hint: "* * * * * * * * * * *",
+                          controller: _pkController,
+                          obsecure: true,
+                          validator: _validatePK,
+                        ),
+                      ],
                     )
             ],
           ),
