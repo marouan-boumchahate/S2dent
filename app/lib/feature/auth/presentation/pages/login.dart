@@ -47,6 +47,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             native: 's2dent://',
           ),
         ),
+        optionalNamespaces: const {
+          'eip155': RequiredNamespace(
+            chains: ['eip155:1'], //ETH MAINNET
+            methods: [
+              'personal_sign',
+              'eth_sign',
+              'eth_signTypedData',
+              'eth_signTypedData_v4',
+              'eth_sendTransaction',
+              'eth_accounts',
+              'eth_requestAccounts',
+            ],
+            events: ['chainChanged', 'accountsChanged'],
+          ),
+        },
         includedWalletIds: const {
           //metamask wallet id only
           'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
