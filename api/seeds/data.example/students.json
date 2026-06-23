@@ -1,0 +1,35 @@
+[
+  {
+    "academy_email": "academy@example.com",
+    "department_code": "CSE101",
+    "advisor_email": "bob.johnson@example.com",
+    "privateKey": "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+    "user": {
+      "first_name": "Alice",
+      "middle_name": "",
+      "last_name": "Smith",
+      "date_of_birth": "2001-09-10",
+      "gender": "female",
+      "nationality": "French",
+      "national_id": "CD987654",
+      "email": "alice.smith@example.com",
+      "phone": "+14167894567",
+      "photo_url": "https://example.com/alice.jpg"
+    },
+    "address": {
+      "address_line1": "456 Oak Ave",
+      "address_line2": "",
+      "street": "Oak Ave",
+      "district": "North",
+      "state": "State",
+      "postal_code": "54321",
+      "city": "City",
+      "country": "Country",
+      "latitude": 48.8566,
+      "longitude": 2.3522
+    },
+    "enrollment_status": "active",
+    "enrollment_date": "2023-09-01",
+    "actual_graduation_date": null
+  }
+]

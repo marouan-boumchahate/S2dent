@@ -1,0 +1,39 @@
+[
+  {
+    "academy_email": "academy@example.com",
+    "department_code": "CSE101",
+    "privateKey": "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
+    "user": {
+      "first_name": "Bob",
+      "middle_name": "",
+      "last_name": "Johnson",
+      "date_of_birth": "1975-03-22",
+      "gender": "male",
+      "nationality": "Turkish",
+      "national_id": "EF112233",
+      "email": "bob.johnson@example.com",
+      "phone": "+905551234567",
+      "photo_url": "https://example.com/bob.jpg"
+    },
+    "address": {
+      "address_line1": "789 Professor Rd",
+      "address_line2": "Apt 10",
+      "street": "Professor Rd",
+      "district": "Sarıyer",
+      "state": "Istanbul",
+      "postal_code": "34450",
+      "city": "Istanbul",
+      "country": "Türkiye",
+      "latitude": 41.1639,
+      "longitude": 29.0494
+    },
+    "title": "Dr.",
+    "rank": "Assist. Prof",
+    "specialization": "Distributed Systems",
+    "hire_date": "2022-09-01",
+    "employment_type": "full_time",
+    "office_location": "Building B, Room 204",
+    "office_hours": "Wed 10:00-12:00",
+    "bio": "Experienced researcher in decentralized systems."
+  }
+]

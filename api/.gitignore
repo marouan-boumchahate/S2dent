@@ -25,3 +25,6 @@ fix_tests.js
 
 # Documentation
 docs/private/*
+
+# Data Seeding
+seeds/data
