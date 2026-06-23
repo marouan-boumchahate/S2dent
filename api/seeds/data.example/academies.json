@@ -1,0 +1,41 @@
+[
+  {
+    "privateKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+    "profile": {
+      "name": "Innovation Institute",
+      "short_name": "II",
+      "type": "college",
+      "description": "A modern academy fostering innovation in tech and sciences.",
+      "website": "https://www.ii.edu",
+      "logo_url": "https://www.ii.edu/logo.png",
+      "email": "academy@example.com",
+      "phone": "+14167894567",
+      "legal_name": "Innovation Institute Trust",
+      "registration_number": "REG-12345678",
+      "tax_id": "TAX-12345678",
+      "billing_email": "finance@example.com"
+    },
+    "address": {
+      "address_line1": "123 Main St",
+      "address_line2": "Apt 4B",
+      "street: ": "Main St",
+      "district": "Central",
+      "state": "State",
+      "postal_code": "12345",
+      "city": "City",
+      "country": "Country",
+      "latitude": 40.7128,
+      "longitude": -74.006
+    },
+    "departments": [
+      {
+        "code": "CSE101",
+        "name": "Computer Science and Engineering",
+        "faculty": "Engineering Faculty",
+        "total_years": 4,
+        "description": "Software engineering, algorithms, and systems design.",
+        "is_active": true
+      }
+    ]
+  }
+]
