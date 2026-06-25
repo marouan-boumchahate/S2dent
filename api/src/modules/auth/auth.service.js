@@ -15,7 +15,18 @@ import { sendOtpEmail } from '../../utils/email.js';
 import { env } from '../../config/env.js';
 
 
-const isProduction = env.PRODUCTION || process.env.NODE_ENV === 'test';
+// ── Environment Detection ──────────────────────────────────────────────
+// Three independent, non-overlapping flags.
+//   isProduction : true only when explicitly running as 'production'
+//   isTesting    : true when running automated tests or when SANDBOX_MODE
+//                  is enabled — forces static OTP/nonces, skips real emails
+//   isDevelopment: everything else
+//
+// The previous logic equated NODE_ENV === 'test' with isProduction, which
+// caused test suites to generate real OTPs and attempt email delivery.
+const isProduction  = process.env.NODE_ENV === 'production' && process.env.SANDBOX_MODE !== 'true';
+const isTesting     = process.env.NODE_ENV === 'test' || process.env.SANDBOX_MODE === 'true';
+const isDevelopment = !isProduction && !isTesting;
 
 
 // DTOs
@@ -340,11 +351,13 @@ const sendOtpService = async (email) => {
 
     var otp, message;
     if(isProduction) {
+        // Production only: generate real OTP and cryptographic nonce
         otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
         //otp = (crypto.randomInt(900000) + 100000).toString();
 	    message = `Sign this nonce to verify your identity: ${getNonce()}`;
     }
     else {
+        // Development / Test / Sandbox: deterministic values for seeding and automated tests
         otp = "000000";
         message = 'Sign this nonce to verify your identity: Testing Nonce';
     }
@@ -354,7 +367,10 @@ const sendOtpService = async (email) => {
 
     await setCache(cacheKey, JSON.stringify(payload), OTP_TTL);
 
-    await sendOtpEmail(email, otp);
+    // Skip email delivery only during automated test runs / sandbox mode
+    if (!isTesting) {
+        await sendOtpEmail(email, otp);
+    }
 
     return { message };
 }

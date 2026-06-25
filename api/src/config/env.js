@@ -118,4 +118,8 @@ export const env = {
       ? Buffer.from(process.env.JWT_ENCRYPTION_SECRET, 'hex') 
       : Buffer.alloc(0),
   },
+  ca: {
+    privateKeyPem: process.env.APP_CA_PRIVATE_KEY_PEM || null,
+    certPem: process.env.APP_CA_CERT_PEM || null,
+  },
 }

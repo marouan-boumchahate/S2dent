@@ -1,9 +1,10 @@
 import forge from 'node-forge'
 import crypto from 'crypto'
 import { CERT_VALIDITY_DAYS } from './ca.constants.js'
-import { getIsrgRootX1 } from './ca.root.js'
 import { getAppCa } from './ca.app.js'
 
+// Ethereum zero-address used as fallback when no issuer wallet exists
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 const initializeCertMetadata = (cert, pubKey, walletAddress, uniqueId) => {
     cert.publicKey = pubKey
@@ -20,29 +21,34 @@ const initializeCertMetadata = (cert, pubKey, walletAddress, uniqueId) => {
     return cert
 }
 
-const getExtensions = (issuerWallet, uniqueId, appCa) => ([
-  { name: 'basicConstraints', cA: false, critical: true },
-  { name: 'keyUsage', digitalSignature: true, nonRepudiation: true, critical: true },
-  { name: 'extKeyUsage', other: ['1.3.6.1.4.1.99999.1'] },
-  { name: 'subjectKeyIdentifier' },
-  { name: 'authorityKeyIdentifier', keyIdentifier: appCa.certificate.generateSubjectKeyIdentifier().getBytes() },
+const getExtensions = (issuerWallet, uniqueId, appCa) => {
+    const resolvedIssuerWallet = (issuerWallet && issuerWallet.trim() !== '')
+        ? issuerWallet
+        : ZERO_ADDRESS
 
-  // Custom OIDs for additional identity information
-  { id: '1.3.6.1.4.1.99999.1', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, issuerWallet || '') },
-  { id: '1.3.6.1.4.1.99999.2', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, uniqueId) },
-])
+    return [
+        { name: 'basicConstraints', cA: false, critical: true },
+        { name: 'keyUsage', digitalSignature: true, nonRepudiation: true, critical: true },
+        { name: 'extKeyUsage', other: ['1.3.6.1.4.1.99999.1'] },
+        { name: 'subjectKeyIdentifier' },
+        { name: 'authorityKeyIdentifier', keyIdentifier: appCa.certificate.generateSubjectKeyIdentifier().getBytes() },
+
+        // Custom OIDs for additional identity information
+        { id: '1.3.6.1.4.1.99999.1', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, resolvedIssuerWallet) },
+        { id: '1.3.6.1.4.1.99999.2', value: forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.UTF8, false, uniqueId) },
+    ]
+}
 
 const getCertHash = (cert) => {
     const certDer = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes()
     return crypto.createHash('sha256').update(Buffer.from(certDer, 'binary')).digest('hex')
 }
 
-const getChainPem = (cert, appCa, isrgRoot) => {
+const getChainPem = (cert, appCa) => {
     const certPem = forge.pki.certificateToPem(cert)
     const appCaPem = forge.pki.certificateToPem(appCa.certificate)
-    const isrgRootPem = forge.pki.certificateToPem(isrgRoot)
 
-    const chain = [certPem, appCaPem, isrgRootPem].join('\n')
+    const chain = [certPem, appCaPem].join('\n')
 
     return [chain, certPem]
 }
@@ -56,7 +62,8 @@ export const buildIdentityCertificate = async (payload) => {
         certAttrs
     } = payload
 
-    const [isrgRoot, appCa] = await Promise.all([getIsrgRootX1(), getAppCa()])
+    // Only the App CA is needed — no external root certificate fetch occurs.
+    const appCa = await getAppCa()
     const subjectKeys = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 })
     const cert = forge.pki.createCertificate()
 
@@ -71,7 +78,7 @@ export const buildIdentityCertificate = async (payload) => {
 
     const fingerprintHex = getCertHash(cert)
 
-    const [chainPem, certPem] = getChainPem(cert, appCa, isrgRoot)
+    const [chainPem, certPem] = getChainPem(cert, appCa)
 
     return {
         fingerprint: `0x${fingerprintHex}`,
