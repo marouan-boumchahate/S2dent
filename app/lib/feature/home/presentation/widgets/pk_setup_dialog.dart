@@ -76,6 +76,7 @@ class _PkSetupDialogState extends ConsumerState<PkSetupDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: dialogContentType == DialogContentType.alert
           ? Text("No Private Key found!")
           : Text("Paste your PK here"),
