@@ -13,7 +13,8 @@
     "test:file": "NODE_ENV=test mocha tests/mocha.setup.js tests/student/*.test.js --loader=esmock --exit --timeout 10000",
     "db:reset": "bash ./reset_db.sh",
     "seed": "node seeds/index.js",
-    "build": "npm run db:reset && npm run dev"
+    "build": "npm run db:reset && npm run dev",
+    "generate-ca": "node scripts/generate-ca.js"
   },
   "mocha": {
     "loader": "esmock"

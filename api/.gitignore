@@ -28,3 +28,7 @@ docs/private/*
 
 # Data Seeding
 seeds/data
+
+# Development CA material — generated per-environment, never commit
+certs/dev_ca.key
+certs/dev_ca.crt
