@@ -87,31 +87,34 @@ class _CredentialDetailsDialogState
           color: context.colors.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: detailAsync.when(
-          data: (credential) => AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _decryptedData != null
-                ? CredentialDecryptedDetails(
-                    credential: credential,
-                    decryptedData: _decryptedData!,
-                    isRevoked: widget.isRevoked,
-                    onBack: () => setState(() => _decryptedData = null),
-                  )
-                : _showingSchema
-                    ? CredentialSignatureSchema(
-                        credential: credential,
-                        isRevoked: widget.isRevoked,
-                        onTapBack: () => setState(() => _showingSchema = false),
-                      )
-                    : _content(context, credential),
-          ),
-          loading: () => const SizedBox(
-            height: 200,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, stackTrace) => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text("Failed to load credential"),
+        child: SingleChildScrollView(
+          child: detailAsync.when(
+            data: (credential) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _decryptedData != null
+                  ? CredentialDecryptedDetails(
+                      credential: credential,
+                      decryptedData: _decryptedData!,
+                      isRevoked: widget.isRevoked,
+                      onBack: () => setState(() => _decryptedData = null),
+                    )
+                  : _showingSchema
+                      ? CredentialSignatureSchema(
+                          credential: credential,
+                          isRevoked: widget.isRevoked,
+                          onTapBack: () =>
+                              setState(() => _showingSchema = false),
+                        )
+                      : _content(context, credential),
+            ),
+            loading: () => const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stackTrace) => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text("Failed to load credential"),
+            ),
           ),
         ),
       ),
