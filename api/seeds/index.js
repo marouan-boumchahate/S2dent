@@ -8,6 +8,7 @@ import { apiClient } from './apiClient.js';
 import { askText } from './prompt.js';
 import { printInfo, printResult, printError } from './display.js';
 
+const waitingMillis = 30000; // 30 seconds
 // Helper to read and parse JSON seed files
 const loadSeedData = (filename) => {
   const filePath = path.resolve(process.cwd(), 'seeds/data', filename);
@@ -95,8 +96,8 @@ async function main() {
       printInfo('Academy identity successfully issued.');
 
       // 7. Wait and login to get Academy tokens
-      printInfo('Waiting 3s for transaction to be mined...');
-      await wait(3000);
+      printInfo(`Waiting ${waitingMillis / 1000}s for transaction to be mined...`);
+      await wait(waitingMillis);
       printInfo('Retrieving Academy auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -213,8 +214,8 @@ async function main() {
       printInfo('Professor identity successfully issued.');
 
       // 9. Wait and login to get Professor tokens
-      printInfo('Waiting 3s for transaction to be mined...');
-      await wait(3000);
+      printInfo(`Waiting ${waitingMillis / 1000}s for transaction to be mined...`);
+      await wait(waitingMillis);
       printInfo('Retrieving Professor auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -327,8 +328,8 @@ async function main() {
       printInfo('Student identity successfully issued.');
 
       // 9. Wait and login to get Student tokens
-      printInfo('Waiting 3s for transaction to be mined...');
-      await wait(3000);
+      printInfo(`Waiting ${waitingMillis / 1000}s for transaction to be mined...`);
+      await wait(waitingMillis);
       printInfo('Retrieving Student auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -410,8 +411,8 @@ async function main() {
         credentialId,
         blockchainTransaction: issueRes.data.blockchain_transaction
       });
-      printInfo('Waiting 3s for transaction to be mined...');
-      await wait(3000);
+      printInfo(`Waiting ${waitingMillis / 1000}s for transaction to be mined...`);
+      await wait(waitingMillis);
     } catch (err) {
       printError(`Failed to seed Credential: ${cred.details?.title || 'Unknown'}`, err);
       process.exit(1);

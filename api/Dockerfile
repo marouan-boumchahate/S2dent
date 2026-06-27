@@ -9,7 +9,6 @@ RUN npm ci --only=production
 
 # Copy source and the specifically whitelisted entrypoint
 COPY src/ ./src/
-COPY certs/ ./certs/
 COPY seeds/ ./seeds/
 COPY server.js ./
 COPY entrypoint.sh ./
