@@ -17,6 +17,7 @@ const createRedisStore = (prefix) =>
     });
 
 const createRateLimiter = ({ windowMs, limit, message, keyPrefix }) =>
+    //(true)
     (!isProductionEnvironment)
         ? (_req, _res, next) => next()
         : rateLimit({

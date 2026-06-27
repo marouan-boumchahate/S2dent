@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { env } from './env.js';
 import { getAdminToken, getUserToken } from './adminAuth.js';
 import { apiClient } from './apiClient.js';
-import { askOtp, askText, askConfirm, askKeyPress } from './prompt.js';
+import { askText } from './prompt.js';
 import { printInfo, printResult, printError } from './display.js';
 
 // Helper to read and parse JSON seed files
@@ -73,18 +73,13 @@ async function main() {
       await apiClient.post('/addresses', addressPayload, adminToken);
       printInfo('Linked address to Academy.');
 
-      // 3. Trigger OTP Identity verification
-      const consent = await askConfirm(`We are sending an email to ${email}, do you agree?`);
-      if (!consent) {
-        printInfo('Operation cancelled by user.');
-        process.exit(0);
-      }
-      printInfo(`Triggering verification OTP to: ${email}`);
+      printInfo(`Sending verification OTP to: ${email}`);
       const otpSendRes = await apiClient.post('/auth/otp/send', { email });
       const messageToSign = otpSendRes.data.message;
 
       // 4. Prompt user for OTP (waits for verification code)
-      const otp = await askOtp(email);
+      const otp = '000000';
+      printInfo('Auto-filling OTP: 000000');
 
       // 5. Sign the verification message
       printInfo('Signing OTP nonce with Academy private key...');
@@ -100,7 +95,8 @@ async function main() {
       printInfo('Academy identity successfully issued.');
 
       // 7. Wait and login to get Academy tokens
-      await askKeyPress('Press any key when the transaction is mined...');
+      printInfo('Waiting 3s for transaction to be mined...');
+      await wait(3000);
       printInfo('Retrieving Academy auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -178,17 +174,13 @@ async function main() {
       printInfo(`Professor profile created. ID: ${profId}`);
 
       // 2. Trigger verification OTP
-      const consent = await askConfirm(`We are sending an email to ${email}, do you agree?`);
-      if (!consent) {
-        printInfo('Operation cancelled by user.');
-        process.exit(0);
-      }
-      printInfo(`Triggering verification OTP to: ${email}`);
+      printInfo(`Sending verification OTP to: ${email}`);
       const otpSendRes = await apiClient.post('/auth/otp/send', { email });
       const messageToSign = otpSendRes.data.message;
 
       // 3. Prompt user for OTP (waits for verification code)
-      const otp = await askOtp(email);
+      const otp = '000000';
+      printInfo('Auto-filling OTP: 000000');
 
       // 4. Sign OTP nonce with Professor private key
       printInfo('Signing OTP nonce with Professor private key...');
@@ -221,7 +213,8 @@ async function main() {
       printInfo('Professor identity successfully issued.');
 
       // 9. Wait and login to get Professor tokens
-      await askKeyPress('Press any key when the transaction is mined...');
+      printInfo('Waiting 3s for transaction to be mined...');
+      await wait(3000);
       printInfo('Retrieving Professor auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -295,17 +288,13 @@ async function main() {
       printInfo(`Student profile created. ID: ${studentId}`);
 
       // 2. Trigger verification OTP
-      const consent = await askConfirm(`We are sending an email to ${email}, do you agree?`);
-      if (!consent) {
-        printInfo('Operation cancelled by user.');
-        process.exit(0);
-      }
-      printInfo(`Triggering verification OTP to: ${email}`);
+      printInfo(`Sending verification OTP to: ${email}`);
       const otpSendRes = await apiClient.post('/auth/otp/send', { email });
       const messageToSign = otpSendRes.data.message;
 
       // 3. Prompt user for OTP (waits for verification code)
-      const otp = await askOtp(email);
+      const otp = '000000';
+      printInfo('Auto-filling OTP: 000000');
 
       // 4. Sign OTP nonce with Student private key
       printInfo('Signing OTP nonce with Student private key...');
@@ -338,7 +327,8 @@ async function main() {
       printInfo('Student identity successfully issued.');
 
       // 9. Wait and login to get Student tokens
-      await askKeyPress('Press any key when the transaction is mined...');
+      printInfo('Waiting 3s for transaction to be mined...');
+      await wait(3000);
       printInfo('Retrieving Student auth tokens...');
       const tokens = await getUserToken(address, privateKey);
 
@@ -420,7 +410,8 @@ async function main() {
         credentialId,
         blockchainTransaction: issueRes.data.blockchain_transaction
       });
-      await askKeyPress('Press any key when the transaction is mined...');
+      printInfo('Waiting 3s for transaction to be mined...');
+      await wait(3000);
     } catch (err) {
       printError(`Failed to seed Credential: ${cred.details?.title || 'Unknown'}`, err);
       process.exit(1);
