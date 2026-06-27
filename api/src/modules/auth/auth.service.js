@@ -350,6 +350,7 @@ const sendOtpService = async (email) => {
     const { id, role } = await getUserByEmail(email);
 
     var otp, message;
+    //if(false) {
     if(isProduction) {
         // Production only: generate real OTP and cryptographic nonce
         otp = crypto.randomBytes(3).toString('hex').slice(0, 6);
@@ -368,6 +369,7 @@ const sendOtpService = async (email) => {
     await setCache(cacheKey, JSON.stringify(payload), OTP_TTL);
 
     // Skip email delivery only during automated test runs / sandbox mode
+    //if (false) {
     if (!isTesting) {
         await sendOtpEmail(email, otp);
     }
