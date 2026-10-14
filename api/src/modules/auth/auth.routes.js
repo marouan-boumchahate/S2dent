@@ -27,7 +27,7 @@ router.get(
 )
 router.get(
     '/nonce',
-    validate(generateNonceSchema, 'query'),
+    validate(generateNonceSchema, { location: 'query' }),
     generateNonceController
 )
 router.post(
@@ -39,7 +39,7 @@ router.post(
 router.post(
     '/admin/verify',
     authLimiter,
-    validate(verifyAdminSignatureSchema, 400),
+    validate(verifyAdminSignatureSchema),
     verifyAdminSignatureController
 )
 router.post(

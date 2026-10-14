@@ -1,6 +1,7 @@
 import esmock from 'esmock'
 import request from 'supertest'
 import { strict as assert } from 'assert'
+import db from '../../src/config/db.js'
 import { signTokens } from '../../src/utils/jwt.js'
 
 const mockUploadImage = async () => ({
@@ -8,6 +9,10 @@ const mockUploadImage = async () => ({
   publicId: 's2dent/uploads/sample'
 })
 const { accessToken } = signTokens({ sub: 'media-test-user', role: 'student' })
+
+const cleanupDB = async () => {
+  await db.query("DELETE FROM media WHERE url LIKE '%sample.png%'")
+}
 
 const makeApp = async () => {
   const { default: app } = await esmock.strict(
@@ -25,6 +30,8 @@ const makeApp = async () => {
 }
 
 describe('POST /api/media/upload', () => {
+  beforeEach(async () => { await cleanupDB() })
+  afterEach(async () => { await cleanupDB() })
   it('returns 200 and a URL for a valid image', async () => {
     const app = await makeApp()
 
