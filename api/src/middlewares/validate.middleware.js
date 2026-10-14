@@ -1,17 +1,7 @@
-const validate = (schema, locationOrStatusCode = 'body', statusCode = 422) => (req, res, next) => {
-  let location = 'body';
-  let code = 422;
-
-  if (typeof locationOrStatusCode === 'number') {
-    code = locationOrStatusCode;
-  } else if (typeof locationOrStatusCode === 'string') {
-    location = locationOrStatusCode;
-  }
-
-  if (typeof statusCode === 'number') {
-    code = statusCode;
-  }
-
+const validate = (
+  schema,
+  { location = 'body', statusCode = 422 } = {}
+) => (req, res, next) => {
   const dataToValidate = req[location] || {};
 
   const { error, value } = schema.validate(dataToValidate, {
@@ -26,7 +16,7 @@ const validate = (schema, locationOrStatusCode = 'body', statusCode = 422) => (r
       message: d.message,
     }));
 
-    return res.status(code).json({
+    return res.status(statusCode).json({
       success: false,
       code: 'VALIDATION_ERROR',
       errors,
@@ -43,6 +33,7 @@ const validate = (schema, locationOrStatusCode = 'body', statusCode = 422) => (r
   } else {
     req[location] = value;
   }
+
   return next();
 };
 

@@ -165,23 +165,23 @@ const main = async () => {
   );
   log('department', `created → id=${departmentId}`);
 
-  // const ctx = {
-  //   departmentId,
-  //   academyToken: academy.tokens.accessToken,
-  //   academyPrivateKey: WALLETS.academy.privateKey,
-  // };
-  // const professor = await seedProfessor(ctx);
-  // const student = await seedStudent({ ...ctx, advisorId: professor.id });
-  // const credentials = await seedCredentials({
-  //    academyToken: academy.tokens.accessToken,
-  //    professorToken: professor.tokens.accessToken,
-  // });
+  const ctx = {
+    departmentId,
+    academyToken: academy.tokens.accessToken,
+    academyPrivateKey: WALLETS.academy.privateKey,
+  };
+  const professor = await seedProfessor(ctx);
+  const student = await seedStudent({ ...ctx, advisorId: professor.id });
+  const credentials = await seedCredentials({
+     academyToken: academy.tokens.accessToken,
+     professorToken: professor.tokens.accessToken,
+  });
   
   printTokens('admin', adminTokens);
   printTokens('academy', academy.tokens);
-  // printTokens('professor', professor.tokens);
-  // printTokens('student', student.tokens);
-  // log('credential', `completed ${Object.keys(credentials).length} credential issuances`);
+  printTokens('professor', professor.tokens);
+  printTokens('student', student.tokens);
+  log('credential', `completed ${Object.keys(credentials).length} credential issuances`);
 };
 
 main().catch((e) => {
